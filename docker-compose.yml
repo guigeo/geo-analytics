@@ -1,0 +1,32 @@
+# Dois servicos:
+#   pipeline -> ETL geoespacial (gera GeoParquet + PMTiles)
+#   web      -> dev server do mapa (Vite) em http://localhost:5173
+#
+# Uso:
+#   docker compose build                          # constroi a imagem do ETL
+#   docker compose run --rm pipeline build        # gera tiles + basemap
+#   docker compose up web                          # sobe o mapa em :5173
+services:
+  pipeline:
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile
+    volumes:
+      - .:/repo
+    working_dir: /repo/pipeline
+    environment:
+      # Sobrescreva para um build mais recente: https://maps.protomaps.com/builds/
+      - PROTOMAPS_BUILD_URL=${PROTOMAPS_BUILD_URL:-}
+
+  web:
+    image: node:20-slim
+    working_dir: /repo/web
+    command: sh -c "npm install && npm run dev -- --host"
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/repo
+      - web_node_modules:/repo/web/node_modules
+
+volumes:
+  web_node_modules:

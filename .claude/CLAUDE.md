@@ -115,7 +115,8 @@ Adicione domínios a qualquer momento com `/create-kb "<dominio>"`. Candidatas p
 
 | Feature | Entregue em | Descrição |
 |---------|-------------|-----------|
-| — | — | — |
+| [MAPA_FASE1](.claude/sdd/archive/MAPA_FASE1/SHIPPED_2026-06-27.md) | 2026-06-27 | Mapa estático (MapLibre) com 5 camadas IBGE/antenas via PMTiles + ETL `GeoParquet→PMTiles` (Docker) |
+| [REFINAMENTO_VISUAL](.claude/sdd/archive/REFINAMENTO_VISUAL/SHIPPED_2026-06-27.md) | 2026-06-27 | Polish visual: basemap z13 (ruas), paleta + rótulos UF/município, highlight ao clicar, legenda |
 
 ---
 

@@ -1,0 +1,47 @@
+# Registry declarativo dos datasets (paths relativos a raiz do repo).
+# Adicionar um dataset novo = adicionar uma entrada aqui (Fase 3, sem refactor).
+
+output:
+  processed_dir: data/processed
+  tiles_dir: web/public/tiles
+
+datasets:
+  - name: uf
+    source: data/uf/BR_UF_2025.shp
+    geometry: polygon
+    attributes: [CD_UF, NM_UF, SIGLA_UF]
+    tile: { minzoom: 0, maxzoom: 8 }
+
+  - name: municipio
+    source: data/municipio/BR_Municipios_2025.shp
+    geometry: polygon
+    attributes: [CD_MUN, NM_MUN, SIGLA_UF, NM_UF]
+    tile: { minzoom: 0, maxzoom: 10 }
+
+  - name: bairro
+    source: data/bairro/BR_bairros_CD2022.gpkg
+    layer: BR_bairros_CD2022
+    geometry: polygon
+    attributes: [CD_BAIRRO, NM_BAIRRO, NM_MUN, NM_UF]
+    tile: { minzoom: 5, maxzoom: 13 }
+
+  - name: setor
+    source: data/setor_censitario/BR_setores_CD2022.gpkg
+    layer: BR_setores_CD2022
+    geometry: polygon
+    attributes: [CD_SETOR, CD_MUN, NM_MUN, SITUACAO]
+    tile: { minzoom: 6, maxzoom: 14, simplification: 10 }   # camada critica (~473k)
+
+  - name: antenas
+    source: data/antenas/antenas.csv
+    format: csv_points
+    lon_field: lon
+    lat_field: lat
+    attributes: [operadora, uf, municipio, tecnologia, frequencia]
+    tile: { minzoom: 4, maxzoom: 14 }
+
+basemap:
+  provider: protomaps
+  bbox: [-74.0, -34.0, -34.0, 6.0]   # lon_min, lat_min, lon_max, lat_max (Brasil)
+  maxzoom: 13                         # ruas no zoom proximo; zoom-out continua simples (vector tiles por-zoom)
+  out: basemap.pmtiles

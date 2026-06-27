@@ -32,5 +32,36 @@ templates:
   - name: domain-manifest
     path: _templates/domain-manifest.yaml.template
 
-# Domain Registry — vazio. KBs nascem aqui via /create-kb (ex.: durante o /brainstorm).
-domains: {}
+# Domain Registry. KBs nascem via /create-kb ou /distill (de features shipadas).
+domains:
+  maplibre:
+    name: MapLibre GL JS
+    description: UI de mapas vetoriais — PMTiles, estilo de camadas, clique/realce, toggle
+    path: maplibre/
+    entry_points: { index: index.md, quick_reference: quick-reference.md }
+    concepts:
+      - { name: protocolo-pmtiles, path: concepts/protocolo-pmtiles.md, confidence: 0.95 }
+    patterns:
+      - { name: highlight-via-fonte-selecao, path: patterns/highlight-via-fonte-selecao.md }
+      - { name: sublayers-companheiras-toggle, path: patterns/sublayers-companheiras-toggle.md }
+
+  pmtiles-tippecanoe:
+    name: PMTiles + tippecanoe
+    description: Gerar/servir vector tiles estáticos; trade-offs de zoom/tamanho; range requests
+    path: pmtiles-tippecanoe/
+    entry_points: { index: index.md, quick_reference: quick-reference.md }
+    concepts:
+      - { name: vector-tiles-por-zoom-e-range-requests, path: concepts/vector-tiles-por-zoom-e-range-requests.md, confidence: 0.95 }
+    patterns:
+      - { name: geoparquet-para-pmtiles, path: patterns/geoparquet-para-pmtiles.md }
+      - { name: extrair-recorte-basemap, path: patterns/extrair-recorte-basemap.md }
+
+  geospatial-etl:
+    name: Geospatial ETL
+    description: Padronizar/converter dados geo heterogêneos em GeoParquet, em escala, sem OOM
+    path: geospatial-etl/
+    entry_points: { index: index.md, quick_reference: quick-reference.md }
+    patterns:
+      - { name: conversao-streaming-ogr2ogr, path: patterns/conversao-streaming-ogr2ogr.md }
+      - { name: inspecionar-schema-antes, path: patterns/inspecionar-schema-antes.md }
+      - { name: csv-para-pontos, path: patterns/csv-para-pontos.md }

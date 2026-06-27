@@ -4,3 +4,20 @@ __pycache__/
 .env
 .env.local
 node_modules/
+
+# Python / uv
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Frontend build
+web/dist/
+
+# Dados (crus + processados): grandes/reproduziveis — nao versionar.
+# Mantem apenas o README explicando onde obter as fontes.
+data/*
+!data/README.md
+
+# Saidas do ETL (geradas; nao versionar)
+web/public/tiles/*.pmtiles

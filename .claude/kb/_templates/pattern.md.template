@@ -1,0 +1,34 @@
+<!-- Prosa em português; código, nomes de API e keywords técnicas em inglês. Convenção: .claude/kb/_index.yaml -->
+# {{PATTERN_NAME}}
+
+> **Propósito**: {{WHAT_PROBLEM_THIS_SOLVES}}
+> **Validado**: {{VALIDATION_DATE}}
+
+## Quando usar
+
+- {{USE_CASE_1}}
+- {{USE_CASE_2}}
+- {{USE_CASE_3}}
+
+## Implementação
+
+```{{LANGUAGE}}
+{{PRODUCTION_READY_CODE_30_100_LINES}}
+```
+
+## Configuração
+
+| Decisão | Padrão recomendado | Descrição |
+|---------|--------------------|-----------|
+| `{{SETTING_NAME}}` | `{{DEFAULT_VALUE}}` | {{DESCRIPTION}} |
+
+## Exemplo de uso
+
+```{{LANGUAGE}}
+{{USAGE_EXAMPLE}}
+```
+
+## Ver também
+
+- [{{RELATED_PATTERN}}](../patterns/{{RELATED_PATTERN_FILE}}.md)
+- [{{RELATED_CONCEPT}}](../concepts/{{RELATED_CONCEPT_FILE}}.md)

@@ -1,0 +1,36 @@
+# Knowledge Base Index
+# Machine-readable registry for KB domains
+#
+# CONVENÇÃO DE IDIOMA: a prosa explicativa das KBs (quando usar, por quê, descrições)
+# é escrita em PORTUGUÊS. Código, nomes de API e keywords técnicas ficam em inglês por
+# natureza. Aplicada por /create-kb, /distill e /contribute.
+
+version: "1.0"
+last_updated: "2026-06-27"
+
+# File Size Limits (SINGLE SOURCE OF TRUTH)
+limits:
+  quick_reference: 100
+  concept: 150
+  pattern: 200
+  spec: null
+
+# Templates
+templates:
+  - name: concept
+    path: _templates/concept.md.template
+  - name: pattern
+    path: _templates/pattern.md.template
+  - name: index
+    path: _templates/index.md.template
+  - name: quick-reference
+    path: _templates/quick-reference.md.template
+  - name: spec
+    path: _templates/spec.yaml.template
+  - name: test-case
+    path: _templates/test-case.json.template
+  - name: domain-manifest
+    path: _templates/domain-manifest.yaml.template
+
+# Domain Registry — vazio. KBs nascem aqui via /create-kb (ex.: durante o /brainstorm).
+domains: {}

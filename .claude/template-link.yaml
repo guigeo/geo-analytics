@@ -1,0 +1,29 @@
+template_path: /Users/gui_ramos/Projetos/0_modelo-base-projeto-sdd-agent-spec
+template_version: 6865ba89a771dd5de6a98ef37d3a536d8cb3d53b
+catalog_version: "1.0"
+created_at: "2026-06-27"
+components:
+  agents:
+    - brainstorm-agent
+    - define-agent
+    - design-agent
+    - build-agent
+    - ship-agent
+    - iterate-agent
+    - prompt-crafter
+    - dev-loop-executor
+    - codebase-explorer
+    - kb-architect
+    - adaptive-explainer
+    - meeting-analyst
+    - the-planner
+    - code-reviewer
+    - code-documenter
+    - llm-specialist
+    - genai-architect
+    - ai-prompt-specialist
+    - ai-data-engineer
+    - code-cleaner
+    - python-developer
+    - test-generator
+  kbs: []

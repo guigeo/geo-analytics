@@ -2,6 +2,7 @@ import type {
   LayerSpecification,
   SourceSpecification,
 } from "maplibre-gl";
+import { ANTENNA_ICON } from "./icons";
 
 export interface AttributeField {
   key: string;
@@ -41,7 +42,7 @@ export const LAYERS: DataLayer[] = [
     fillOpacity: 0,
     outline: { color: "#3a5a8c", width: 2 },
     labelDef: { field: "NM_UF", minzoom: 4, size: 12, color: "#27406b" },
-    defaultVisible: true,
+    defaultVisible: false,
     attributes: [
       { key: "NM_UF", label: "Nome" },
       { key: "SIGLA_UF", label: "UF" },
@@ -57,7 +58,7 @@ export const LAYERS: DataLayer[] = [
     fillOpacity: 0.15,
     outline: { color: "#1d6b52", width: 1 },
     labelDef: { field: "NM_MUN", minzoom: 8, size: 11, color: "#16432f" },
-    defaultVisible: true,
+    defaultVisible: false,
     attributes: [
       { key: "NM_MUN", label: "Nome" },
       { key: "CD_MUN", label: "Código IBGE" },
@@ -96,11 +97,11 @@ export const LAYERS: DataLayer[] = [
   },
   {
     id: "antenas",
-    label: "Antenas",
+    label: "Antenas de telefonia",
     sourceLayer: "antenas",
     geometry: "point",
     color: "#d7263d",
-    defaultVisible: true,
+    defaultVisible: false,
     attributes: [
       { key: "operadora", label: "Operadora" },
       { key: "tecnologia", label: "Tecnologia" },
@@ -125,18 +126,19 @@ export function dataSources(): Record<string, SourceSpecification> {
 
 function baseLayer(l: DataLayer, visibility: "visible" | "none"): LayerSpecification {
   if (l.geometry === "point") {
+    // Antenas representadas por um ícone de torre (registrado em icons.ts).
     return {
       id: l.id,
-      type: "circle",
+      type: "symbol",
       source: l.id,
       "source-layer": l.sourceLayer,
-      layout: { visibility },
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 12, 4.5],
-        "circle-color": l.color,
-        "circle-opacity": 0.85,
-        "circle-stroke-color": "#7a1020",
-        "circle-stroke-width": 0.6,
+      layout: {
+        visibility,
+        "icon-image": ANTENNA_ICON,
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 4, 0.45, 12, 1],
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
       },
     } satisfies LayerSpecification;
   }

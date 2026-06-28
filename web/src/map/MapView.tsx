@@ -7,7 +7,8 @@ import {
   basemapSource,
   BASEMAP_SOURCE_ID,
   GLYPHS_URL,
-  SPRITE_URL,
+  spriteUrl,
+  type BasemapTheme,
 } from "./basemap";
 import {
   dataLayers,
@@ -22,6 +23,7 @@ import {
   selectionSource,
   SELECTION_SOURCE_ID,
 } from "./selection";
+import { ANTENNA_ICON, createAntennaImage, ensureAntennaIcon } from "./icons";
 
 export interface SelectedFeature {
   layerId: string;
@@ -30,30 +32,33 @@ export interface SelectedFeature {
 
 interface Props {
   visible: Record<string, boolean>;
+  theme: BasemapTheme;
   onSelect: (feature: SelectedFeature | null) => void;
 }
 
 const BRAZIL_CENTER: [number, number] = [-52.5, -14.5];
 
-function buildStyle(): StyleSpecification {
+function buildStyle(theme: BasemapTheme): StyleSpecification {
   return {
     version: 8,
     glyphs: GLYPHS_URL,
-    sprite: SPRITE_URL,
+    sprite: spriteUrl(theme),
     sources: {
       [BASEMAP_SOURCE_ID]: basemapSource,
       ...dataSources(),
       [SELECTION_SOURCE_ID]: selectionSource,
     },
-    layers: [...basemapLayers(), ...dataLayers(), ...selectionLayers],
+    layers: [...basemapLayers(theme), ...dataLayers(), ...selectionLayers],
   };
 }
 
-export function MapView({ visible, onSelect }: Props) {
+export function MapView({ visible, theme, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   // Ref de visibilidade para os handlers do mapa, que sao registrados apenas 1x.
   const visibleRef = useRef(visible);
+  // Tema inicial fixado na montagem; trocas posteriores via setStyle (efeito separado).
+  const initialThemeRef = useRef(theme);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -61,12 +66,25 @@ export function MapView({ visible, onSelect }: Props) {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: buildStyle(),
+      style: buildStyle(initialThemeRef.current),
       center: BRAZIL_CENTER,
       zoom: 3.5,
     });
     map.addControl(new maplibregl.NavigationControl({}), "top-left");
     mapRef.current = map;
+
+    // Ícone das antenas: rasteriza uma vez e (re)registra sempre que o style pedir.
+    // `styleimagemissing` cobre a carga inicial e o setStyle do toggle de tema.
+    let antennaImage: ImageData | null = null;
+    createAntennaImage()
+      .then((img) => {
+        antennaImage = img;
+        ensureAntennaIcon(map, img);
+      })
+      .catch((err) => console.error(err));
+    map.on("styleimagemissing", (e) => {
+      if (e.id === ANTENNA_ICON) ensureAntennaIcon(map, antennaImage);
+    });
 
     const activeLayers = () =>
       INTERACTIVE_LAYER_IDS.filter((id) => visibleRef.current[id]);
@@ -114,6 +132,21 @@ export function MapView({ visible, onSelect }: Props) {
     }
     applyVisibility(map, visible);
   }, [visible]);
+
+  // Troca de tema: reconstrói o style (basemap claro/escuro + sprite) sem
+  // recriar o mapa. O handler de clique vive no mapa, então sobrevive ao setStyle;
+  // só a visibilidade das camadas precisa ser reaplicada quando o novo style carrega.
+  const firstThemeRender = useRef(true);
+  useEffect(() => {
+    if (firstThemeRender.current) {
+      firstThemeRender.current = false;
+      return;
+    }
+    const map = mapRef.current;
+    if (!map) return;
+    map.setStyle(buildStyle(theme));
+    map.once("idle", () => applyVisibility(map, visibleRef.current));
+  }, [theme]);
 
   return <div ref={containerRef} className="map" />;
 }

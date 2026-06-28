@@ -31,6 +31,8 @@ docker compose build
 docker compose run --rm pipeline build                 # tudo: GeoParquet + tiles + basemap
 docker compose run --rm pipeline build --only <nome>   # um dataset
 docker compose run --rm pipeline build --basemap-only  # só basemap (não re-tila dados)
+docker compose run --rm pipeline census                # ingere Censo 2022 -> data/processed/censo_setor.parquet
+docker compose run --rm pipeline census-municipio      # agrega setor -> data/processed/censo_municipio.parquet
 
 # Frontend (NÃO há node no host — usar o container)
 docker compose up web                                  # dev :5173 (= make dev)
@@ -38,6 +40,9 @@ docker compose exec web npm run typecheck
 
 # Testes/lint do ETL (lógica pura roda nativa com uv)
 cd pipeline && uv sync --group dev && uv run pytest && uv run ruff check .
+
+# Camada de consulta (Fase 2 — roda nativa com uv, precisa dos parquets em data/processed)
+cd query && uv sync --group dev && uv run pytest && uv run ruff check .
 ```
 
 ## Arquitetura
@@ -46,10 +51,25 @@ cd pipeline && uv sync --group dev && uv run pytest && uv run ruff check .
   (registry declarativo: 1 entrada por camada → adicionar dataset = editar YAML, sem refactor).
   - `convert.py` usa **`ogr2ogr` (streaming)** p/ converter arquivos grandes sem OOM (reprojeta a EPSG:4326).
   - `antennas.py` parseia CSV de pontos. `tiles.py` chama `tippecanoe`. `basemap.py` extrai recorte Protomaps.
+  - `census.py` (DuckDB) ingere os CSVs do Censo 2022 (`data/censo_2022/`) → tabela canônica de
+    atributos `censo_setor.parquet` (sem geometria, chave `cd_setor`). Variáveis curadas em `THEMES`
+    (adicionar variável = editar o dict). `census-municipio` agrega por `cd_mun` → `censo_municipio.parquet`
+    (contagens somam; `media_moradores` ponderada por `WEIGHTED`; densidade/percentuais recalculados via
+    `DERIVED`). Geometria + censo se juntam por `cd_setor`/`cd_mun` em query-time (Fase 2).
+  - **Produção (censo):** os parquets canônicos USADOS (`censo_setor`, `censo_municipio`) são
+    artefatos de produção — sobem com a Fase 2 (IA/consulta server-side). FICAM locais: os CSVs brutos
+    de `data/censo_2022/` (fonte reproduzível), o domicílio3 (baixado e não usado) e os temas não
+    baixados. Hoje o `deploy.sh` só envia `web/dist/` + `web/public/tiles/` (mapa estático); o deploy
+    dos dados entra junto com a Fase 2.
   - venv fica em `/opt/venv` no container (fora do bind mount) — ver `Dockerfile`.
 - **`web/`** — React/Vite/TS. `map/layers.ts` define as camadas; `map/MapView.tsx` monta o
   style (basemap + camadas + seleção) e trata clique; `map/selection.ts` faz o highlight via
   fonte GeoJSON (sem `feature-state`). Toggle/clique operam por id base.
+- **`query/`** — projeto `uv` (Fase 2). Camada de consulta DuckDB sobre os parquets canônicos —
+  **backend de dados do chat, sem LLM ainda**. `db.py` cria as views `setor` (censo + centroide do
+  `geom_bbox`) e `municipio`; `queries.py` expõe `GeoQuery` (lookups, `ranking_municipios`,
+  `setores_proximos`). Geometria exata vive nos PMTiles; o backend devolve `cd_setor` e o mapa pinta.
+  Espacial é **aproximado** (centroide × 111 km), pois `setor.parquet` tem geometria GEOARROW (não WKB).
 - **Saídas** (não versionadas): `data/processed/*.parquet`, `web/public/tiles/*.pmtiles`.
 
 ## Convenções

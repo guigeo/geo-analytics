@@ -1,18 +1,11 @@
 [project]
-name = "geo-pipeline"
+name = "geo-query"
 version = "0.1.0"
-description = "ETL geoespacial: fontes IBGE/antenas -> GeoParquet canonico -> PMTiles"
+description = "Camada de consulta (DuckDB) sobre o GeoParquet canonico - backend de dados da Fase 2"
 requires-python = ">=3.11"
 dependencies = [
-    "geopandas>=1.0",
-    "pyarrow>=16",
-    "pyyaml>=6",
-    "pydantic>=2",
-    "duckdb>=1.5.4",
+    "duckdb>=1.5",
 ]
-
-[project.scripts]
-geo-pipeline = "geo_pipeline.cli:main"
 
 [dependency-groups]
 dev = [
@@ -25,7 +18,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/geo_pipeline"]
+packages = ["src/geo_query"]
 
 [tool.ruff]
 line-length = 100

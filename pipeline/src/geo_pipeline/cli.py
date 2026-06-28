@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .antennas import convert_antennas
 from .basemap import build_basemap
+from .census import build_census, build_census_municipio
 from .config import DatasetConfig, OutputConfig, PipelineConfig, load_config
 from .convert import convert_dataset
 from .tiles import build_tiles
@@ -86,12 +87,21 @@ def main(argv: list[str] | None = None) -> int:
         help="regenera apenas o basemap (nao re-tila os dados)",
     )
 
+    sub.add_parser("census", help="ingere agregados do Censo 2022 -> tabela canonica de atributos")
+    sub.add_parser(
+        "census-municipio", help="agrega censo_setor por municipio (todas as variaveis)"
+    )
+
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     cfg = load_config(args.registry)
     if args.command == "build":
         _build(cfg, args.only, not args.no_basemap, not args.no_tiles, args.basemap_only)
+    elif args.command == "census":
+        build_census(cfg.output)
+    elif args.command == "census-municipio":
+        build_census_municipio(cfg.output)
     return 0
 
 

@@ -11,7 +11,8 @@
 #   VPS_PATH  (opcional)     destino na VPS; padrão /var/www/geo
 set -euo pipefail
 
-VPS_HOST="${VPS_HOST:?defina VPS_HOST, ex.: VPS_HOST=usuario@IP}"
+# Atalho do ~/.ssh/config (rsync/ssh resolvem usuário, IP e chave por ele).
+VPS_HOST="${VPS_HOST:-hetzner-gramos}"
 VPS_PATH="${VPS_PATH:-/var/www/geo}"
 WHAT="${1:-all}"
 

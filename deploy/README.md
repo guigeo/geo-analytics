@@ -108,9 +108,21 @@ ou 403 (permissão da pasta).
 
 ---
 
+## Fluxo de trabalho (dia a dia)
+
+```bash
+make dev       # desenvolve com HMR em :5173
+make preview   # valida o build de produção em :8080 (Caddy local = VPS)
+make ship-app  # manda só o frontend  (ou: make ship / make ship-tiles)
+```
+
+> **Sempre rode `make preview` antes de `ship`** — é a única forma de ver, localmente,
+> exatamente o que o Caddy da VPS vai servir (Range nos tiles, compressão só fora de
+> `/tiles`). O `deploy/Caddyfile.local` espelha o comportamento de `deploy/Caddyfile`.
+
 ## Redeploys futuros
-- **Só código:** `VPS_HOST=hetzner-gramos ./deploy/deploy.sh app`
-- **Re-gerou tiles:** `VPS_HOST=hetzner-gramos ./deploy/deploy.sh tiles`
+- **Só código:** `make ship-app`  (= `./deploy/deploy.sh app`)
+- **Re-gerou tiles:** `make ship-tiles`  (= `./deploy/deploy.sh tiles`)
 
 ## Otimizações opcionais (Fase 7)
 - **Encolher o basemap** (z13→z12): ~1.4 GB → ~400 MB. `pipeline/datasets.yaml` (`basemap.maxzoom`)

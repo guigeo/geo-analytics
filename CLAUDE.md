@@ -7,8 +7,23 @@ ver [`.claude/CLAUDE.md`](.claude/CLAUDE.md) e [`.claude/sdd/archive/`](.claude/
 
 Mapa web estático (MapLibre) + ETL geoespacial em Docker. Pipeline:
 `shp/gpkg/csv → GeoParquet (canônico) → PMTiles → MapLibre`. Sem backend em runtime.
+**No ar:** https://geo-intelligence.averisen.com (VPS Hetzner + Caddy; ver `deploy/`).
 
-## Comandos
+## Fluxo (Makefile — porta de entrada única)
+
+```bash
+make dev        # desenvolve: Vite + HMR em :5173
+make preview    # valida: build + Caddy local em :8080 (IGUAL à VPS)
+make ship       # manda pra VPS: app + tiles (build incluso)
+make ship-app   # só o frontend (redeploy rápido)   |  make ship-tiles (~2 GB)
+make help       # lista todos os alvos
+```
+
+`dev` é rápido mas difere da produção; **antes de `ship`, valide com `preview`** (mesmo
+Caddy, mesma config de Range/compressão dos tiles). `ship*` usam `deploy/deploy.sh`
+(rsync via atalho `hetzner-gramos` do `~/.ssh/config`).
+
+## Comandos (detalhe)
 
 ```bash
 # ETL (no container — gdal/tippecanoe/pmtiles vivem na imagem, NÃO no host)
@@ -18,7 +33,7 @@ docker compose run --rm pipeline build --only <nome>   # um dataset
 docker compose run --rm pipeline build --basemap-only  # só basemap (não re-tila dados)
 
 # Frontend (NÃO há node no host — usar o container)
-docker compose up web                                  # http://localhost:5173
+docker compose up web                                  # dev :5173 (= make dev)
 docker compose exec web npm run typecheck
 
 # Testes/lint do ETL (lógica pura roda nativa com uv)

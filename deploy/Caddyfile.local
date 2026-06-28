@@ -1,0 +1,28 @@
+# Preview de PRODUÇÃO local (docker compose --profile preview up preview → :8080).
+# Reproduz o COMPORTAMENTO do bloco de produção (deploy/Caddyfile, VPS): Range nos
+# tiles, compressão só fora de /tiles, sem cache (sempre vê o build fresco).
+#
+# Diferença estrutural: aqui app e tiles vêm de volumes separados (/srv/app e
+# /srv/tiles), então roteamos com handle_path. Na VPS, tiles é subpasta do root.
+# ⚠️ Mantenha o comportamento em sync com deploy/Caddyfile.
+
+:80 {
+	# Comprime tudo MENOS os tiles (PMTiles usa Range requests — comprimir quebra).
+	@notiles not path /tiles/*
+	encode @notiles gzip zstd
+
+	# Preview sempre fresco (na VPS os tiles têm cache longo).
+	header Cache-Control "no-store"
+
+	# Tiles → volume próprio (strip do prefixo /tiles).
+	handle_path /tiles/* {
+		root * /srv/tiles
+		file_server
+	}
+
+	# App (index.html + assets).
+	handle {
+		root * /srv/app
+		file_server
+	}
+}

@@ -1,11 +1,15 @@
-# Dois servicos:
+# Servicos:
 #   pipeline -> ETL geoespacial (gera GeoParquet + PMTiles)
-#   web      -> dev server do mapa (Vite) em http://localhost:5173
+#   web      -> dev server do mapa (Vite, HMR) em http://localhost:5173
+#   preview  -> build de producao servido por Caddy (IGUAL a VPS) em :8080
+#
+# Fluxo: desenvolve (web) -> valida (preview) -> manda (deploy/deploy.sh). Ver Makefile.
 #
 # Uso:
 #   docker compose build                          # constroi a imagem do ETL
 #   docker compose run --rm pipeline build        # gera tiles + basemap
-#   docker compose up web                          # sobe o mapa em :5173
+#   docker compose up web                          # dev em :5173
+#   docker compose --profile preview up preview   # preview de producao em :8080
 services:
   pipeline:
     build:
@@ -27,6 +31,18 @@ services:
     volumes:
       - .:/repo
       - web_node_modules:/repo/web/node_modules
+
+  # Preview de producao: serve web/dist + tiles com o MESMO Caddy/config da VPS.
+  # Exige um build antes (web/dist). Espelha o layout /var/www/geo da VPS.
+  preview:
+    image: caddy:2-alpine
+    profiles: ["preview"]
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web/dist:/srv/app:ro
+      - ./web/public/tiles:/srv/tiles:ro
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
 
 volumes:
   web_node_modules:

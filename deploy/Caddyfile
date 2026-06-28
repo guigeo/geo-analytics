@@ -1,27 +1,25 @@
-# Caddyfile — Geo Intelligence (site estático: app + tiles PMTiles)
+# Bloco de site do Geo Intelligence — APÊNDICE ao /etc/caddy/Caddyfile da VPS.
+# A VPS já roda Caddy servindo outros sites; NÃO substitua o arquivo, apenas
+# acrescente este bloco. Ver deploy/README.md (Fase 5).
 #
-# Troque SEU_DOMINIO pelo seu domínio (ex.: geo.seudominio.com).
-# O Caddy obtém o certificado HTTPS (Let's Encrypt) automaticamente.
-#
-# Layout esperado na VPS:
-#   /var/www/geo/            -> build do frontend (index.html, assets/…)
+# Layout na VPS:
+#   /var/www/geo/                 -> build do frontend (index.html, assets/…)
 #   /var/www/geo/tiles/*.pmtiles  -> tiles (enviados por rsync)
 
-SEU_DOMINIO {
+geo-intelligence.averisen.com {
 	root * /var/www/geo
 	file_server
-	encode zstd gzip
 
-	# Tiles PMTiles: imutáveis e grandes — cache longo no navegador.
-	# (range requests já funcionam por padrão no file_server.)
+	# Comprime tudo MENOS os tiles. PMTiles usa HTTP Range requests — comprimir
+	# on-the-fly quebraria os ranges (e mandaria o arquivo inteiro por requisição).
+	@notiles not path /tiles/*
+	encode @notiles gzip zstd
+
+	# Tiles: grandes e imutáveis — cache longo no navegador (range já funciona).
 	@tiles path /tiles/*
 	header @tiles Cache-Control "public, max-age=2592000, immutable"
 
-	# Assets com hash no nome também podem ser cacheados agressivamente.
+	# Assets com hash no nome: cache agressivo.
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
-
-	# Compressão não ajuda PMTiles (já comprimido); evita gastar CPU à toa.
-	@nocompress path /tiles/*
-	header @nocompress -Content-Encoding
 }

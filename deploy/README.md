@@ -1,142 +1,119 @@
 # Deploy — Geo Intelligence na VPS
 
-Site **estático** (app MapLibre + tiles PMTiles), servido por **Caddy** (HTTPS
+Site **estático** (app MapLibre + tiles PMTiles), servido pelo **Caddy** (HTTPS
 automático). Os tiles (~2 GB) sobem por **rsync** — não vão pelo git.
 
 ```text
-seu navegador ──HTTPS──> Caddy (VPS) ──> /var/www/geo  (app)
-                                     └──> /var/www/geo/tiles/*.pmtiles
+navegador ──HTTPS──> Caddy (VPS Hetzner) ──> /var/www/geo  (app)
+                                          └──> /var/www/geo/tiles/*.pmtiles
 ```
 
-Antes de começar, tenha em mãos:
+## Ambiente real (apurado em 2026-06-28)
 
-- **IP da VPS** (ex.: `203.0.113.10`)
-- **Usuário SSH** com acesso (ex.: `root` ou um usuário `deploy`)
-- **Seu domínio** (ex.: `geo.seudominio.com`) e acesso ao painel de DNS
+| Item | Valor |
+|------|-------|
+| VPS  | Hetzner `91.99.176.140`, Ubuntu 26.04, 28 GB livres |
+| SSH  | `ssh hetzner-gramos` (usuário `gramos`; `sudo` pede senha) |
+| Caddy| **já instalado (2.6.2)**, servindo `invest-certo-dash.averisen.com` |
+| DNS  | `averisen.com` no **Cloudflare** |
+| Alvo | `geo-intelligence.averisen.com` |
 
-> Faça **uma fase por vez** e confira o resultado antes de seguir.
+> ⚠️ O Caddy é **compartilhado**: a config nova é **acrescentada**, nunca substitui o arquivo.
 
 ---
 
-## Fase 2 — Apontar o domínio
+## Fase 2 — DNS no Cloudflare
 
-No painel de DNS do seu domínio, crie um registro:
+No painel do Cloudflare → `averisen.com` → **DNS** → **Add record**:
 
-| Tipo | Nome              | Valor (Aponta para) | TTL  |
-|------|-------------------|---------------------|------|
-| `A`  | `geo` (ou `@`)    | `IP_DA_VPS`         | 300  |
+| Campo | Valor |
+|-------|-------|
+| Type  | `A` |
+| Name  | `geo-intelligence` |
+| IPv4  | `91.99.176.140` |
+| Proxy | **DNS only** (nuvem **cinza**, não laranja) |
+| TTL   | Auto |
 
-- `geo` → o site fica em `geo.seudominio.com`.
-- `@` → fica no domínio raiz `seudominio.com`.
+> A nuvem **cinza** é importante: deixa o Caddy emitir o certificado Let's Encrypt
+> direto (o site existente já funciona assim). Proxy laranja fica pra depois (Fase 7).
 
-Confira a propagação (pode levar de minutos a algumas horas):
-
+Confira (na sua máquina):
 ```bash
-dig +short geo.seudominio.com      # deve retornar o IP da VPS
+dig +short geo-intelligence.averisen.com    # tem que retornar 91.99.176.140
 ```
-
-✅ **Pronto quando** o `dig` retorna o IP da VPS.
+✅ **Pronto quando** o `dig` devolve `91.99.176.140`.
 
 ---
 
-## Fase 3 — Preparar a VPS
-
-Acesse a VPS via SSH e rode:
+## Fase 3 — Pasta do site na VPS  (você roda — tem `sudo`)
 
 ```bash
-# 1) Firewall — libere SSH, HTTP e HTTPS
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw --force enable
-
-# 2) Instale o Caddy (repo oficial)
-sudo apt update
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-  | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-  | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install -y caddy
-
-# 3) Pasta do site (com permissão para o seu usuário enviar via rsync)
+ssh hetzner-gramos
 sudo mkdir -p /var/www/geo/tiles
-sudo chown -R "$USER":"$USER" /var/www/geo
+sudo chown -R gramos:gramos /var/www/geo   # p/ o rsync escrever sem sudo
+exit
 ```
-
-✅ **Pronto quando** `caddy version` responde e `/var/www/geo` existe.
+✅ **Pronto quando** `/var/www/geo` existe e é do `gramos`.
+*(Caddy já instalado e portas 80/443 já abertas — nada a fazer aqui.)*
 
 ---
 
-## Fase 4 — Enviar app + tiles (rsync)
-
-**Na sua máquina** (raiz do repo). O script faz o build no container e envia tudo:
+## Fase 4 — Enviar app + tiles  (eu rodo, na sua máquina)
 
 ```bash
-VPS_HOST=usuario@IP_DA_VPS ./deploy/deploy.sh
+VPS_HOST=hetzner-gramos ./deploy/deploy.sh        # build + app + tiles
+# alvos: ./deploy/deploy.sh app  |  tiles  |  all
 ```
+O `rsync` usa o atalho `hetzner-gramos` do seu `~/.ssh/config` (chave, sem senha).
+A 1ª remessa dos tiles (~2 GB) depende do seu **upload**; o rsync é incremental e retoma se cair.
 
-- `./deploy/deploy.sh app`   → só o frontend (redeploys rápidos de código)
-- `./deploy/deploy.sh tiles` → só os tiles (~2 GB; a 1ª vez demora, depois é incremental)
-
-> O primeiro envio dos tiles depende da sua velocidade de **upload**.
-> Pode rodar à noite; o rsync retoma de onde parou se cair.
-
-✅ **Pronto quando** `ls /var/www/geo` (na VPS) mostra `index.html`, `assets/` e `tiles/`.
+✅ **Pronto quando** `ssh hetzner-gramos 'ls /var/www/geo'` mostra `index.html`, `assets/`, `tiles/`.
 
 ---
 
-## Fase 5 — Configurar o Caddy (HTTPS automático)
-
-Na VPS, instale o Caddyfile do repo (já enviado? senão cole o conteúdo de
-`deploy/Caddyfile`) e troque o domínio:
+## Fase 5 — Acrescentar o site ao Caddy  (você roda — tem `sudo`)
 
 ```bash
-sudo cp /var/www/geo/Caddyfile /etc/caddy/Caddyfile 2>/dev/null || sudo nano /etc/caddy/Caddyfile
-sudo sed -i 's/SEU_DOMINIO/geo.seudominio.com/' /etc/caddy/Caddyfile
+# 1) (segurança) backup do Caddyfile atual
+sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak.$(date +%Y%m%d%H%M%S)
+
+# 2) acrescente o bloco do deploy/Caddyfile ao FINAL do arquivo
+sudo nano /etc/caddy/Caddyfile
+#   → cole o conteúdo de deploy/Caddyfile (bloco geo-intelligence.averisen.com)
+#     ABAIXO do bloco existente. Não remova o invest-certo-dash.
+
+# 3) valide a sintaxe e recarregue sem derrubar o site atual
+sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
+
+# 4) acompanhe a emissão do certificado
+journalctl -u caddy -f
 ```
-
-O Caddy detecta o domínio, fala com o Let's Encrypt e emite o certificado sozinho
-(precisa das portas 80/443 abertas e do DNS já apontando — Fases 2 e 3).
-
-Acompanhe:
-
-```bash
-sudo systemctl status caddy
-journalctl -u caddy -f          # veja a emissão do certificado em tempo real
-```
-
-✅ **Pronto quando** o log mostra o certificado obtido, sem erros.
+✅ **Pronto quando** o log mostra o certificado de `geo-intelligence.averisen.com` emitido, sem erro.
 
 ---
 
 ## Fase 6 — Validar
 
 ```bash
-curl -I https://geo.seudominio.com            # 200 OK + HTTPS
+curl -I https://geo-intelligence.averisen.com     # 200 OK + HTTPS
 ```
+Abra **https://geo-intelligence.averisen.com**:
+- mapa + basemap carregam;
+- ligue as camadas (UF, Município, Antenas de telefonia…) → tiles vêm de `/tiles/*`;
+- clique numa feição → painel de atributos; teste o toggle 🌗.
 
-Abra **https://geo.seudominio.com** no navegador:
-
-- O mapa carrega e o basemap aparece.
-- Ligue as camadas (UF, Município, Antenas de telefonia…) — os tiles vêm de `/tiles/*`.
-- Clique numa feição → painel de atributos.
-- Teste o toggle de tema 🌗.
-
-Se algo não carregar, abra o **DevTools (F12) → Network** e veja se algum
-`/tiles/*.pmtiles` deu 404 (arquivo não enviado) ou 403 (permissão).
+Se algo falhar, **DevTools (F12) → Network**: `/tiles/*.pmtiles` em 404 (não enviado)
+ou 403 (permissão da pasta).
 
 ---
 
 ## Redeploys futuros
-
-- **Mudou só código:** `VPS_HOST=usuario@IP ./deploy/deploy.sh app`
-- **Re-gerou tiles:** `VPS_HOST=usuario@IP ./deploy/deploy.sh tiles`
+- **Só código:** `VPS_HOST=hetzner-gramos ./deploy/deploy.sh app`
+- **Re-gerou tiles:** `VPS_HOST=hetzner-gramos ./deploy/deploy.sh tiles`
 
 ## Otimizações opcionais (Fase 7)
-
-- **Encolher o basemap** (z13→z12) corta ~1.4 GB → ~400 MB. Ver `pipeline/datasets.yaml`
-  (`basemap.maxzoom`) + `docker compose run --rm pipeline build --basemap-only`.
-- **Setor censitário** (593 MB) é a 2ª camada mais pesada — avalie se precisa no deploy público.
+- **Encolher o basemap** (z13→z12): ~1.4 GB → ~400 MB. `pipeline/datasets.yaml` (`basemap.maxzoom`)
+  + `docker compose run --rm pipeline build --basemap-only`.
+- **Setor censitário** (593 MB) é a 2ª camada mais pesada — avalie se entra no deploy público.
+- **Proxy do Cloudflare** (nuvem laranja) p/ CDN/DDoS — exige ajuste de SSL (Full) e cache.

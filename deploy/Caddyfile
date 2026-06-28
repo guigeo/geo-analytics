@@ -1,0 +1,27 @@
+# Caddyfile — Geo Intelligence (site estático: app + tiles PMTiles)
+#
+# Troque SEU_DOMINIO pelo seu domínio (ex.: geo.seudominio.com).
+# O Caddy obtém o certificado HTTPS (Let's Encrypt) automaticamente.
+#
+# Layout esperado na VPS:
+#   /var/www/geo/            -> build do frontend (index.html, assets/…)
+#   /var/www/geo/tiles/*.pmtiles  -> tiles (enviados por rsync)
+
+SEU_DOMINIO {
+	root * /var/www/geo
+	file_server
+	encode zstd gzip
+
+	# Tiles PMTiles: imutáveis e grandes — cache longo no navegador.
+	# (range requests já funcionam por padrão no file_server.)
+	@tiles path /tiles/*
+	header @tiles Cache-Control "public, max-age=2592000, immutable"
+
+	# Assets com hash no nome também podem ser cacheados agressivamente.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Compressão não ajuda PMTiles (já comprimido); evita gastar CPU à toa.
+	@nocompress path /tiles/*
+	header @nocompress -Content-Encoding
+}

@@ -11,4 +11,8 @@ export default defineConfig({
     },
   },
   server: { port: 5173 },
+  // Em dev, os tiles são servidos de public/tiles. No build de produção NÃO os
+  // copiamos para o dist (são ~2 GB) — eles sobem para a VPS por rsync próprio
+  // e o Caddy serve em /tiles. Ver deploy/.
+  build: { copyPublicDir: false },
 });

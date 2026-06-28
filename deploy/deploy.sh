@@ -30,8 +30,10 @@ push_app() {
 }
 
 push_tiles() {
+  # Sem --info=progress2: o rsync do macOS (openrsync) não suporta. -v lista
+  # cada arquivo conforme envia; o acompanhamento fino é por `du` no servidor.
   echo "▶ Enviando tiles → $VPS_HOST:$VPS_PATH/tiles/ (~2 GB, incremental)…"
-  rsync -avz --delete --info=progress2 \
+  rsync -avz --delete \
     web/public/tiles/ "$VPS_HOST:$VPS_PATH/tiles/"
 }
 

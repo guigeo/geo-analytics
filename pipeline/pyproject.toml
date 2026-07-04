@@ -19,6 +19,11 @@ dev = [
     "pytest>=8",
     "ruff>=0.6",
 ]
+# Ferramenta de host p/ baixar dados externos (CNES/INEP via IPEA). NAO entra na imagem
+# do container (Dockerfile roda `uv sync --no-dev`, sem grupos extras).
+fetch = [
+    "geobr>=1.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]

@@ -16,7 +16,8 @@ from pathlib import Path
 
 from .antennas import convert_antennas
 from .basemap import build_basemap
-from .census import build_census, build_census_municipio
+from .points import convert_points
+# NB: census importado sob demanda (traz duckdb) para nao acoplar o build de tiles a ele.
 from .config import DatasetConfig, OutputConfig, PipelineConfig, load_config
 from .convert import convert_dataset
 from .tiles import build_tiles
@@ -38,7 +39,8 @@ def _check_binaries(names: tuple[str, ...]) -> None:
 
 def _convert(ds: DatasetConfig, output: OutputConfig) -> Path:
     if ds.format == "csv_points":
-        return convert_antennas(ds, output)
+        # sem cabecalho (antenas.csv) usa o parser posicional; com cabecalho, o generico.
+        return convert_points(ds, output) if ds.has_header else convert_antennas(ds, output)
     return convert_dataset(ds, output)
 
 
@@ -99,8 +101,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "build":
         _build(cfg, args.only, not args.no_basemap, not args.no_tiles, args.basemap_only)
     elif args.command == "census":
+        from .census import build_census
+
         build_census(cfg.output)
     elif args.command == "census-municipio":
+        from .census import build_census_municipio
+
         build_census_municipio(cfg.output)
     return 0
 

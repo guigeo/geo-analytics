@@ -1,5 +1,12 @@
-import { MousePointerClick, RadioTower } from "lucide-react";
+import {
+  Cross,
+  GraduationCap,
+  MousePointerClick,
+  RadioTower,
+  type LucideIcon,
+} from "lucide-react";
 import { LAYERS, type DataLayer } from "@/map/layers";
+import { ANTENNA_ICON, HOSPITAL_ICON, SCHOOL_ICON } from "@/map/icons";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -7,6 +14,13 @@ interface Props {
   visible: Record<string, boolean>;
   onToggle: (id: string) => void;
 }
+
+// Ícone da legenda por id de ícone do mapa (mantém painel e marcador em sintonia).
+const LEGEND_ICON: Record<string, LucideIcon> = {
+  [ANTENNA_ICON]: RadioTower,
+  [SCHOOL_ICON]: GraduationCap,
+  [HOSPITAL_ICON]: Cross,
+};
 
 export function LayerPanel({ visible, onToggle }: Props) {
   return (
@@ -47,12 +61,27 @@ export function LayerPanel({ visible, onToggle }: Props) {
   );
 }
 
-// Legenda — o swatch reflete a geometria — ponto (antenas), contorno (UF) ou área.
+// Legenda — reflete a geometria: ícone (pontos com ícone), traço (linhas),
+// contorno (UF) ou área (polígonos preenchidos).
 function Swatch({ layer }: { layer: DataLayer }) {
-  const base = "size-3 shrink-0 rounded-sm ring-1 ring-black/5";
   if (layer.geometry === "point") {
-    // Antenas: ícone de torre na legenda, batendo com o marcador do mapa.
-    return <RadioTower className="size-3.5 shrink-0" style={{ color: layer.color }} />;
+    const Icon = layer.icon ? LEGEND_ICON[layer.icon] : undefined;
+    if (Icon) return <Icon className="size-4 shrink-0" style={{ color: layer.color }} />;
+    // Ponto sem ícone: bolinha colorida.
+    return (
+      <span
+        className="size-2.5 shrink-0 rounded-full ring-1 ring-black/5"
+        style={{ background: layer.color }}
+      />
+    );
+  }
+  if (layer.geometry === "line") {
+    return (
+      <span
+        className="h-[3px] w-4 shrink-0 rounded-full"
+        style={{ background: layer.color }}
+      />
+    );
   }
   if (layer.fillOpacity === 0 && layer.outline) {
     return (
@@ -64,7 +93,7 @@ function Swatch({ layer }: { layer: DataLayer }) {
   }
   return (
     <span
-      className={base}
+      className="size-3 shrink-0 rounded-sm ring-1 ring-black/5"
       style={{
         background: layer.color,
         borderColor: layer.outline?.color ?? layer.color,

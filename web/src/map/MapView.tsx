@@ -23,7 +23,7 @@ import {
   selectionSource,
   SELECTION_SOURCE_ID,
 } from "./selection";
-import { ANTENNA_ICON, createAntennaImage, ensureAntennaIcon } from "./icons";
+import { ensureIcon, loadIcons } from "./icons";
 
 export interface SelectedFeature {
   layerId: string;
@@ -73,17 +73,19 @@ export function MapView({ visible, theme, onSelect }: Props) {
     map.addControl(new maplibregl.NavigationControl({}), "top-left");
     mapRef.current = map;
 
-    // Ícone das antenas: rasteriza uma vez e (re)registra sempre que o style pedir.
-    // `styleimagemissing` cobre a carga inicial e o setStyle do toggle de tema.
-    let antennaImage: ImageData | null = null;
-    createAntennaImage()
-      .then((img) => {
-        antennaImage = img;
-        ensureAntennaIcon(map, img);
+    // Ícones das camadas de ponto (antena/escola/saúde): rasteriza uma vez e
+    // (re)registra sempre que o style pedir. `styleimagemissing` cobre a carga
+    // inicial e o setStyle do toggle de tema.
+    let icons = new Map<string, ImageData>();
+    loadIcons()
+      .then((loaded) => {
+        icons = loaded;
+        for (const [id, img] of loaded) ensureIcon(map, id, img);
       })
       .catch((err) => console.error(err));
     map.on("styleimagemissing", (e) => {
-      if (e.id === ANTENNA_ICON) ensureAntennaIcon(map, antennaImage);
+      const img = icons.get(e.id);
+      if (img) ensureIcon(map, e.id, img);
     });
 
     const activeLayers = () =>

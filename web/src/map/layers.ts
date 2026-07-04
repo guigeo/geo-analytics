@@ -2,7 +2,7 @@ import type {
   LayerSpecification,
   SourceSpecification,
 } from "maplibre-gl";
-import { ANTENNA_ICON } from "./icons";
+import { ANTENNA_ICON, HOSPITAL_ICON, SCHOOL_ICON } from "./icons";
 
 export interface AttributeField {
   key: string;
@@ -20,12 +20,20 @@ export interface DataLayer {
   id: string;
   label: string;
   sourceLayer: string;
-  geometry: "polygon" | "point";
+  geometry: "polygon" | "line" | "point";
   /** Cor representativa (legenda + base). */
   color: string;
   /** Polígonos: opacidade do preenchimento (0 = sem fill visível, mas clicável). */
   fillOpacity?: number;
   outline?: { color: string; width: number };
+  /** Linhas: largura do traço (default 1.2). */
+  lineWidth?: number;
+  /** Pontos: ícone registrado (ex.: antenas). Sem ícone → círculo colorido. */
+  icon?: string;
+  /** Pontos com ícone: âncora ("center" default; "bottom" p/ a torre da antena). */
+  iconAnchor?: "center" | "bottom";
+  /** Pontos com ícone: deixar ícones sobrepostos (default false = colisão declutter). */
+  iconAllowOverlap?: boolean;
   labelDef?: LabelDef;
   defaultVisible: boolean;
   attributes: AttributeField[];
@@ -101,11 +109,73 @@ export const LAYERS: DataLayer[] = [
     sourceLayer: "antenas",
     geometry: "point",
     color: "#d7263d",
+    icon: ANTENNA_ICON,
+    iconAnchor: "bottom",
+    iconAllowOverlap: true,
     defaultVisible: false,
     attributes: [
       { key: "operadora", label: "Operadora" },
       { key: "tecnologia", label: "Tecnologia" },
       { key: "frequencia", label: "Frequência" },
+    ],
+  },
+  {
+    id: "saude_cnes",
+    label: "Saúde (CNES)",
+    sourceLayer: "saude_cnes",
+    geometry: "point",
+    color: "#1f9e89",
+    icon: HOSPITAL_ICON,
+    defaultVisible: false,
+    attributes: [
+      { key: "no_fantasia", label: "Estabelecimento" },
+      { key: "tp_unidade", label: "Tipo" },
+      { key: "name_muni", label: "Município" },
+      { key: "abbrev_state", label: "UF" },
+    ],
+  },
+  {
+    id: "escolas_inep",
+    label: "Escolas (INEP)",
+    sourceLayer: "escolas_inep",
+    geometry: "point",
+    color: "#e0a020",
+    icon: SCHOOL_ICON,
+    defaultVisible: false,
+    attributes: [
+      { key: "name_school", label: "Escola" },
+      { key: "tp_dependencia", label: "Dependência" },
+      { key: "name_muni", label: "Município" },
+      { key: "abbrev_state", label: "UF" },
+    ],
+  },
+  {
+    id: "rodovias",
+    label: "Rodovias",
+    sourceLayer: "rodovias",
+    geometry: "line",
+    color: "#c2410c",
+    lineWidth: 1.8,
+    defaultVisible: false,
+    attributes: [
+      { key: "sigla", label: "Rodovia" },
+      { key: "tipovia", label: "Tipo" },
+      { key: "jurisdicao", label: "Jurisdição" },
+      { key: "revestimento", label: "Revestimento" },
+    ],
+  },
+  {
+    id: "ferrovias",
+    label: "Ferrovias",
+    sourceLayer: "ferrovias",
+    geometry: "line",
+    color: "#4b5563",
+    lineWidth: 1.4,
+    defaultVisible: false,
+    attributes: [
+      { key: "nome", label: "Ferrovia" },
+      { key: "bitola", label: "Bitola" },
+      { key: "situacaofisica", label: "Situação" },
     ],
   },
 ];
@@ -126,19 +196,50 @@ export function dataSources(): Record<string, SourceSpecification> {
 
 function baseLayer(l: DataLayer, visibility: "visible" | "none"): LayerSpecification {
   if (l.geometry === "point") {
-    // Antenas representadas por um ícone de torre (registrado em icons.ts).
+    if (l.icon) {
+      // Ponto com ícone (antena = torre; escola = capelo; saúde = cruz).
+      const overlap = l.iconAllowOverlap ?? false;
+      return {
+        id: l.id,
+        type: "symbol",
+        source: l.id,
+        "source-layer": l.sourceLayer,
+        layout: {
+          visibility,
+          "icon-image": l.icon,
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 4, 0.4, 12, 0.9],
+          "icon-anchor": l.iconAnchor ?? "center",
+          "icon-allow-overlap": overlap,
+          "icon-ignore-placement": overlap,
+        },
+      } satisfies LayerSpecification;
+    }
+    // Ponto genérico (CNES/INEP): círculo colorido, raio cresce com o zoom.
     return {
       id: l.id,
-      type: "symbol",
+      type: "circle",
       source: l.id,
       "source-layer": l.sourceLayer,
-      layout: {
-        visibility,
-        "icon-image": ANTENNA_ICON,
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 4, 0.45, 12, 1],
-        "icon-anchor": "bottom",
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
+      layout: { visibility },
+      paint: {
+        "circle-color": l.color,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 2, 12, 5.5],
+        "circle-opacity": 0.85,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 0.6,
+      },
+    } satisfies LayerSpecification;
+  }
+  if (l.geometry === "line") {
+    return {
+      id: l.id,
+      type: "line",
+      source: l.id,
+      "source-layer": l.sourceLayer,
+      layout: { visibility, "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": l.color,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 12, l.lineWidth ?? 1.6],
       },
     } satisfies LayerSpecification;
   }

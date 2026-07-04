@@ -32,6 +32,12 @@ class DatasetConfig(BaseModel):
     format: Literal["vector", "csv_points"] = "vector"
     lon_field: str | None = None
     lat_field: str | None = None
+    # Parsing de CSV de pontos. has_header=false usa o parser posicional de antenas
+    # (antenas.csv nao tem cabecalho); true usa o parser generico por nome de coluna.
+    has_header: bool = True
+    csv_sep: str = ","
+    decimal: str = "."
+    encoding: str = "utf-8"
     attributes: list[str] = Field(default_factory=list)
     tile: TileConfig = Field(default_factory=TileConfig)
 

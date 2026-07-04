@@ -24,11 +24,17 @@ def convert_dataset(ds: DatasetConfig, output: OutputConfig) -> Path:
         raise FileNotFoundError(f"fonte ausente: {src}")
     dst.parent.mkdir(parents=True, exist_ok=True)
 
+    # Parquet e single-layer: um dst residual (ou com nome de camada diferente) quebra o
+    # -overwrite do ogr2ogr ("cannot create layer"). Removemos antes p/ garantir dst limpo.
+    dst.unlink(missing_ok=True)
+
     cmd = [
         "ogr2ogr",
         "-f", "Parquet",
         "-t_srs", TARGET_CRS,
+        "-dim", "XY",  # achata p/ 2D: GEOARROW nao cria camada com Z (ex.: CNES vem 3D)
         "-lco", "GEOMETRY_ENCODING=GEOARROW",
+        "-nln", ds.name,  # nome de camada deterministico (= dataset), nao o da fonte
         "-overwrite",
     ]
     if ds.attributes:

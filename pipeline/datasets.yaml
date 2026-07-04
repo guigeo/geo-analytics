@@ -35,10 +35,39 @@ datasets:
   - name: antenas
     source: data/antenas/antenas.csv
     format: csv_points
+    has_header: false          # antenas.csv nao tem cabecalho (parser posicional)
     lon_field: lon
     lat_field: lat
     attributes: [operadora, uf, municipio, tecnologia, frequencia]
     tile: { minzoom: 4, maxzoom: 14 }
+
+  - name: saude_cnes
+    source: data/saude/cnes.gpkg     # geobr read_health_facilities (CNES geolocalizado)
+    layer: cnes
+    geometry: point
+    attributes: [co_cnes, no_fantasia, tp_unidade, name_muni, abbrev_state]
+    tile: { minzoom: 5, maxzoom: 14 }
+
+  - name: escolas_inep
+    source: data/inep/escolas.gpkg   # geobr read_schools (INEP geolocalizado)
+    layer: escolas
+    geometry: point
+    attributes: [name_school, tp_dependencia, name_muni, abbrev_state]
+    tile: { minzoom: 5, maxzoom: 14 }
+
+  - name: rodovias
+    source: data/estradas/bc250_2023_11_23.gpkg   # IBGE BC250 2023
+    layer: rod_trecho_rodoviario_l
+    geometry: line
+    attributes: [sigla, tipovia, jurisdicao, revestimento]
+    tile: { minzoom: 4, maxzoom: 13 }
+
+  - name: ferrovias
+    source: data/estradas/bc250_2023_11_23.gpkg
+    layer: fer_trecho_ferroviario_l
+    geometry: line
+    attributes: [nome, bitola, jurisdicao, situacaofisica]
+    tile: { minzoom: 5, maxzoom: 13 }
 
 basemap:
   provider: protomaps

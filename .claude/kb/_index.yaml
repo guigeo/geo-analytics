@@ -6,7 +6,7 @@
 # natureza. Aplicada por /create-kb, /distill e /contribute.
 
 version: "1.0"
-last_updated: "2026-06-27"
+last_updated: "2026-07-08"
 
 # File Size Limits (SINGLE SOURCE OF TRUTH)
 limits:
@@ -43,6 +43,7 @@ domains:
       - { name: protocolo-pmtiles, path: concepts/protocolo-pmtiles.md, confidence: 0.95 }
     patterns:
       - { name: highlight-via-fonte-selecao, path: patterns/highlight-via-fonte-selecao.md }
+      - { name: highlight-por-filtro-de-codigo, path: patterns/highlight-por-filtro-de-codigo.md }
       - { name: sublayers-companheiras-toggle, path: patterns/sublayers-companheiras-toggle.md }
 
   pmtiles-tippecanoe:
@@ -55,6 +56,21 @@ domains:
     patterns:
       - { name: geoparquet-para-pmtiles, path: patterns/geoparquet-para-pmtiles.md }
       - { name: extrair-recorte-basemap, path: patterns/extrair-recorte-basemap.md }
+
+  agentes-llm:
+    name: Agentes LLM
+    description: Agente com function calling sem framework — loop explícito, tools tipadas, grounding determinístico, avaliação offline + benchmark real
+    path: agentes-llm/
+    entry_points: { index: index.md, quick_reference: quick-reference.md }
+    concepts:
+      - { name: grounding-deterministico, path: concepts/grounding-deterministico.md, confidence: 0.95 }
+      - { name: system-prompt-como-politica, path: concepts/system-prompt-como-politica.md, confidence: 0.9 }
+    patterns:
+      - { name: loop-tool-calling-explicito, path: patterns/loop-tool-calling-explicito.md }
+      - { name: tools-pydantic-registry, path: patterns/tools-pydantic-registry.md }
+      - { name: avaliacao-offline-fake-client, path: patterns/avaliacao-offline-fake-client.md }
+      - { name: benchmark-comportamental-yaml, path: patterns/benchmark-comportamental-yaml.md }
+      - { name: resolucao-nome-para-id, path: patterns/resolucao-nome-para-id.md }
 
   geospatial-etl:
     name: Geospatial ETL

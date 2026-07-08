@@ -54,13 +54,17 @@ map.on("click", (e) => {
 | Layers de seleção | fill + line + circle | line/fill p/ polígono, circle p/ ponto |
 | Ordem no style | acima das camadas de dados | Realce fica visível por cima |
 
-## Limitação conhecida
+## Limitações conhecidas
 
-`queryRenderedFeatures` pode devolver a geometria **cortada na borda do tile**, então
-o realce de um polígono grande pode ficar levemente recortado. Se isso incomodar,
-migre para `feature-state` + `promoteId` (exige id único por feição e regenerar tiles).
+- `queryRenderedFeatures` pode devolver a geometria **cortada na borda do tile**, então
+  o realce de um polígono grande pode ficar levemente recortado. Se isso incomodar,
+  migre para `feature-state` + `promoteId` (exige id único por feição e regenerar tiles).
+- `queryRenderedFeatures` só enxerga o **viewport renderizado** — este pattern serve
+  APENAS para realce de clique. Para destacar por id vindo de fora do mapa (backend,
+  busca), use [highlight-por-filtro-de-codigo](highlight-por-filtro-de-codigo.md).
 
 ## Ver também
 
+- [highlight-por-filtro-de-codigo](highlight-por-filtro-de-codigo.md) — realce por id externo, fora do viewport
 - [sublayers-companheiras-toggle](sublayers-companheiras-toggle.md)
 - [protocolo-pmtiles](../concepts/protocolo-pmtiles.md)

@@ -16,6 +16,7 @@
 | File | Purpose |
 |------|---------|
 | [patterns/highlight-via-fonte-selecao.md](patterns/highlight-via-fonte-selecao.md) | Realçar a feição clicada sem `feature-state`/`promoteId` |
+| [patterns/highlight-por-filtro-de-codigo.md](patterns/highlight-por-filtro-de-codigo.md) | Realçar POR ID vindo de fora (backend/busca) — `setFilter` nas fontes vetoriais, funciona fora do viewport |
 | [patterns/sublayers-companheiras-toggle.md](patterns/sublayers-companheiras-toggle.md) | Contorno/rótulo como sub-layers + toggle por prefixo de id |
 
 ---
@@ -31,7 +32,8 @@
 | Concept | Description |
 |---------|-------------|
 | **Protocolo PMTiles** | Source vetorial lê um `.pmtiles` estático via `pmtiles://`, sem tile server |
-| **Realce por seleção** | `queryRenderedFeatures` devolve a geometria → fonte GeoJSON de realce |
+| **Realce por seleção** | `queryRenderedFeatures` devolve a geometria → fonte GeoJSON de realce (SÓ p/ clique: enxerga apenas o viewport) |
+| **Realce por filtro de código** | ids vindos de fora → `setFilter` `["in", ["get", campo], ["literal", ids]]` nas próprias fontes |
 | **Sub-layers companheiras** | 1 layer pickable + `__outline`/`__label`; toggle por prefixo de id |
 
 ---

@@ -3,7 +3,7 @@
 
 VPS_HOST ?= hetzner-gramos
 
-.PHONY: help dev build preview ship ship-app ship-tiles tiles down
+.PHONY: help dev build preview ship ship-app ship-tiles tiles down agent dev-ia
 
 help:            ## mostra os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -12,6 +12,14 @@ help:            ## mostra os alvos disponíveis
 # ── Desenvolve ────────────────────────────────────────────────────────────
 dev:             ## dev server (Vite + HMR) em http://localhost:5173
 	docker compose up web
+
+# ── IA (Fase 2 — chat local) ─────────────────────────────────────────────
+agent:           ## backend do agente (uv, nativo) em :8000 — requer agent/.env com a chave
+	cd agent && uv run uvicorn geo_agent.main:app --reload --port 8000
+
+dev-ia:          ## front (:5173, background) + agente (:8000) — Ctrl+C derruba o agente
+	docker compose up -d web
+	cd agent && uv run uvicorn geo_agent.main:app --reload --port 8000
 
 # ── Valida ────────────────────────────────────────────────────────────────
 build:           ## gera o build de produção em web/dist

@@ -23,6 +23,7 @@ import {
   selectionSource,
   SELECTION_SOURCE_ID,
 } from "./selection";
+import { applyHighlights, highlightLayers, type Destaques } from "./highlight";
 import { ensureIcon, loadIcons } from "./icons";
 
 export interface SelectedFeature {
@@ -30,10 +31,20 @@ export interface SelectedFeature {
   properties: Record<string, unknown>;
 }
 
+export interface Viewport {
+  bbox: [number, number, number, number]; // oeste, sul, leste, norte
+  zoom: number;
+  centro: [number, number]; // lon, lat
+}
+
 interface Props {
   visible: Record<string, boolean>;
   theme: BasemapTheme;
   onSelect: (feature: SelectedFeature | null) => void;
+  /** Destaques do agente (chat): pinta municipios/setores por codigo. */
+  highlights?: Destaques | null;
+  /** Notifica o viewport (moveend) — vira o contexto do mapa enviado ao agente. */
+  onViewportChange?: (viewport: Viewport) => void;
 }
 
 const BRAZIL_CENTER: [number, number] = [-52.5, -14.5];
@@ -48,15 +59,24 @@ function buildStyle(theme: BasemapTheme): StyleSpecification {
       ...dataSources(),
       [SELECTION_SOURCE_ID]: selectionSource,
     },
-    layers: [...basemapLayers(theme), ...dataLayers(), ...selectionLayers],
+    layers: [
+      ...basemapLayers(theme),
+      ...dataLayers(),
+      ...highlightLayers(),
+      ...selectionLayers,
+    ],
   };
 }
 
-export function MapView({ visible, theme, onSelect }: Props) {
+export function MapView({ visible, theme, onSelect, highlights, onViewportChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   // Ref de visibilidade para os handlers do mapa, que sao registrados apenas 1x.
   const visibleRef = useRef(visible);
+  // Destaques atuais em ref: reaplicados apos setStyle (troca de tema) sem re-registrar nada.
+  const highlightsRef = useRef<Destaques | null>(highlights ?? null);
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
   // Tema inicial fixado na montagem; trocas posteriores via setStyle (efeito separado).
   const initialThemeRef = useRef(theme);
 
@@ -117,6 +137,18 @@ export function MapView({ visible, theme, onSelect }: Props) {
       map.getCanvas().style.cursor = hits.length ? "pointer" : "";
     });
 
+    const reportViewport = () => {
+      const b = map.getBounds();
+      const c = map.getCenter();
+      onViewportChangeRef.current?.({
+        bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
+        zoom: map.getZoom(),
+        centro: [c.lng, c.lat],
+      });
+    };
+    map.on("moveend", reportViewport);
+    map.once("load", reportViewport);
+
     return () => {
       map.remove();
       mapRef.current = null;
@@ -135,6 +167,17 @@ export function MapView({ visible, theme, onSelect }: Props) {
     applyVisibility(map, visible);
   }, [visible]);
 
+  useEffect(() => {
+    highlightsRef.current = highlights ?? null;
+    const map = mapRef.current;
+    if (!map) return;
+    if (!map.isStyleLoaded()) {
+      map.once("load", () => applyHighlights(map, highlightsRef.current));
+      return;
+    }
+    applyHighlights(map, highlightsRef.current);
+  }, [highlights]);
+
   // Troca de tema: reconstrói o style (basemap claro/escuro + sprite) sem
   // recriar o mapa. O handler de clique vive no mapa, então sobrevive ao setStyle;
   // só a visibilidade das camadas precisa ser reaplicada quando o novo style carrega.
@@ -147,7 +190,10 @@ export function MapView({ visible, theme, onSelect }: Props) {
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(buildStyle(theme));
-    map.once("idle", () => applyVisibility(map, visibleRef.current));
+    map.once("idle", () => {
+      applyVisibility(map, visibleRef.current);
+      applyHighlights(map, highlightsRef.current);
+    });
   }, [theme]);
 
   return <div ref={containerRef} className="map" />;

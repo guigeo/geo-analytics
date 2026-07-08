@@ -1,4 +1,4 @@
-import { Bot, MousePointerSquareDashed } from "lucide-react";
+import { MousePointerSquareDashed } from "lucide-react";
 import type { SelectedFeature } from "@/map/MapView";
 import { LAYERS } from "@/map/layers";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,7 @@ export function AttributePanel({ selected }: Props) {
     : undefined;
 
   return (
-    <aside className="flex min-h-0 flex-col border-l border-border bg-background">
+    <aside className="flex h-full min-h-0 flex-col bg-background">
       <div className="px-4 pb-2 pt-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Atributos
@@ -50,19 +50,6 @@ export function AttributePanel({ selected }: Props) {
           </Card>
         )}
       </ScrollArea>
-
-      {/* Placeholder do chat (Fase 2). O painel já reserva o espaço. */}
-      <div className="border-t border-border p-4">
-        <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Bot className="size-4" />
-          </span>
-          <div className="leading-tight">
-            <p className="text-sm font-medium">Chat com IA</p>
-            <p className="text-xs text-muted-foreground">Em breve — Fase 2</p>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

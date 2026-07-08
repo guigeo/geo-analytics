@@ -57,6 +57,37 @@ class GeoQuery:
         rows = _rows(self.con.execute("SELECT * FROM municipio WHERE cd_mun = ?", [cd_mun]))
         return rows[0] if rows else None
 
+    def busca_municipios(
+        self, nome: str, uf: str | None = None, limite: int = 10
+    ) -> list[dict[str, Any]]:
+        """Municipios pelo nome (sem acento/caixa), mais populosos primeiro.
+
+        Match exato vem sozinho ("Curitiba" NAO traz "Curitibanos"); substring e so
+        fallback quando nao ha nome igual. Resolve nome -> cd_mun p/ as demais consultas.
+        """
+        exatos = self._busca_municipios(nome, uf, limite, exato=True)
+        return exatos or self._busca_municipios(nome, uf, limite, exato=False)
+
+    def _busca_municipios(
+        self, nome: str, uf: str | None, limite: int, exato: bool
+    ) -> list[dict[str, Any]]:
+        match = (
+            "strip_accents(lower(nm_mun)) = strip_accents(lower(?))"
+            if exato
+            else "strip_accents(lower(nm_mun)) LIKE '%' || strip_accents(lower(?)) || '%'"
+        )
+        clauses = [match]
+        params: list[Any] = [nome]
+        if uf:
+            clauses.append("nm_uf = ?")
+            params.append(uf)
+        params.append(int(limite))
+        sql = (
+            f"SELECT cd_mun, nm_mun, nm_uf, pop_total FROM municipio "
+            f"WHERE {' AND '.join(clauses)} ORDER BY pop_total DESC LIMIT ?"
+        )
+        return _rows(self.con.execute(sql, params))
+
     # --- ranking / agregacao ----------------------------------------------
 
     def ranking_municipios(
@@ -89,6 +120,15 @@ class GeoQuery:
         alvo = self.setor(cd_setor)
         if not alvo or alvo.get("lon") is None:
             return []
+        return self.setores_no_ponto(alvo["lon"], alvo["lat"], raio_km=raio_km, limite=limite)
+
+    def setores_no_ponto(
+        self, lon: float, lat: float, raio_km: float = 2.0, limite: int = 20
+    ) -> list[dict[str, Any]]:
+        """Setores cujo centroide esta a ate `raio_km` de um ponto arbitrario (lon/lat).
+
+        Mesma aproximacao de `setores_proximos`; serve o "por aqui" (centro do viewport).
+        """
         sql = """
             SELECT cd_setor, nm_mun, pop_total,
                    round(ST_Distance(ST_Point(lon, lat), ST_Point(?, ?)) * 111.0, 3) AS km_aprox
@@ -98,7 +138,7 @@ class GeoQuery:
             ORDER BY km_aprox
             LIMIT ?
         """
-        p = [alvo["lon"], alvo["lat"], alvo["lon"], alvo["lat"], float(raio_km), int(limite)]
+        p = [float(lon), float(lat), float(lon), float(lat), float(raio_km), int(limite)]
         return _rows(self.con.execute(sql, p))
 
     def close(self) -> None:

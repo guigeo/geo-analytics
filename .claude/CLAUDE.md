@@ -10,7 +10,7 @@
 
 **Solução:** Uma aplicação que combina visualização de mapas com um agente de IA conversacional. O usuário navega no mapa e conversa com um agente que entende e atua sobre o contexto geoespacial.
 
-**Stack:** Python no backend (do agente de IA); biblioteca de mapas e framework do agente a definir no `/brainstorm`. Cloud: local.
+**Stack:** MapLibre + PMTiles (front React/Vite/TS); Python/uv no backend — ETL (`pipeline/`), consulta DuckDB (`query/`) e agente de IA (`agent/`: FastAPI + SDK `openai` puro + Pydantic, modelo `gpt-5-mini`). Mapa no ar na VPS (Hetzner+Caddy); agente local (deploy = fase 2.1).
 
 **Equipe:** Projeto solo — Guilherme Ramos.
 
@@ -117,6 +117,7 @@ Adicione domínios a qualquer momento com `/create-kb "<dominio>"`. Candidatas p
 |---------|-------------|-----------|
 | [MAPA_FASE1](.claude/sdd/archive/MAPA_FASE1/SHIPPED_2026-06-27.md) | 2026-06-27 | Mapa estático (MapLibre) com 5 camadas IBGE/antenas via PMTiles + ETL `GeoParquet→PMTiles` (Docker) |
 | [REFINAMENTO_VISUAL](.claude/sdd/archive/REFINAMENTO_VISUAL/SHIPPED_2026-06-27.md) | 2026-06-27 | Polish visual: basemap z13 (ruas), paleta + rótulos UF/município, highlight ao clicar, legenda |
+| [AGENTE_IA](.claude/sdd/archive/AGENTE_IA/SHIPPED_2026-07-08.md) | 2026-07-08 | Chat com agente de IA (FastAPI + OpenAI function calling + DuckDB): responde do Censo 2022 via tools e pinta o mapa; benchmark 16/16 |
 
 ---
 

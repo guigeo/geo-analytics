@@ -1,0 +1,135 @@
+# Mini-benchmark do agente (BM-01..BM-16 do DEFINE_AGENTE_IA).
+# O esperado e COMPORTAMENTO verificavel (tool + args + destaques), nao valores:
+# o ground truth dos numeros e o proprio GeoQuery (query/tests).
+#
+# Rodar (requer OPENAI_API_KEY em agent/.env; ~16 chamadas reais):
+#   cd agent && uv run pytest -m benchmark -v
+#
+# Campos de `espera` (todos opcionais — só o que está declarado é verificado):
+#   tool            nome que deve aparecer no trace do turno (sem erro)
+#   args            subconjunto dos args da tool (uf é normalizada antes de comparar)
+#   destaques       {camada, n_codigos?, contem_codigos?} ou null (= não pinta nada)
+#   resposta_contem substrings (case-insensitive) que a resposta deve ter
+#   sem_dados       true = resposta não pode carregar dados de tool
+# `sessao`: casos com a mesma chave rodam na mesma conversa, na ordem do arquivo.
+
+casos:
+  # --- ranking / agregacao --------------------------------------------------
+  - id: BM-01
+    pergunta: "Quais os 10 municípios mais populosos do Brasil?"
+    espera:
+      tool: ranking_municipios
+      args: { metrica: pop_total, n: 10 }
+      destaques: { camada: municipio, n_codigos: 10, contem_codigos: ["3550308"] }
+
+  - id: BM-02
+    pergunta: "Top 5 municípios do Paraná por densidade populacional"
+    espera:
+      tool: ranking_municipios
+      args: { metrica: densidade_hab_km2, uf: "Paraná", n: 5 }
+      destaques: { camada: municipio, n_codigos: 5 }
+
+  - id: BM-03
+    pergunta: "Quais os 5 municípios com pior cobertura de esgoto em Pernambuco?"
+    espera:
+      tool: ranking_municipios
+      args: { metrica: pct_esgoto_rede, uf: "Pernambuco", n: 5, ordem: asc }
+      destaques: { camada: municipio, n_codigos: 5 }
+
+  - id: BM-04
+    pergunta: "Onde a média de moradores por domicílio é mais alta? Me dá os 10 primeiros municípios"
+    espera:
+      tool: ranking_municipios
+      args: { metrica: media_moradores, n: 10 }
+      destaques: { camada: municipio, n_codigos: 10 }
+
+  - id: BM-05
+    pergunta: "Top 3 municípios de SP por população"
+    espera:
+      tool: ranking_municipios
+      args: { metrica: pop_total, uf: "SP", n: 3 }   # runner normaliza UF (SP == São Paulo)
+      destaques: { camada: municipio, n_codigos: 3, contem_codigos: ["3550308"] }
+
+  # --- lookup (municipio / setor) --------------------------------------------
+  - id: BM-06
+    pergunta: "Qual a população de Curitiba?"
+    espera:
+      tool: buscar_municipio
+      destaques: { camada: municipio, contem_codigos: ["4106902"] }
+      resposta_contem: ["Curitiba"]
+
+  - id: BM-07
+    pergunta: "Quantos domicílios ocupados tem o município 3550308?"
+    espera:
+      tool: info_municipio
+      args: { cd_mun: "3550308" }
+      destaques: { camada: municipio, contem_codigos: ["3550308"] }
+
+  - id: BM-08
+    pergunta: "Qual a proporção de mulheres na população de Salvador?"
+    espera:
+      tool: buscar_municipio
+      destaques: { camada: municipio, contem_codigos: ["2927408"] }
+      resposta_contem: ["%"]
+
+  - id: BM-09
+    pergunta: "Me mostra os dados do setor 230440005130001"
+    espera:
+      tool: info_setor
+      args: { cd_setor: "230440005130001" }
+      destaques: { camada: setor, contem_codigos: ["230440005130001"] }
+
+  # --- espacial (aproximado) --------------------------------------------------
+  - id: BM-10
+    sessao: raio
+    pergunta: "Quais setores estão num raio de 2 km do setor 230440005130001?"
+    espera:
+      tool: setores_proximos
+      args: { cd_setor: "230440005130001", raio_km: 2 }
+      destaques: { camada: setor, contem_codigos: ["230440005130001"] }
+      resposta_contem: ["aproximad"]   # ressalva do centroide
+
+  - id: BM-11
+    sessao: raio
+    pergunta: "E num raio de 5 km?"
+    espera:
+      tool: setores_proximos
+      args: { cd_setor: "230440005130001", raio_km: 5 }   # setor herdado do historico
+      destaques: { camada: setor }
+
+  # --- contexto do mapa / descoberta -------------------------------------------
+  - id: BM-12
+    pergunta: "O que estou vendo agora?"
+    contexto:
+      centro: [-49.27, -25.43]
+      zoom: 11
+      camadas_ativas: ["setor"]
+    espera:
+      resposta_contem: ["setor"]
+
+  - id: BM-13
+    pergunta: "Quais métricas você consegue consultar?"
+    espera:
+      tool: listar_metricas
+      destaques: null
+      resposta_contem: ["popula"]
+
+  # --- recusa / grounding -------------------------------------------------------
+  - id: BM-14
+    pergunta: "Qual o PIB de Fortaleza?"
+    espera:
+      destaques: null
+      sem_dados: true
+      resposta_contem: ["PIB", "Censo"]
+
+  - id: BM-15
+    pergunta: "Vai chover em Recife amanhã?"
+    espera:
+      destaques: null
+      sem_dados: true
+      resposta_contem: ["não"]
+
+  - id: BM-16
+    pergunta: "Qual era a população do Brasil em 2010?"
+    espera:
+      resposta_contem: ["2022"]

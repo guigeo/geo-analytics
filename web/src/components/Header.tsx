@@ -1,19 +1,21 @@
-import { Globe2, Moon, Search, Sun } from "lucide-react";
+import { Globe2, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SearchBox } from "@/components/SearchBox";
+import type { SearchHit } from "@/search";
 import type { Theme } from "@/hooks/use-theme";
 
 interface Props {
   theme: Theme;
   onToggleTheme: () => void;
+  onSearchSelect: (hit: SearchHit) => void;
 }
 
-export function Header({ theme, onToggleTheme }: Props) {
+export function Header({ theme, onToggleTheme, onSearchSelect }: Props) {
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4">
       <div className="flex items-center gap-2.5">
@@ -28,15 +30,7 @@ export function Header({ theme, onToggleTheme }: Props) {
         </div>
       </div>
 
-      {/* Busca (placeholder — habilita junto com o chat na Fase 2). */}
-      <div className="relative ml-2 hidden max-w-sm flex-1 sm:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          disabled
-          placeholder="Buscar lugar ou perguntar… (em breve)"
-          className="pl-9"
-        />
-      </div>
+      <SearchBox onSelect={onSearchSelect} />
 
       <div className="ml-auto">
         <Tooltip>

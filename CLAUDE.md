@@ -38,6 +38,9 @@ docker compose run --rm pipeline build --only <nome>   # um dataset
 docker compose run --rm pipeline build --basemap-only  # só basemap (não re-tila dados)
 docker compose run --rm pipeline census                # ingere Censo 2022 -> data/processed/censo_setor.parquet
 docker compose run --rm pipeline census-municipio      # agrega setor -> data/processed/censo_municipio.parquet
+cd pipeline && uv run geo-pipeline search-index        # indice de busca do front (nativo, so duckdb)
+#   -> web/src/search/municipios.json (gitignored). OBRIGATORIO antes de `npm run build`
+#      em clone novo: o front importa esse JSON via `?url` (asset com hash).
 
 # Frontend (NÃO há node no host — usar o container)
 docker compose up web                                  # dev :5173 (= make dev)
@@ -77,6 +80,8 @@ cd agent && uv run pytest -m benchmark -v   # 16 casos reais (requer agent/.env;
   código (`setFilter` com `CD_MUN`/`CD_SETOR` nas próprias fontes PMTiles — funciona fora do
   viewport, independe do toggle). `chat/ChatPanel.tsx` + `chat/api.ts` = UI e client do chat;
   em dev o Vite faz proxy `/api → host.docker.internal:8000` (agente nativo; sem CORS).
+  `components/SearchBox.tsx` + `search/index.ts` = busca município/UF do header (client-side
+  sobre `search/municipios.json` gerado pelo pipeline; seleção = `fitBounds` + destaque).
 - **`query/`** — projeto `uv` (Fase 2). Camada de consulta DuckDB sobre os parquets canônicos —
   **backend de dados do chat**. `db.py` cria as views `setor` (censo + centroide do
   `geom_bbox`) e `municipio`; `queries.py` expõe `GeoQuery` (lookups, `busca_municipios`

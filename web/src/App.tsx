@@ -1,7 +1,13 @@
 import { useRef, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
-import { MapView, type SelectedFeature, type Viewport } from "@/map/MapView";
+import {
+  MapView,
+  type MapFocus,
+  type SelectedFeature,
+  type Viewport,
+} from "@/map/MapView";
+import type { SearchHit } from "@/search";
 import { LayerPanel } from "@/panels/LayerPanel";
 import { AttributePanel } from "@/panels/AttributePanel";
 import { ChatPanel } from "@/chat/ChatPanel";
@@ -19,6 +25,7 @@ export function App() {
   const [visible, setVisible] = useState<Record<string, boolean>>(initialVisibility);
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [destaques, setDestaques] = useState<Destaques | null>(null);
+  const [focus, setFocus] = useState<MapFocus | null>(null);
   // Viewport em ref: muda a cada pan/zoom sem re-renderizar; lido só no envio do chat.
   const viewportRef = useRef<Viewport | null>(null);
   const visibleRef = useRef(visible);
@@ -26,6 +33,13 @@ export function App() {
 
   const toggleLayer = (id: string) =>
     setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  // Busca do header: voa até o alvo; município também ganha o destaque azul
+  // (mesma linguagem visual do chat — um "slot" só de destaque por vez).
+  const onSearchSelect = (hit: SearchHit) => {
+    setFocus({ bbox: hit.bbox, key: Date.now() });
+    if (hit.cdMun) setDestaques({ camada: "municipio", codigos: [hit.cdMun] });
+  };
 
   const getContexto = (): ContextoMapa | null => {
     const v = viewportRef.current;
@@ -37,7 +51,7 @@ export function App() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex h-screen flex-col bg-background text-foreground">
-        <Header theme={theme} onToggleTheme={toggle} />
+        <Header theme={theme} onToggleTheme={toggle} onSearchSelect={onSearchSelect} />
         <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
           <LayerPanel visible={visible} onToggle={toggleLayer} />
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
@@ -47,6 +61,7 @@ export function App() {
               theme={theme}
               onSelect={setSelected}
               highlights={destaques}
+              focus={focus}
               onViewportChange={(v) => {
                 viewportRef.current = v;
               }}

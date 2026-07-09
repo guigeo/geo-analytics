@@ -93,6 +93,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser(
         "census-municipio", help="agrega censo_setor por municipio (todas as variaveis)"
     )
+    sub.add_parser(
+        "search-index", help="gera o indice de busca do front (municipios/UFs + bbox)"
+    )
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -108,6 +111,10 @@ def main(argv: list[str] | None = None) -> int:
         from .census import build_census_municipio
 
         build_census_municipio(cfg.output)
+    elif args.command == "search-index":
+        from .search_index import build_search_index
+
+        build_search_index(cfg.output)
     return 0
 
 

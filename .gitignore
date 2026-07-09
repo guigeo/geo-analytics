@@ -21,3 +21,4 @@ data/*
 
 # Saidas do ETL (geradas; nao versionar)
 web/public/tiles/*.pmtiles
+web/src/search/municipios.json

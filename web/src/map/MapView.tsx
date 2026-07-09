@@ -37,12 +37,20 @@ export interface Viewport {
   centro: [number, number]; // lon, lat
 }
 
+export interface MapFocus {
+  bbox: [number, number, number, number];
+  /** Muda a cada seleção (ex.: Date.now()) para re-disparar o fitBounds no mesmo alvo. */
+  key: number;
+}
+
 interface Props {
   visible: Record<string, boolean>;
   theme: BasemapTheme;
   onSelect: (feature: SelectedFeature | null) => void;
   /** Destaques do agente (chat): pinta municipios/setores por codigo. */
   highlights?: Destaques | null;
+  /** Voa até um bbox (busca do header). */
+  focus?: MapFocus | null;
   /** Notifica o viewport (moveend) — vira o contexto do mapa enviado ao agente. */
   onViewportChange?: (viewport: Viewport) => void;
 }
@@ -68,7 +76,14 @@ function buildStyle(theme: BasemapTheme): StyleSpecification {
   };
 }
 
-export function MapView({ visible, theme, onSelect, highlights, onViewportChange }: Props) {
+export function MapView({
+  visible,
+  theme,
+  onSelect,
+  highlights,
+  focus,
+  onViewportChange,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   // Ref de visibilidade para os handlers do mapa, que sao registrados apenas 1x.
@@ -166,6 +181,12 @@ export function MapView({ visible, theme, onSelect, highlights, onViewportChange
     }
     applyVisibility(map, visible);
   }, [visible]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focus) return;
+    map.fitBounds(focus.bbox, { padding: 48, duration: 1200, maxZoom: 12 });
+  }, [focus]);
 
   useEffect(() => {
     highlightsRef.current = highlights ?? null;

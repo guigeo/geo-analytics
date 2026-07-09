@@ -47,3 +47,7 @@ MSG_ERRO_TOOLS = (
 )
 
 MSG_ERRO_OPENAI = "O serviço de IA está indisponível no momento. Tente novamente em instantes."
+
+MSG_RATE_LIMIT = (
+    "Muitas perguntas em pouco tempo — aguarde alguns minutos e tente de novo."
+)

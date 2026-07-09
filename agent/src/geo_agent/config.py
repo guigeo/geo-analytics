@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     session_ttl_s: int = 3600
     session_max_msgs: int = 20
     agent_port: int = 8000
+    # Protecao da chave OpenAI em endpoint publico: N perguntas por IP por janela.
+    rate_limit_max: int = 30
+    rate_limit_window_s: int = 600
 
 
 settings = Settings()

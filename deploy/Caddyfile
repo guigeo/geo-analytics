@@ -5,10 +5,15 @@
 # Layout na VPS:
 #   /var/www/geo/                 -> build do frontend (index.html, assets/…)
 #   /var/www/geo/tiles/*.pmtiles  -> tiles (enviados por rsync)
+#   /home/gramos/geo/             -> agente de IA + parquets (fase 2.1)
 
 geo-intelligence.averisen.com {
 	root * /var/www/geo
 	file_server
+
+	# Chat IA (fase 2.1): agente FastAPI local (systemd geo-agent, :8000)
+	@api path /api/*
+	reverse_proxy @api 127.0.0.1:8000
 
 	# Comprime tudo MENOS os tiles. PMTiles usa HTTP Range requests — comprimir
 	# on-the-fly quebraria os ranges (e mandaria o arquivo inteiro por requisição).

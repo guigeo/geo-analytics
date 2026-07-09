@@ -1,0 +1,22 @@
+# Unit do agente de IA (fase 2.1) — instalado por deploy/setup-agent-vps.sh (sudo)
+# em /etc/systemd/system/geo-agent.service na VPS.
+#
+# Layout na VPS (espelha o repo, para o db.py resolver data/processed):
+#   /home/gramos/geo/query/   /home/gramos/geo/agent/ (.env com a chave)
+#   /home/gramos/geo/data/processed/
+# O venv e criado no deploy (`uv sync`); o servico usa o binario direto do venv
+# (sem uv em runtime). So escuta em 127.0.0.1 — quem expoe e o Caddy (/api).
+
+[Unit]
+Description=Geo Intelligence - agente de IA (FastAPI)
+After=network.target
+
+[Service]
+User=gramos
+WorkingDirectory=/home/gramos/geo/agent
+ExecStart=/home/gramos/geo/agent/.venv/bin/uvicorn geo_agent.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -11,12 +11,12 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import openai
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from geo_query import GeoQuery
 
-from .agent import SessionStore, run_turn
+from .agent import RateLimiter, SessionStore, run_turn
 from .config import settings
-from .prompts import MSG_ERRO_OPENAI
+from .prompts import MSG_ERRO_OPENAI, MSG_RATE_LIMIT
 from .schemas import ChatRequest, ChatResponse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     state["gq"] = GeoQuery()  # falha cedo com instrucao clara se faltarem os parquets
     state["client"] = openai.OpenAI(api_key=settings.openai_api_key)
     state["store"] = SessionStore()
+    state["limiter"] = RateLimiter()
     log.info("agente pronto: model=%s", settings.openai_model)
     yield
     state["gq"].close()
@@ -47,8 +48,18 @@ def health() -> dict[str, str]:
     return {"status": "ok", "model": settings.openai_model}
 
 
+def _client_ip(request: Request) -> str:
+    # Atras do Caddy o client.host e 127.0.0.1; o IP real vem no X-Forwarded-For.
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "?"
+
+
 @app.post("/api/chat")
-def chat(req: ChatRequest) -> ChatResponse:
+def chat(req: ChatRequest, request: Request) -> ChatResponse:
+    if not state["limiter"].allow(_client_ip(request)):
+        raise HTTPException(status_code=429, detail=MSG_RATE_LIMIT)
     try:
         return run_turn(state["gq"], state["client"], state["store"], req)
     except openai.OpenAIError:

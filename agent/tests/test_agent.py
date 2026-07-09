@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 from geo_query import GeoQuery
 
-from geo_agent.agent import SessionStore, run_turn
+from geo_agent.agent import RateLimiter, SessionStore, run_turn
 from geo_agent.config import settings
 from geo_agent.prompts import MSG_ERRO_TOOLS, MSG_LIMITE_ITERACOES
 from geo_agent.schemas import ChatRequest, ContextoMapa
@@ -140,6 +140,15 @@ def test_contexto_do_mapa_vai_na_mensagem(gq: GeoQuery) -> None:
     run_turn(gq, client, SessionStore(), r)
     user_msg = client.requests[0]["messages"][-1]
     assert "[contexto do mapa:" in user_msg["content"] and "-49.27" in user_msg["content"]
+
+
+def test_rate_limiter_janela_deslizante() -> None:
+    rl = RateLimiter(max_requests=2, window_s=10)
+    assert rl.allow("ip1", now=0.0)
+    assert rl.allow("ip1", now=1.0)
+    assert not rl.allow("ip1", now=2.0)  # estourou a janela
+    assert rl.allow("ip2", now=2.0)  # outra chave nao e afetada
+    assert rl.allow("ip1", now=11.5)  # 1a hit expirou -> libera de novo
 
 
 def test_trim_corta_em_fronteira_de_turno(gq: GeoQuery) -> None:

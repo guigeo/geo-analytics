@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -65,6 +66,29 @@ class SessionStore:
             except StopIteration:
                 break
             del msgs[:cut]
+
+
+class RateLimiter:
+    """Janela deslizante por chave (IP): protege a chave OpenAI em endpoint publico."""
+
+    def __init__(
+        self,
+        max_requests: int = settings.rate_limit_max,
+        window_s: float = settings.rate_limit_window_s,
+    ) -> None:
+        self.max_requests = max_requests
+        self.window_s = window_s
+        self._hits: dict[str, deque[float]] = defaultdict(deque)
+
+    def allow(self, key: str, now: float | None = None) -> bool:
+        t = time.monotonic() if now is None else now
+        q = self._hits[key]
+        while q and t - q[0] > self.window_s:
+            q.popleft()
+        if len(q) >= self.max_requests:
+            return False
+        q.append(t)
+        return True
 
 
 def _user_content(pergunta: str, ctx: ContextoMapa | None) -> str:

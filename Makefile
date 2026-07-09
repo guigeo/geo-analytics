@@ -3,7 +3,7 @@
 
 VPS_HOST ?= hetzner-gramos
 
-.PHONY: help dev build preview ship ship-app ship-tiles tiles down agent dev-ia
+.PHONY: help dev build preview ship ship-app ship-tiles ship-ia tiles down agent dev-ia
 
 help:            ## mostra os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -38,6 +38,9 @@ ship-app:        ## envia só o frontend (redeploy rápido de código)
 
 ship-tiles:      ## envia só os tiles (~2 GB, incremental)
 	./deploy/deploy.sh tiles
+
+ship-ia:         ## envia dados + agente pra VPS (fase 2.1; 1ª vez exige setup sudo — ver deploy/)
+	./deploy/deploy.sh ia
 
 # ── ETL ───────────────────────────────────────────────────────────────────
 tiles:           ## (re)gera tiles + basemap (ETL no container)

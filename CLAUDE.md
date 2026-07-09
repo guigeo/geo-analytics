@@ -10,7 +10,11 @@ Mapa web estático (MapLibre) + ETL geoespacial em Docker + **chat com agente de
 O chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (DuckDB)` —
 o agente responde em texto e o mapa pinta os códigos retornados pelas tools.
 **No ar:** https://geo-intelligence.averisen.com (VPS Hetzner + Caddy; ver `deploy/`) —
-por enquanto só o mapa estático; o agente roda local (deploy = fase 2.1).
+mapa + busca + chat (fase 2.1): o agente roda na VPS como serviço systemd `geo-agent`
+(uv/python 3.12 em `~/geo`, só 127.0.0.1:8000; Caddy expõe `/api`). Parquets do agente
+na VPS em `~/geo/data/processed` — o `setor.parquet` de lá é ENXUTO (só CD_SETOR +
+geom_bbox, 6,5 MB vs 1 GB; gerado no `deploy.sh data`). Rate limit por IP no backend
+(30 perguntas/10 min) protege a chave OpenAI.
 
 ## Fluxo (Makefile — porta de entrada única)
 
@@ -21,6 +25,7 @@ make agent      # só o backend do agente (uv nativo, :8000)
 make preview    # valida: build + Caddy local em :8080 (IGUAL à VPS)
 make ship       # manda pra VPS: app + tiles (build incluso)
 make ship-app   # só o frontend (redeploy rápido)   |  make ship-tiles (~2 GB)
+make ship-ia    # dados + agente pra VPS (1ª vez: setup sudo — deploy/setup-agent-vps.sh)
 make help       # lista todos os alvos
 ```
 
@@ -111,6 +116,7 @@ cd agent && uv run pytest -m benchmark -v   # 16 casos reais (requer agent/.env;
 
 ## Próximo passo
 
-Fase 2 (AGENTE_IA) construída — validar o benchmark (`cd agent && uv run pytest -m benchmark`)
-e a experiência no browser (`make dev-ia`), depois `/ship`. Fase 2.1: deploy do agente na VPS
-(Caddy reverse-proxy p/ :8000 + parquets canônicos no servidor).
+Fase 2 shipada (benchmark 16/16) e fase 2.1 no ar: agente + busca de município/UF em
+produção. Redeploy do agente: `make ship-ia` + `ssh -t hetzner-gramos 'sudo systemctl
+restart geo-agent'`. Próximas ideias: melhorias guiadas pelo uso real (streaming se a
+latência doer; novas tools se as perguntas extrapolarem as 7 atuais).

@@ -82,7 +82,7 @@ def test_destaques_derivados_da_tool(gq: GeoQuery) -> None:
 def test_autocorrecao_apos_erro_de_metrica(gq: GeoQuery) -> None:
     client = FakeClient(
         [
-            tool_call("ranking_municipios", {"metrica": "renda_media"}),
+            tool_call("ranking_municipios", {"metrica": "pib_percapita"}),
             tool_call("ranking_municipios", {"metrica": "pop_total", "n": 1}),
             texto("O município mais populoso do Brasil é São Paulo."),
         ]
@@ -103,11 +103,11 @@ def test_autocorrecao_apos_erro_de_metrica(gq: GeoQuery) -> None:
 def test_segunda_falha_encerra_com_mensagem_amigavel(gq: GeoQuery) -> None:
     client = FakeClient(
         [
-            tool_call("ranking_municipios", {"metrica": "renda_media"}),
+            tool_call("ranking_municipios", {"metrica": "pib_percapita"}),
             tool_call("ranking_municipios", {"metrica": "idh"}),
         ]
     )
-    out = run_turn(gq, client, SessionStore(), req("ranking por renda"))
+    out = run_turn(gq, client, SessionStore(), req("ranking por pib"))
     assert out.resposta == MSG_ERRO_TOOLS
 
 

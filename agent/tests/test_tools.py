@@ -71,7 +71,7 @@ def test_ranking_com_sigla_de_uf(gq: GeoQuery) -> None:
 
 
 def test_ranking_metrica_invalida_vira_erro_para_o_llm(gq: GeoQuery) -> None:
-    r = execute_tool(gq, "ranking_municipios", json.dumps({"metrica": "renda_media"}))
+    r = execute_tool(gq, "ranking_municipios", json.dumps({"metrica": "pib_percapita"}))
     assert r.error and "pop_total" in r.payload["erro"]  # lista as validas p/ autocorrecao
 
 

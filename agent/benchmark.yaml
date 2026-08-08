@@ -43,6 +43,13 @@ casos:
       args: { metrica: media_moradores, n: 10 }
       destaques: { camada: municipio, n_codigos: 10 }
 
+  - id: BM-04b
+    pergunta: "Quais os 10 municípios com maior renda média do responsável pelo domicílio?"
+    espera:
+      tool: ranking_municipios
+      args: { metrica: renda_media, n: 10 }
+      destaques: { camada: municipio, n_codigos: 10 }
+
   - id: BM-05
     pergunta: "Top 3 municípios de SP por população"
     espera:

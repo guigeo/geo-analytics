@@ -103,6 +103,15 @@ THEMES: list[Theme] = [
             "V00397": ("dom_lixo_coletado", "int"),
         },
     ),
+    Theme(
+        name="renda_responsavel",
+        pattern="*renda_responsavel*BR*.csv",
+        numeric={
+            "V06001": ("responsaveis_com_rendimento", "int"),
+            "V06004": ("renda_media", "float"),
+            "V06006": ("renda_mediana", "float"),
+        },
+    ),
 ]
 
 # Colunas derivadas (calculadas apos o join/agregacao). nullif evita divisao por zero.
@@ -117,7 +126,11 @@ DERIVED: dict[str, str] = {
 
 # Variaveis numericas que NAO somam ao agregar por municipio: media ponderada
 # (numerador reconstruido = media_i * peso_i; denominador = soma do peso). alias -> peso.
-WEIGHTED: dict[str, str] = {"media_moradores": "domicilios_ocupados"}
+WEIGHTED: dict[str, str] = {
+    "media_moradores": "domicilios_ocupados",
+    "renda_media": "responsaveis_com_rendimento",
+    "renda_mediana": "responsaveis_com_rendimento",
+}
 
 
 _CHUNK = 1 << 20

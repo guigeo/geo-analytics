@@ -59,7 +59,7 @@ cd query && uv sync --group dev && uv run pytest && uv run ruff check .
 
 # Agente de IA (Fase 2 — nativo com uv; testes rodam OFFLINE, benchmark chama a OpenAI)
 cd agent && uv sync --group dev && uv run pytest && uv run ruff check .
-cd agent && uv run pytest -m benchmark -v   # 16 casos reais (requer agent/.env; ~16 chamadas)
+cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env; ~17 chamadas)
 ```
 
 ## Arquitetura
@@ -70,14 +70,19 @@ cd agent && uv run pytest -m benchmark -v   # 16 casos reais (requer agent/.env;
   - `antennas.py` parseia CSV de pontos. `tiles.py` chama `tippecanoe`. `basemap.py` extrai recorte Protomaps.
   - `census.py` (DuckDB) ingere os CSVs do Censo 2022 (`data/censo_2022/`) → tabela canônica de
     atributos `censo_setor.parquet` (sem geometria, chave `cd_setor`). Variáveis curadas em `THEMES`
-    (adicionar variável = editar o dict). `census-municipio` agrega por `cd_mun` → `censo_municipio.parquet`
-    (contagens somam; `media_moradores` ponderada por `WEIGHTED`; densidade/percentuais recalculados via
-    `DERIVED`). Geometria + censo se juntam por `cd_setor`/`cd_mun` em query-time (Fase 2).
+    (adicionar variável = editar o dict; adicionar tema = 1 entrada nova em `THEMES`, sem tocar
+    `query/`/`agent/` — `GeoQuery.metricas()` lê o schema dinamicamente). 6 temas hoje: básico,
+    demografia, cor/raça, domicílio1/2, **renda_responsavel** (renda média/mediana mensal do
+    responsável pelo domicílio — IBGE, publicado 08/05/2026, fora do release padrão de
+    "Agregados por Setores Censitários"). `census-municipio` agrega por `cd_mun` →
+    `censo_municipio.parquet` (contagens somam; `media_moradores`/`renda_media`/`renda_mediana`
+    ponderadas via `WEIGHTED`; densidade/percentuais recalculados via `DERIVED`). Geometria +
+    censo se juntam por `cd_setor`/`cd_mun` em query-time (Fase 2).
   - **Produção (censo):** os parquets canônicos USADOS (`censo_setor`, `censo_municipio`) são
-    artefatos de produção — sobem com a Fase 2 (IA/consulta server-side). FICAM locais: os CSVs brutos
-    de `data/censo_2022/` (fonte reproduzível), o domicílio3 (baixado e não usado) e os temas não
-    baixados. Hoje o `deploy.sh` só envia `web/dist/` + `web/public/tiles/` (mapa estático); o deploy
-    dos dados entra junto com a Fase 2.
+    artefatos de produção — sobem via `deploy.sh data` (`make ship-ia`). FICAM locais: os CSVs brutos
+    de `data/censo_2022/` (fonte reproduzível), o domicílio3 (baixado e não usado) e os temas do
+    Censo 2022 ainda não baixados (ex.: alfabetização/instrução, migração, nupcialidade — ver
+    dicionário de dados no diretório do IBGE).
   - venv fica em `/opt/venv` no container (fora do bind mount) — ver `Dockerfile`.
 - **`web/`** — React/Vite/TS. `map/layers.ts` define as camadas; `map/MapView.tsx` monta o
   style (basemap + camadas + seleção + destaques) e trata clique; `map/selection.ts` faz o
@@ -99,7 +104,10 @@ cd agent && uv run pytest -m benchmark -v   # 16 casos reais (requer agent/.env;
   explícito (teto 6 iterações; erro de tool volta ao LLM p/ autocorreção 1x) + sessões em
   memória (TTL 1 h). **Grounding:** `destaques`/`dados` da resposta saem das rows das tools
   (determinístico), o LLM só escreve o texto. Config via `agent/.env`
-  (`OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5-mini`). Benchmark de 16 casos em `benchmark.yaml`.
+  (`OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5-mini`). Benchmark de 17 casos em `benchmark.yaml`.
+  **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
+  adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
+  no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
 - **Saídas** (não versionadas): `data/processed/*.parquet`, `web/public/tiles/*.pmtiles`.
 
 ## Convenções
@@ -116,7 +124,18 @@ cd agent && uv run pytest -m benchmark -v   # 16 casos reais (requer agent/.env;
 
 ## Próximo passo
 
-Fase 2 shipada (benchmark 16/16) e fase 2.1 no ar: agente + busca de município/UF em
-produção. Redeploy do agente: `make ship-ia` + `ssh -t hetzner-gramos 'sudo systemctl
-restart geo-agent'`. Próximas ideias: melhorias guiadas pelo uso real (streaming se a
-latência doer; novas tools se as perguntas extrapolarem as 7 atuais).
+Fase 2 shipada (benchmark 16/16), fase 2.1 no ar (agente + busca de município/UF) e o
+tema **renda do responsável pelo domicílio** já em produção (2026-08-08, commit
+`95b6358`) — primeiro dado econômico do app, puxado direto do IBGE fora do release
+padrão de setores censitários. Redeploy do agente: `make ship-ia` + `ssh -t
+hetzner-gramos 'sudo systemctl restart geo-agent'` (o restart pede senha — só roda
+num terminal de verdade, não pelo Claude Code).
+
+Ideia em aberto (`/brainstorm` ainda não rodado): virar "Fase 3" — mais dados de
+cidade/bairro (Atlas do Desenvolvimento Humano/IDHM por município; agregação
+setor→bairro, já que o IBGE não publica indicador por bairro; POIs via OSM/Geofabrik,
+com ANAC para aeroportos) + operações geoespaciais reais (buffer, distância) — isso
+exige gerar geometria em WKB (hoje é GEOARROW, só dá pra centroide aproximado no
+`query/`). Também: streaming se a latência do chat doer; novas tools se as perguntas
+extrapolarem as 7 atuais; eixo de ruas nacional (OSM) fica pendente de mais espaço na
+VPS (hoje ~6 GB livres via Hetzner Volume seria a rota mais barata, não upgrade de plano).

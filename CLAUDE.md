@@ -139,3 +139,10 @@ exige gerar geometria em WKB (hoje é GEOARROW, só dá pra centroide aproximado
 `query/`). Também: streaming se a latência do chat doer; novas tools se as perguntas
 extrapolarem as 7 atuais; eixo de ruas nacional (OSM) fica pendente de mais espaço na
 VPS (hoje ~6 GB livres via Hetzner Volume seria a rota mais barata, não upgrade de plano).
+
+**Próxima feature combinada (2026-08-08, ainda não implementada):** toggle de imagem
+de satélite no mapa. Técnica e barata — fonte raster XYZ (ex.: Esri World Imagery,
+gratuito, sem API key) direto do navegador, SEM hospedar tiles no VPS (ao contrário do
+basemap vetorial, cobertura nacional de satélite em boa resolução seria demais pro
+disco que já está apertado). Poucas linhas em `map/layers.ts` (fonte raster + camada +
+controle de toggle).

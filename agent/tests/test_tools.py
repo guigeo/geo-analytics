@@ -35,7 +35,10 @@ def test_openai_tools_cobre_o_registry() -> None:
 
 def test_listar_metricas(gq: GeoQuery) -> None:
     r = execute_tool(gq, "listar_metricas", "{}")
-    assert not r.error and "pop_total" in r.payload
+    assert not r.error
+    campos = {m["campo"] for m in r.payload}
+    assert "pop_total" in campos
+    assert all(m["rotulo"] for m in r.payload)  # rotulo nunca vazio (fallback = campo)
     assert r.codigos == []  # tool de descoberta nao pinta o mapa
 
 

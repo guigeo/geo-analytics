@@ -54,6 +54,39 @@ def normalize_uf(uf: str | None) -> str | None:
     return UF_POR_SIGLA.get(uf.strip().upper(), uf.strip())
 
 
+# Rotulos legiveis (PT-BR) das colunas curadas do Censo 2022 (espelha
+# pipeline/src/geo_pipeline/census.py THEMES + DERIVED) — fonte unica pro
+# glossario no system prompt e pro payload de listar_metricas, pra o LLM nunca
+# precisar (nem arriscar esquecer de) inventar a traducao do nome cru da coluna.
+METRIC_LABELS: dict[str, str] = {
+    "area_km2": "área (km²)",
+    "pop_total": "população total",
+    "domicilios_total": "total de domicílios",
+    "media_moradores": "média de moradores por domicílio",
+    "domicilios_ocupados": "domicílios ocupados",
+    "pop_masculino": "população masculina",
+    "pop_feminino": "população feminina",
+    "cor_branca": "população branca",
+    "cor_preta": "população preta",
+    "cor_amarela": "população amarela",
+    "cor_parda": "população parda",
+    "cor_indigena": "população indígena",
+    "dom_ocup_perm": "domicílios ocupados permanentes",
+    "dom_agua_rede": "domicílios com água da rede geral",
+    "dom_esgoto_rede": "domicílios com esgoto na rede geral",
+    "dom_lixo_coletado": "domicílios com lixo coletado",
+    "responsaveis_com_rendimento": "responsáveis pelo domicílio com rendimento",
+    "renda_media": "renda média mensal do responsável (R$)",
+    "renda_mediana": "renda mediana mensal do responsável (R$)",
+    "densidade_hab_km2": "densidade populacional (hab/km²)",
+    "pct_agua_rede": "% de domicílios com água da rede geral",
+    "pct_esgoto_rede": "% de domicílios com esgoto na rede geral",
+    "pct_lixo_coletado": "% de domicílios com lixo coletado",
+    "lon": "longitude do centroide",
+    "lat": "latitude do centroide",
+}
+
+
 # --- args das tools (docstring = description no schema OpenAI) -----------------
 
 
@@ -138,7 +171,9 @@ def _codes(rows: list[dict[str, Any]], key: str) -> list[str]:
 
 
 def _listar_metricas(gq: GeoQuery, a: ListarMetricasArgs) -> ToolResult:
-    return ToolResult(payload=gq.metricas(a.nivel))
+    campos = gq.metricas(a.nivel)
+    payload = [{"campo": c, "rotulo": METRIC_LABELS.get(c, c)} for c in campos]
+    return ToolResult(payload=payload)
 
 
 def _buscar_municipio(gq: GeoQuery, a: BuscarMunicipioArgs) -> ToolResult:

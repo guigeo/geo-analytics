@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Setup ROOT do agente na VPS (fase 2.1) — rodar UMA vez, na VPS, com sudo:
-#   ssh -t hetzner-gramos 'sudo bash ~/geo/deploy/setup-agent-vps.sh'
+#   ssh -t hetzner-gramos 'sudo bash ~/projects/geo/deploy/setup-agent-vps.sh'
 #
 # Pre-requisito: `deploy/deploy.sh agent` + `deploy/deploy.sh data` ja executados
-# (codigo, .env, venv e parquets em /home/gramos/geo). Este script so faz o que
+# (codigo, .env, venv e parquets em /home/gramos/projects/geo). Este script so faz o que
 # exige root: instalar o unit do systemd e expor /api no Caddy. Idempotente.
 set -euo pipefail
 
-GEO=/home/gramos/geo
+GEO=/home/gramos/projects/geo
 CADDYFILE=/etc/caddy/Caddyfile
 
 echo "▶ systemd: instalando geo-agent.service…"

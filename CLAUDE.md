@@ -11,8 +11,8 @@ O chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (
 o agente responde em texto e o mapa pinta os códigos retornados pelas tools.
 **No ar:** https://geo-intelligence.averisen.com (VPS Hetzner + Caddy; ver `deploy/`) —
 mapa + busca + chat (fase 2.1): o agente roda na VPS como serviço systemd `geo-agent`
-(uv/python 3.12 em `~/geo`, só 127.0.0.1:8000; Caddy expõe `/api`). Parquets do agente
-na VPS em `~/geo/data/processed` — o `setor.parquet` de lá é ENXUTO (só CD_SETOR +
+(uv/python 3.12 em `~/projects/geo`, só 127.0.0.1:8000; Caddy expõe `/api`). Parquets do agente
+na VPS em `~/projects/geo/data/processed` — o `setor.parquet` de lá é ENXUTO (só CD_SETOR +
 geom_bbox, 6,5 MB vs 1 GB; gerado no `deploy.sh data`). Rate limit por IP no backend
 (30 perguntas/10 min) protege a chave OpenAI.
 

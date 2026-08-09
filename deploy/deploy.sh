@@ -12,13 +12,13 @@
 # Variáveis:
 #   VPS_HOST  (opcional)  atalho ssh ou usuario@IP; padrão hetzner-gramos
 #   VPS_PATH  (opcional)  destino do site na VPS; padrão /var/www/geo
-#   GEO_PATH  (opcional)  destino do agente/dados; padrão geo (relativo à home ssh)
+#   GEO_PATH  (opcional)  destino do agente/dados; padrão projects/geo (relativo à home ssh)
 set -euo pipefail
 
 # Atalho do ~/.ssh/config (rsync/ssh resolvem usuário, IP e chave por ele).
 VPS_HOST="${VPS_HOST:-hetzner-gramos}"
 VPS_PATH="${VPS_PATH:-/var/www/geo}"
-GEO_PATH="${GEO_PATH:-geo}"
+GEO_PATH="${GEO_PATH:-projects/geo}"
 WHAT="${1:-all}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

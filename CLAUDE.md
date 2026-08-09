@@ -10,11 +10,12 @@ Mapa web estático (MapLibre) + ETL geoespacial em Docker + **chat com agente de
 O chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (DuckDB)` —
 o agente responde em texto e o mapa pinta os códigos retornados pelas tools.
 **No ar:** https://geo-intelligence.averisen.com (VPS Hetzner + Caddy; ver `deploy/`) —
-mapa + busca + chat (fase 2.1): o agente roda na VPS como serviço systemd `geo-agent`
-(uv/python 3.12 em `~/projects/geo`, só 127.0.0.1:8000; Caddy expõe `/api`). Parquets do agente
-na VPS em `~/projects/geo/data/processed` — o `setor.parquet` de lá é ENXUTO (só CD_SETOR +
-geom_bbox, 6,5 MB vs 1 GB; gerado no `deploy.sh data`). Rate limit por IP no backend
-(30 perguntas/10 min) protege a chave OpenAI.
+mapa + satélite + busca (município/UF/endereço) + chat (fase 2.1): o agente roda na VPS
+como serviço systemd `geo-agent` (uv/python 3.12 em `~/projects/geo`, só 127.0.0.1:8000;
+Caddy expõe `/api`). Parquets do agente na VPS em `~/projects/geo/data/processed` — o
+`setor.parquet` de lá é ENXUTO (só CD_SETOR + geom_bbox, 6,5 MB vs 1 GB; gerado no
+`deploy.sh data`). Rate limit por IP no backend protege a chave OpenAI (30 perguntas/10 min
+no chat) e o proxy de geocoding (20/60s no `/api/geocode`).
 
 ## Fluxo (Makefile — porta de entrada única)
 
@@ -84,14 +85,21 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
     Censo 2022 ainda não baixados (ex.: alfabetização/instrução, migração, nupcialidade — ver
     dicionário de dados no diretório do IBGE).
   - venv fica em `/opt/venv` no container (fora do bind mount) — ver `Dockerfile`.
-- **`web/`** — React/Vite/TS. `map/layers.ts` define as camadas; `map/MapView.tsx` monta o
-  style (basemap + camadas + seleção + destaques) e trata clique; `map/selection.ts` faz o
-  highlight do CLIQUE via fonte GeoJSON. `map/highlight.ts` pinta os destaques do AGENTE por
-  código (`setFilter` com `CD_MUN`/`CD_SETOR` nas próprias fontes PMTiles — funciona fora do
+- **`web/`** — React/Vite/TS. `map/layers.ts` define as camadas; `map/basemap.ts` monta o
+  basemap vetorial (Protomaps) e o satélite (raster XYZ Esri World Imagery, sem API key) —
+  toggle no header; `basemapOverlayLayers()` filtra só `line`/`symbol` do basemap (vias,
+  limites, rótulos, POIs) pra manter por cima do raster em modo híbrido (segundo toggle,
+  opcional, só aparece com satélite ligado). `map/MapView.tsx` monta o style (basemap/satélite
+  + camadas + seleção + destaques) e trata clique; `map/selection.ts` faz o highlight do
+  CLIQUE via fonte GeoJSON. `map/highlight.ts` pinta os destaques do AGENTE por código
+  (`setFilter` com `CD_MUN`/`CD_SETOR` nas próprias fontes PMTiles — funciona fora do
   viewport, independe do toggle). `chat/ChatPanel.tsx` + `chat/api.ts` = UI e client do chat;
   em dev o Vite faz proxy `/api → host.docker.internal:8000` (agente nativo; sem CORS).
-  `components/SearchBox.tsx` + `search/index.ts` = busca município/UF do header (client-side
-  sobre `search/municipios.json` gerado pelo pipeline; seleção = `fitBounds` + destaque).
+  `components/SearchBox.tsx` combina a busca local de município/UF (`search/index.ts`,
+  client-side sobre `search/municipios.json` gerado pelo pipeline) com busca de ENDEREÇO
+  (`search/geocode.ts`, debounce 400ms a partir de 4 chars) via `/api/geocode` — proxy do
+  agente pro Nominatim/OSM (que não manda CORS, por isso não dá pra chamar direto do
+  navegador); endereço aproxima no zoom de rua (17) e não ganha destaque (sem código IBGE).
 - **`query/`** — projeto `uv` (Fase 2). Camada de consulta DuckDB sobre os parquets canônicos —
   **backend de dados do chat**. `db.py` cria as views `setor` (censo + centroide do
   `geom_bbox`) e `municipio`; `queries.py` expõe `GeoQuery` (lookups, `busca_municipios`
@@ -108,6 +116,11 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
+  `tools.py` também guarda `METRIC_LABELS` (coluna → rótulo PT-BR, espelha `THEMES`/`DERIVED`
+  do pipeline) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna
+  na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve
+  `{campo, rotulo}`. Além do loop de chat, `main.py` expõe `GET /api/geocode` — proxy pro
+  Nominatim/OSM pra busca de endereço do front (rate limit próprio por IP, separado do chat).
 - **Saídas** (não versionadas): `data/processed/*.parquet`, `web/public/tiles/*.pmtiles`.
 
 ## Convenções
@@ -124,12 +137,25 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
 
 ## Próximo passo
 
-Fase 2 shipada (benchmark 16/16), fase 2.1 no ar (agente + busca de município/UF) e o
-tema **renda do responsável pelo domicílio** já em produção (2026-08-08, commit
+Fase 2 shipada (benchmark 16/16), fase 2.1 no ar (agente + busca de município/UF/endereço)
+e o tema **renda do responsável pelo domicílio** em produção (2026-08-08, commit
 `95b6358`) — primeiro dado econômico do app, puxado direto do IBGE fora do release
 padrão de setores censitários. Redeploy do agente: `make ship-ia` + `ssh -t
 hetzner-gramos 'sudo systemctl restart geo-agent'` (o restart pede senha — só roda
-num terminal de verdade, não pelo Claude Code).
+num terminal de verdade, não pelo Claude Code). **Atenção ao redeploy do agente:** o
+`.env` (chave OpenAI) às vezes é editado direto na VPS e fica mais novo que o local —
+antes de rodar `deploy.sh agent`/`ship-ia`, comparar mtimes pra não sobrescrever a
+chave certa com uma desatualizada. A instalação do agente na VPS é **editable** (aponta
+pro código-fonte, não copia pra `site-packages`) — `uv sync` sem mudança de dependências
+não precisa de `--reinstall-package`, mas o processo do systemd só pega o código novo
+depois do `restart`.
+
+Shipado em 2026-08-09: agente/dados movidos na VPS pra `~/projects/geo` (organização,
+junto dos outros projetos ali); **toggle de satélite** no mapa (raster Esri, modo
+híbrido com vias/limites/rótulos por cima — opcional, dá pra ver só a imagem); **busca
+de endereço/rua** no header via `/api/geocode` (proxy do agente pro Nominatim, que não
+manda CORS); **glossário de métricas** no agente (`METRIC_LABELS`) — o LLM parou de
+vazar nome cru de coluna (`pop_total`) na resposta.
 
 Ideia em aberto (`/brainstorm` ainda não rodado): virar "Fase 3" — mais dados de
 cidade/bairro (Atlas do Desenvolvimento Humano/IDHM por município; agregação
@@ -139,10 +165,3 @@ exige gerar geometria em WKB (hoje é GEOARROW, só dá pra centroide aproximado
 `query/`). Também: streaming se a latência do chat doer; novas tools se as perguntas
 extrapolarem as 7 atuais; eixo de ruas nacional (OSM) fica pendente de mais espaço na
 VPS (hoje ~6 GB livres via Hetzner Volume seria a rota mais barata, não upgrade de plano).
-
-**Próxima feature combinada (2026-08-08, ainda não implementada):** toggle de imagem
-de satélite no mapa. Técnica e barata — fonte raster XYZ (ex.: Esri World Imagery,
-gratuito, sem API key) direto do navegador, SEM hospedar tiles no VPS (ao contrário do
-basemap vetorial, cobertura nacional de satélite em boa resolução seria demais pro
-disco que já está apertado). Poucas linhas em `map/layers.ts` (fonte raster + camada +
-controle de toggle).

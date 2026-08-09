@@ -131,6 +131,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "geo-query" },
+    { name = "httpx" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -148,6 +149,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "geo-query", editable = "../query" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "openai", specifier = ">=1.60" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },

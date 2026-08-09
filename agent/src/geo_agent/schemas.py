@@ -33,3 +33,11 @@ class ChatResponse(BaseModel):
     resposta: str
     destaques: Destaques | None = None
     dados: list[dict[str, Any]] | None = None
+
+
+class GeocodeHit(BaseModel):
+    """Resultado do proxy de geocoding (Nominatim/OSM) — busca de endereço no front."""
+
+    rotulo: str
+    detalhe: str
+    bbox: tuple[float, float, float, float]  # oeste, sul, leste, norte

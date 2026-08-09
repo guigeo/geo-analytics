@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # Protecao da chave OpenAI em endpoint publico: N perguntas por IP por janela.
     rate_limit_max: int = 30
     rate_limit_window_s: int = 600
+    # Proxy de geocoding (Nominatim): janela separada, mais folgada (digitar rua = varias teclas).
+    geocode_rate_limit_max: int = 20
+    geocode_rate_limit_window_s: int = 60
 
 
 settings = Settings()

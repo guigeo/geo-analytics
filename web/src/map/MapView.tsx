@@ -45,6 +45,8 @@ export interface MapFocus {
   bbox: [number, number, number, number];
   /** Muda a cada seleção (ex.: Date.now()) para re-disparar o fitBounds no mesmo alvo. */
   key: number;
+  /** Teto de zoom do fitBounds (default 12 — cidade). Endereço usa algo maior (nível de rua). */
+  maxZoom?: number;
 }
 
 interface Props {
@@ -208,7 +210,7 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focus) return;
-    map.fitBounds(focus.bbox, { padding: 48, duration: 1200, maxZoom: 12 });
+    map.fitBounds(focus.bbox, { padding: 48, duration: 1200, maxZoom: focus.maxZoom ?? 12 });
   }, [focus]);
 
   useEffect(() => {

@@ -39,7 +39,8 @@ export function App() {
   // Busca do header: voa até o alvo; município também ganha o destaque azul
   // (mesma linguagem visual do chat — um "slot" só de destaque por vez).
   const onSearchSelect = (hit: SearchHit) => {
-    setFocus({ bbox: hit.bbox, key: Date.now() });
+    const maxZoom = hit.tipo === "endereco" ? 17 : 12;
+    setFocus({ bbox: hit.bbox, key: Date.now(), maxZoom });
     if (hit.cdMun) setDestaques({ camada: "municipio", codigos: [hit.cdMun] });
   };
 

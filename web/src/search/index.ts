@@ -6,7 +6,7 @@ import indexUrl from "./municipios.json?url";
 export type BBox = [number, number, number, number]; // oeste, sul, leste, norte
 
 export interface SearchHit {
-  tipo: "uf" | "municipio";
+  tipo: "uf" | "municipio" | "endereco";
   rotulo: string;
   detalhe: string;
   bbox: BBox;

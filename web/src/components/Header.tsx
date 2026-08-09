@@ -1,4 +1,4 @@
-import { Globe2, Moon, Sun } from "lucide-react";
+import { Globe2, Moon, Route, Satellite, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -12,10 +12,22 @@ import type { Theme } from "@/hooks/use-theme";
 interface Props {
   theme: Theme;
   onToggleTheme: () => void;
+  satellite: boolean;
+  onToggleSatellite: () => void;
+  satelliteOverlay: boolean;
+  onToggleSatelliteOverlay: () => void;
   onSearchSelect: (hit: SearchHit) => void;
 }
 
-export function Header({ theme, onToggleTheme, onSearchSelect }: Props) {
+export function Header({
+  theme,
+  onToggleTheme,
+  satellite,
+  onToggleSatellite,
+  satelliteOverlay,
+  onToggleSatelliteOverlay,
+  onSearchSelect,
+}: Props) {
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4">
       <div className="flex items-center gap-2.5">
@@ -32,7 +44,41 @@ export function Header({ theme, onToggleTheme, onSearchSelect }: Props) {
 
       <SearchBox onSelect={onSearchSelect} />
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={satellite ? "secondary" : "ghost"}
+              size="icon"
+              onClick={onToggleSatellite}
+              aria-label="Alternar imagem de satélite"
+            >
+              <Satellite className="size-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {satellite ? "Voltar ao mapa" : "Imagem de satélite"}
+          </TooltipContent>
+        </Tooltip>
+
+        {satellite && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={satelliteOverlay ? "secondary" : "ghost"}
+                size="icon"
+                onClick={onToggleSatelliteOverlay}
+                aria-label="Alternar vias e rótulos sobre o satélite"
+              >
+                <Route className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {satelliteOverlay ? "Só imagem" : "Mostrar vias"}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

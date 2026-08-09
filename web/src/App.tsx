@@ -22,6 +22,8 @@ const initialVisibility = Object.fromEntries(
 
 export function App() {
   const { theme, toggle } = useTheme();
+  const [satellite, setSatellite] = useState(false);
+  const [satelliteOverlay, setSatelliteOverlay] = useState(true);
   const [visible, setVisible] = useState<Record<string, boolean>>(initialVisibility);
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [destaques, setDestaques] = useState<Destaques | null>(null);
@@ -51,7 +53,15 @@ export function App() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex h-screen flex-col bg-background text-foreground">
-        <Header theme={theme} onToggleTheme={toggle} onSearchSelect={onSearchSelect} />
+        <Header
+          theme={theme}
+          onToggleTheme={toggle}
+          satellite={satellite}
+          onToggleSatellite={() => setSatellite((s) => !s)}
+          satelliteOverlay={satelliteOverlay}
+          onToggleSatelliteOverlay={() => setSatelliteOverlay((s) => !s)}
+          onSearchSelect={onSearchSelect}
+        />
         <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
           <LayerPanel visible={visible} onToggle={toggleLayer} />
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
@@ -59,6 +69,8 @@ export function App() {
             <MapView
               visible={visible}
               theme={theme}
+              satellite={satellite}
+              satelliteOverlay={satelliteOverlay}
               onSelect={setSelected}
               highlights={destaques}
               focus={focus}

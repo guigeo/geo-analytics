@@ -4,9 +4,13 @@ import type { StyleSpecification } from "maplibre-gl";
 import { registerPMTiles } from "../lib/pmtiles";
 import {
   basemapLayers,
+  basemapOverlayLayers,
   basemapSource,
   BASEMAP_SOURCE_ID,
   GLYPHS_URL,
+  satelliteLayer,
+  satelliteSource,
+  SATELLITE_SOURCE_ID,
   spriteUrl,
   type BasemapTheme,
 } from "./basemap";
@@ -46,6 +50,10 @@ export interface MapFocus {
 interface Props {
   visible: Record<string, boolean>;
   theme: BasemapTheme;
+  /** Satélite (Esri, raster) no lugar do basemap vetorial. */
+  satellite: boolean;
+  /** Com satélite ligado: mantém vias/limites/rótulos por cima (modo híbrido). */
+  satelliteOverlay: boolean;
   onSelect: (feature: SelectedFeature | null) => void;
   /** Destaques do agente (chat): pinta municipios/setores por codigo. */
   highlights?: Destaques | null;
@@ -57,18 +65,25 @@ interface Props {
 
 const BRAZIL_CENTER: [number, number] = [-52.5, -14.5];
 
-function buildStyle(theme: BasemapTheme): StyleSpecification {
+function buildStyle(
+  theme: BasemapTheme,
+  satellite: boolean,
+  satelliteOverlay: boolean,
+): StyleSpecification {
   return {
     version: 8,
     glyphs: GLYPHS_URL,
     sprite: spriteUrl(theme),
     sources: {
       [BASEMAP_SOURCE_ID]: basemapSource,
+      [SATELLITE_SOURCE_ID]: satelliteSource,
       ...dataSources(),
       [SELECTION_SOURCE_ID]: selectionSource,
     },
     layers: [
-      ...basemapLayers(theme),
+      ...(satellite
+        ? [satelliteLayer(), ...(satelliteOverlay ? basemapOverlayLayers(theme) : [])]
+        : basemapLayers(theme)),
       ...dataLayers(),
       ...highlightLayers(),
       ...selectionLayers,
@@ -79,6 +94,8 @@ function buildStyle(theme: BasemapTheme): StyleSpecification {
 export function MapView({
   visible,
   theme,
+  satellite,
+  satelliteOverlay,
   onSelect,
   highlights,
   focus,
@@ -92,8 +109,10 @@ export function MapView({
   const highlightsRef = useRef<Destaques | null>(highlights ?? null);
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
-  // Tema inicial fixado na montagem; trocas posteriores via setStyle (efeito separado).
+  // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
   const initialThemeRef = useRef(theme);
+  const initialSatelliteRef = useRef(satellite);
+  const initialSatelliteOverlayRef = useRef(satelliteOverlay);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -101,7 +120,11 @@ export function MapView({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: buildStyle(initialThemeRef.current),
+      style: buildStyle(
+        initialThemeRef.current,
+        initialSatelliteRef.current,
+        initialSatelliteOverlayRef.current,
+      ),
       center: BRAZIL_CENTER,
       zoom: 3.5,
     });
@@ -199,9 +222,10 @@ export function MapView({
     applyHighlights(map, highlightsRef.current);
   }, [highlights]);
 
-  // Troca de tema: reconstrói o style (basemap claro/escuro + sprite) sem
-  // recriar o mapa. O handler de clique vive no mapa, então sobrevive ao setStyle;
-  // só a visibilidade das camadas precisa ser reaplicada quando o novo style carrega.
+  // Troca de tema ou satélite: reconstrói o style (basemap claro/escuro/satélite
+  // + sprite) sem recriar o mapa. O handler de clique vive no mapa, então sobrevive
+  // ao setStyle; só a visibilidade das camadas precisa ser reaplicada quando o novo
+  // style carrega.
   const firstThemeRender = useRef(true);
   useEffect(() => {
     if (firstThemeRender.current) {
@@ -210,12 +234,12 @@ export function MapView({
     }
     const map = mapRef.current;
     if (!map) return;
-    map.setStyle(buildStyle(theme));
+    map.setStyle(buildStyle(theme, satellite, satelliteOverlay));
     map.once("idle", () => {
       applyVisibility(map, visibleRef.current);
       applyHighlights(map, highlightsRef.current);
     });
-  }, [theme]);
+  }, [theme, satellite, satelliteOverlay]);
 
   return <div ref={containerRef} className="map" />;
 }

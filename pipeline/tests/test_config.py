@@ -24,7 +24,6 @@ def test_dataset_lookup_and_paths(monkeypatch):
     assert setor.tiles_path(cfg.output) == Path("/tiles/setor.pmtiles")
     # `layer` so faz sentido em fonte de arquivo multicamada; setor veio do banco.
     assert setor.layer is None
-    assert cfg.dataset("saude_cnes").layer == "cnes"
 
 
 def test_tiles_dir_exige_ambiente(monkeypatch):
@@ -82,12 +81,21 @@ def test_uf_vem_do_geodata():
     assert uf.attributes == ["CD_UF", "NM_UF", "SIGLA_UF"]
 
 
-def test_fonte_de_arquivo_continua_string():
-    """Nem todo dataset esta no geodata (CNES e INEP ainda nao); a forma antiga vale."""
-    cnes = load_config().dataset("saude_cnes")
-    assert not cnes.do_geodata
-    assert isinstance(cnes.source, str)
-    assert cnes.source_path().name == "cnes.gpkg"
+def test_fonte_de_arquivo_continua_valendo():
+    """Nenhum dataset usa fonte-arquivo desde que saude e educacao sairam.
+
+    O caminho fica porque e o do dado de CLIENTE, que pela regra 4 do ADR-0001
+    nunca entra no geodata. O registry ficou uniforme: todo dado UNIVERSAL vem do
+    banco, sem excecao.
+    """
+    from geo_pipeline.config import DatasetConfig
+
+    ds = DatasetConfig(name="cliente_x", source="data/cliente/lojas.gpkg", layer="lojas")
+    assert not ds.do_geodata
+    assert ds.source_path().name == "lojas.gpkg"
+
+    cfg = load_config()
+    assert all(d.do_geodata for d in cfg.datasets), "todo dado universal vem do banco"
 
 
 def test_source_path_recusa_fonte_de_banco():

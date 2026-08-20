@@ -20,14 +20,33 @@ datasets:
     tile: { minzoom: 0, maxzoom: 8 }
 
   - name: municipio
-    source: data/municipio/BR_Municipios_2025.shp
+    source:
+      kind: geodata
+      # As 2 areas operacionais entram no UNION de proposito. O banco as separou de
+      # ibge.municipio para que join por codigo nunca devolva uma lagoa — mas no MAPA
+      # elas precisam existir: sao 13.000 km2 de agua no RS (Lagoa dos Patos e Lagoa
+      # Mirim) e, sem elas, o sul do Brasil fica com dois buracos. Separadas no dado,
+      # desenhadas no tile. Total: 5.571 + 2 = 5.573, igual ao tile atual.
+      sql: >-
+        select cod_municipio as "CD_MUN", nome as "NM_MUN", sigla_uf as "SIGLA_UF",
+               nome_uf as "NM_UF", geom
+        from ibge.municipio
+        union all
+        select a.codigo, a.nome, a.sigla_uf, u.nome, a.geom
+        from ibge.area_operacional a join ibge.uf u using (sigla_uf)
     geometry: polygon
     attributes: [CD_MUN, NM_MUN, SIGLA_UF, NM_UF]
     tile: { minzoom: 0, maxzoom: 10 }
 
   - name: bairro
-    source: data/bairro/BR_bairros_CD2022.gpkg
-    layer: BR_bairros_CD2022
+    source:
+      kind: geodata
+      # Nome de municipio e de UF nao vivem em ibge.bairro: vem do join. O tile publica
+      # os dois porque o popup do mapa os mostra.
+      sql: >-
+        select b.cod_bairro as "CD_BAIRRO", b.nome as "NM_BAIRRO",
+               m.nome as "NM_MUN", m.nome_uf as "NM_UF", b.geom
+        from ibge.bairro b join ibge.municipio m using (cod_municipio)
     geometry: polygon
     attributes: [CD_BAIRRO, NM_BAIRRO, NM_MUN, NM_UF]
     tile: { minzoom: 5, maxzoom: 13 }

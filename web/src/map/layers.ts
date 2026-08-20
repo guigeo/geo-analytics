@@ -3,6 +3,7 @@ import type {
   SourceSpecification,
 } from "maplibre-gl";
 import { ANTENNA_ICON, HOSPITAL_ICON, SCHOOL_ICON } from "./icons";
+import { tileUrl } from "./tileHost";
 
 export interface AttributeField {
   key: string;
@@ -189,7 +190,7 @@ export const INTERACTIVE_LAYER_IDS = LAYERS.map((l) => l.id);
 export function dataSources(): Record<string, SourceSpecification> {
   const sources: Record<string, SourceSpecification> = {};
   for (const l of LAYERS) {
-    sources[l.id] = { type: "vector", url: `pmtiles:///tiles/${l.id}.pmtiles` };
+    sources[l.id] = { type: "vector", url: tileUrl(l.id) };
   }
   return sources;
 }

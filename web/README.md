@@ -6,8 +6,10 @@ basemap **Protomaps** auto-hospedado. 100% estático — sem backend em runtime.
 
 ## Pré-requisitos
 
-- Os tiles gerados pelo ETL em `web/public/tiles/` (ver [`../pipeline/README.md`](../pipeline/README.md)).
-  Sem eles, o mapa carrega vazio.
+- Os tiles gerados pelo ETL, servidos pelo **host de tiles compartilhado** (fora
+  deste repositório — ver [`../../webgis/docs/LOCAL.md`](../../webgis/docs/LOCAL.md)
+  e [`../pipeline/README.md`](../pipeline/README.md)). Sem host de pé, o mapa
+  carrega vazio.
 - **Docker** (recomendado) ou Node.js 20+ instalado.
 
 ## Uso
@@ -42,7 +44,6 @@ npm run typecheck  # checagem de tipos
 
 ```text
 web/
-├── public/tiles/          # *.pmtiles (gerados pelo ETL)
 ├── src/
 │   ├── App.tsx            # layout + estado (visibilidade, seleção)
 │   ├── lib/pmtiles.ts     # registra o protocolo pmtiles://

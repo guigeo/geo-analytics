@@ -28,8 +28,14 @@ docker compose run --rm pipeline build --basemap-only    # regenera só o basema
 
 Saídas (caem no host via volume):
 - `data/processed/<name>.parquet` — GeoParquet canônico
-- `web/public/tiles/<name>.pmtiles` — tiles por camada
-- `web/public/tiles/basemap.pmtiles` — basemap Protomaps (recorte Brasil)
+- `$GEO_TILES_DIR/<name>.pmtiles` — tiles por camada
+- `$GEO_TILES_DIR/basemap.pmtiles` — basemap Protomaps (recorte Brasil)
+
+`GEO_TILES_DIR` é o diretório do **host de tiles compartilhado**, fora deste
+repositório: os tiles servem todas as aplicações derivadas, não só esta. O
+`docker-compose.yml` monta ali o `TILES_DIR` do `.env`; sem ele o pipeline para em
+vez de recriar uma cópia por aplicação. Ver
+[`../../webgis/docs/LOCAL.md`](../../webgis/docs/LOCAL.md).
 
 ### Basemap
 

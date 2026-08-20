@@ -14,7 +14,8 @@ data/
 ```
 
 As malhas territoriais são do **IBGE** (Malha Municipal / Setores Censitários 2022).
-Saídas do pipeline (`data/processed/*.parquet` e `web/public/tiles/*.pmtiles`) também
-são geradas e não versionadas — rode `docker compose run --rm pipeline build`.
+Saídas do pipeline (`data/processed/*.parquet` e os `*.pmtiles`, que vão para o host
+de tiles compartilhado em `TILES_DIR`) também são geradas e não versionadas — rode
+`docker compose run --rm pipeline build`.
 
 Caminhos e atributos esperados estão em `pipeline/datasets.yaml`.

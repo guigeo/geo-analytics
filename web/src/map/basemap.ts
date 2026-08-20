@@ -4,15 +4,16 @@ import type {
   RasterSourceSpecification,
   VectorSourceSpecification,
 } from "maplibre-gl";
+import { tileUrl } from "./tileHost";
 
-// Basemap Protomaps auto-hospedado (gerado pelo ETL em web/public/tiles/basemap.pmtiles).
+// Basemap Protomaps auto-hospedado (gerado pelo ETL; servido pelo host de tiles).
 export const BASEMAP_SOURCE_ID = "basemap";
 
 export type BasemapTheme = "light" | "dark";
 
 export const basemapSource: VectorSourceSpecification = {
   type: "vector",
-  url: "pmtiles:///tiles/basemap.pmtiles",
+  url: tileUrl("basemap"),
 };
 
 export function basemapLayers(theme: BasemapTheme = "light"): LayerSpecification[] {

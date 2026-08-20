@@ -10,6 +10,9 @@ class Settings(BaseSettings):
 
     # Vazio por default para testes offline; main.py exige no startup.
     openai_api_key: str = ""
+    # Conexao do geodata. Vazio cai no ambiente (GEODATA_DSN); a fachada e quem
+    # falha, com instrucao, se nenhum dos dois existir.
+    geodata_dsn: str = ""
     openai_model: str = "gpt-5-mini"
     max_tool_iters: int = 6
     session_ttl_s: int = 3600

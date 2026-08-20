@@ -21,15 +21,21 @@ Exemplo local:
 O papel de leitura e o geo_reader; o geo_admin nao deve ser usado por aplicacao."""
 
 
-def dsn() -> str:
-    """DSN do geodata. Sem a variavel, para com instrucao em vez de adivinhar."""
-    valor = os.getenv(VARIAVEL_ENV)
+def dsn(explicito: str | None = None) -> str:
+    """DSN do geodata: o passado pelo chamador, ou o do ambiente.
+
+    Os dois caminhos existem porque os consumidores sao diferentes. O agente le o
+    proprio .env com pydantic-settings, que popula `settings` e NAO o ambiente do
+    processo — entao ele passa o DSN explicitamente. Quem roda a fachada solta
+    (testes, script) usa a variavel de ambiente.
+    """
+    valor = explicito or os.getenv(VARIAVEL_ENV)
     if not valor:
         raise RuntimeError(_AJUDA)
     return valor
 
 
-def connect() -> psycopg.Connection:
+def connect(dsn_explicito: str | None = None) -> psycopg.Connection:
     """Abre a conexao. connect_timeout curto: banco fora do ar degrada o chat, nao o pendura.
 
     autocommit=True porque esta fachada so le e vive dentro de um processo longo: sem
@@ -38,4 +44,6 @@ def connect() -> psycopg.Connection:
     alguem dar rollback. Uma pergunta malformada ao agente derrubaria o chat inteiro
     ate reiniciar o processo.
     """
-    return psycopg.connect(dsn(), row_factory=dict_row, connect_timeout=5, autocommit=True)
+    return psycopg.connect(
+        dsn(dsn_explicito), row_factory=dict_row, connect_timeout=5, autocommit=True
+    )

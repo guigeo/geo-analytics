@@ -99,7 +99,7 @@ def test_fonte_de_arquivo_continua_valendo():
 
 
 def test_source_path_recusa_fonte_de_banco():
-    with pytest.raises(ValueError, match="geodata"):
+    with pytest.raises(TypeError, match="geodata"):
         load_config().dataset("uf").source_path()
 
 

@@ -87,19 +87,7 @@ datasets:
     attributes: [operadora, uf, municipio, tecnologia, frequencia]
     tile: { minzoom: 4, maxzoom: 14 }
 
-  - name: saude_cnes
-    source: data/saude/cnes.gpkg     # geobr read_health_facilities (CNES geolocalizado)
-    layer: cnes
-    geometry: point
-    attributes: [co_cnes, no_fantasia, tp_unidade, name_muni, abbrev_state]
-    tile: { minzoom: 5, maxzoom: 14 }
 
-  - name: escolas_inep
-    source: data/inep/escolas.gpkg   # geobr read_schools (INEP geolocalizado)
-    layer: escolas
-    geometry: point
-    attributes: [name_school, tp_dependencia, name_muni, abbrev_state]
-    tile: { minzoom: 5, maxzoom: 14 }
 
   - name: rodovias
     source:

@@ -7,7 +7,7 @@ ver [`.claude/CLAUDE.md`](.claude/CLAUDE.md) e [`.claude/sdd/archive/`](.claude/
 
 Mapa web estático (MapLibre) + ETL geoespacial em Docker + **chat com agente de IA**
 (Fase 2, local). Pipeline: `shp/gpkg/csv → GeoParquet (canônico) → PMTiles → MapLibre`.
-O chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (DuckDB)` —
+O chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (PostGIS)` —
 o agente responde em texto e o mapa pinta os códigos retornados pelas tools.
 **No ar:** https://geo-intelligence.averisen.com (VPS Hetzner + Caddy; ver `deploy/`) —
 mapa + satélite + busca (município/UF/endereço) + chat (fase 2.1): o agente roda na VPS
@@ -111,12 +111,14 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   `/tiles` na própria origem (o que a VPS serve hoje pelo Caddy); com ela, do HOST DE
   TILES COMPARTILHADO — em dev é o único caminho, porque **este repositório não guarda
   mais tile nenhum**. Ver `../webgis/docs/LOCAL.md`.
-- **`query/`** — projeto `uv` (Fase 2). Camada de consulta DuckDB sobre os parquets canônicos —
-  **backend de dados do chat**. `db.py` cria as views `setor` (censo + centroide do
-  `geom_bbox`) e `municipio`; `queries.py` expõe `GeoQuery` (lookups, `busca_municipios`
-  nome→código, `ranking_municipios`, `setores_proximos`, `setores_no_ponto`). Geometria exata
-  vive nos PMTiles; o backend devolve `cd_setor`/`cd_mun` e o mapa pinta. Espacial é
-  **aproximado** (centroide × 111 km), pois `setor.parquet` tem geometria GEOARROW (não WKB).
+- **`query/`** — projeto `uv` (Fase 2). Camada de consulta PostGIS sobre o geodata central —
+  **backend de dados do chat**. `db.py` abre a conexão (`GEODATA_DSN`, papel `geo_reader`,
+  `autocommit`); `queries.py` expõe `GeoQuery` (lookups, `busca_municipios` nome→código,
+  `ranking_municipios`, `setor_no_ponto`, `setores_proximos`, `setores_no_ponto`). Geometria
+  exata vive nos PMTiles **e no banco**; o backend devolve `cd_setor`/`cd_mun` e o mapa pinta.
+  Espacial é **exato**: `ST_DWithin`/`ST_Distance` sobre o polígono real, em metros. Métrica
+  tem dois caminhos — resumo materializado quando a coluna existe lá, formato longo quando não
+  (medido; ver `webgis/docs/HERANCA.md` §7.4).
 - **`agent/`** — projeto `uv` (Fase 2). Backend do chat: FastAPI + SDK `openai` PURO (sem
   framework de agente — decisão de aprendizado). `tools.py` = 7 tools (args Pydantic →
   JSON Schema; `TOOL_REGISTRY` despacha p/ o `GeoQuery`); `agent.py` = loop de tool-calling

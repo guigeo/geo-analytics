@@ -1,10 +1,10 @@
 [project]
 name = "geo-query"
 version = "0.1.0"
-description = "Camada de consulta (DuckDB) sobre o GeoParquet canonico - backend de dados da Fase 2"
+description = "Camada de consulta (PostGIS) sobre o geodata central - backend de dados do agente"
 requires-python = ">=3.11"
 dependencies = [
-    "duckdb>=1.5",
+    "psycopg[binary]>=3.2",
 ]
 
 [dependency-groups]

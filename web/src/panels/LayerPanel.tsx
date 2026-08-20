@@ -1,12 +1,10 @@
 import {
-  Cross,
-  GraduationCap,
   MousePointerClick,
   RadioTower,
   type LucideIcon,
 } from "lucide-react";
 import { LAYERS, type DataLayer } from "@/map/layers";
-import { ANTENNA_ICON, HOSPITAL_ICON, SCHOOL_ICON } from "@/map/icons";
+import { ANTENNA_ICON } from "@/map/icons";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -18,8 +16,6 @@ interface Props {
 // Ícone da legenda por id de ícone do mapa (mantém painel e marcador em sintonia).
 const LEGEND_ICON: Record<string, LucideIcon> = {
   [ANTENNA_ICON]: RadioTower,
-  [SCHOOL_ICON]: GraduationCap,
-  [HOSPITAL_ICON]: Cross,
 };
 
 export function LayerPanel({ visible, onToggle }: Props) {

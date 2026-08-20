@@ -19,10 +19,12 @@ def test_dataset_lookup_and_paths(monkeypatch):
     monkeypatch.setenv("GEO_TILES_DIR", "/tiles")
     cfg = load_config()
     setor = cfg.dataset("setor")
-    assert setor.layer == "BR_setores_CD2022"
     assert setor.tile.simplification == 10
     assert setor.processed_path(cfg.output).name == "setor.parquet"
     assert setor.tiles_path(cfg.output) == Path("/tiles/setor.pmtiles")
+    # `layer` so faz sentido em fonte de arquivo multicamada; setor veio do banco.
+    assert setor.layer is None
+    assert cfg.dataset("saude_cnes").layer == "cnes"
 
 
 def test_tiles_dir_exige_ambiente(monkeypatch):
@@ -53,7 +55,7 @@ def test_unknown_dataset_raises():
         cfg.dataset("inexistente")
 
 
-@pytest.mark.parametrize("nome", ["uf", "municipio", "bairro"])
+@pytest.mark.parametrize("nome", ["uf", "municipio", "bairro", "setor"])
 def test_malhas_vem_do_geodata(nome):
     """Passo 4 do roteiro: dado universal sai de data/ e passa a vir do banco."""
     ds = load_config().dataset(nome)
@@ -110,3 +112,23 @@ def test_bairro_traz_nome_de_municipio_por_join():
     assert "join ibge.municipio" in sql
     for campo in ("CD_BAIRRO", "NM_BAIRRO", "NM_MUN", "NM_UF"):
         assert f'as "{campo}"' in sql
+
+
+def test_setor_nao_traz_as_lagoas_e_municipio_traz():
+    """A mesma lagoa entra numa camada e nao na outra, e isso e deliberado.
+
+    Em municipio ela e area operacional com nome proprio, e municipio e a camada
+    que desenha o contorno do pais — sem ela, buraco. Em setor ela e preenchimento
+    de malha: codigo terminado em zeros e CD_MUN, NM_MUN e SITUACAO nulos, que o
+    tile atual pinta como setor de popup vazio.
+    """
+    cfg = load_config()
+    assert "area_operacional" in cfg.dataset("municipio").source.sql
+    assert "area_operacional" not in cfg.dataset("setor").source.sql
+
+
+def test_setor_mantem_o_ajuste_fino_da_camada_critica():
+    """473 mil feicoes: o gargalo e a tilagem, e o ajuste vive no tippecanoe."""
+    setor = load_config().dataset("setor")
+    assert setor.tile.simplification == 10
+    assert (setor.tile.minzoom, setor.tile.maxzoom) == (6, 14)

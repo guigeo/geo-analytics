@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 import openai
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from geo_query import GeoQuery
 
 from .agent import RateLimiter, SessionStore, run_turn
@@ -57,8 +57,28 @@ app = FastAPI(title="geo-agent", lifespan=lifespan)
 
 
 @app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "model": settings.openai_model}
+def health(response: Response) -> dict[str, str]:
+    """Vivo E com dado. O processo de pe nao basta como sinal.
+
+    A degradacao que o ADR-0001 previu e silenciosa dos dois lados: se o geodata
+    cair, o mapa continua desenhando (tile e arquivo estatico) e o chat morre sem
+    ninguem perceber. Sem tocar o banco aqui, um monitor externo veria "ok" com o
+    agente incapaz de responder qualquer pergunta.
+    """
+    try:
+        with state["gq"].con.cursor() as cur:
+            cur.execute("select 1")
+            cur.fetchone()
+        banco = "ok"
+    except Exception as exc:  # noqa: BLE001 - o motivo vai no corpo, nao no log
+        banco = f"erro: {type(exc).__name__}"
+        response.status_code = 503
+
+    return {
+        "status": "ok" if banco == "ok" else "degradado",
+        "model": settings.openai_model,
+        "geodata": banco,
+    }
 
 
 def _client_ip(request: Request) -> str:

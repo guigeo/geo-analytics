@@ -28,6 +28,31 @@ def test_setor_lookup_tem_centroide(gq: GeoQuery) -> None:
     assert s["lon"] is not None and s["lat"] is not None
 
 
+def test_setor_nao_repete_por_parte_de_geometria(gq: GeoQuery) -> None:
+    """Um setor e uma linha, mesmo quando a geometria vem quebrada em partes.
+
+    A malha nacional traz 472.780 linhas para 468.099 setores (multiparte
+    explodido pela fonte). Se o join com o censo nao agrupar, contagem e soma
+    passam a contar parte, nao setor.
+    """
+    total, distintos = gq.con.execute(
+        "SELECT count(*), count(DISTINCT cd_setor) FROM setor"
+    ).fetchone()
+    assert total == distintos
+
+    # Corumba/MS tem os setores mais fragmentados do pais (Pantanal).
+    linhas, setores = gq.con.execute(
+        "SELECT count(*), count(DISTINCT cd_setor) FROM setor WHERE cd_mun = '5003207'"
+    ).fetchone()
+    assert linhas == setores
+
+
+def test_setores_no_ponto_nao_repete_setor(gq: GeoQuery) -> None:
+    rows = gq.setores_no_ponto(-57.6528, -19.0086, raio_km=20.0, limite=500)
+    codigos = [r["cd_setor"] for r in rows]
+    assert len(codigos) == len(set(codigos))
+
+
 def test_ranking_municipios_pop(gq: GeoQuery) -> None:
     top = gq.ranking_municipios("pop_total", n=3)
     assert [r["nm_mun"] for r in top][:2] == ["São Paulo", "Rio de Janeiro"]

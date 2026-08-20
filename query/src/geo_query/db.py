@@ -40,10 +40,17 @@ def connect() -> duckdb.DuckDBPyConnection:
         SELECT s.*, c.lon, c.lat
         FROM read_parquet('{CENSO_SETOR.as_posix()}') s
         LEFT JOIN (
+            -- GROUP BY nao e decoracao: o GeoPackage nacional do IBGE declara
+            -- Polygon e quebra o setor multiparte em uma linha por parte (914
+            -- setores, um deles com 247 partes), entao a malha tem 472.780
+            -- linhas para 468.099 setores. Sem agrupar, o join multiplica o
+            -- censo: Corumba respondia 239 setores onde ha 187, e somar
+            -- populacao contava a mesma gente varias vezes.
             SELECT CD_SETOR AS cd_setor,
-                   (geom_bbox.xmin + geom_bbox.xmax) / 2 AS lon,
-                   (geom_bbox.ymin + geom_bbox.ymax) / 2 AS lat
+                   (min(geom_bbox.xmin) + max(geom_bbox.xmax)) / 2 AS lon,
+                   (min(geom_bbox.ymin) + max(geom_bbox.ymax)) / 2 AS lat
             FROM read_parquet('{SETOR_GEOM.as_posix()}')
+            GROUP BY CD_SETOR
         ) c USING (cd_setor)
     """)
     con.execute(

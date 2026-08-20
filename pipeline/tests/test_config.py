@@ -35,11 +35,17 @@ def test_tiles_dir_exige_ambiente(monkeypatch):
         cfg.dataset("setor").tiles_path(cfg.output)
 
 
-def test_antennas_is_csv_points():
-    cfg = load_config()
-    antenas = cfg.dataset("antenas")
-    assert antenas.format == "csv_points"
-    assert antenas.lon_field == "lon" and antenas.lat_field == "lat"
+def test_csv_points_continua_disponivel():
+    """Nenhum dataset usa csv_points desde que antenas foi para o banco.
+
+    O caminho fica: dado de CLIENTE nao entra no geodata (regra 4 do ADR-0001) e
+    CSV de pontos e o formato mais provavel de chegar. Nao e codigo morto, e o
+    caminho do dado que nao e universal.
+    """
+    from geo_pipeline.config import DatasetConfig
+
+    ds = DatasetConfig(name="x", source="c.csv", format="csv_points", lon_field="lon")
+    assert ds.format == "csv_points" and not ds.do_geodata
 
 
 def test_basemap_bbox_validation():
@@ -55,7 +61,9 @@ def test_unknown_dataset_raises():
         cfg.dataset("inexistente")
 
 
-@pytest.mark.parametrize("nome", ["uf", "municipio", "bairro", "setor"])
+@pytest.mark.parametrize(
+    "nome", ["uf", "municipio", "bairro", "setor", "antenas", "rodovias", "ferrovias"]
+)
 def test_malhas_vem_do_geodata(nome):
     """Passo 4 do roteiro: dado universal sai de data/ e passa a vir do banco."""
     ds = load_config().dataset(nome)
@@ -132,3 +140,21 @@ def test_setor_mantem_o_ajuste_fino_da_camada_critica():
     setor = load_config().dataset("setor")
     assert setor.tile.simplification == 10
     assert (setor.tile.minzoom, setor.tile.maxzoom) == (6, 14)
+
+
+def test_antenas_deixou_de_ser_csv():
+    """Antena vinha de CSV do Teleco com parser posicional; agora e vetor do banco."""
+    antenas = load_config().dataset("antenas")
+    assert antenas.format == "vector"
+    assert antenas.geometry == "point"
+    # Arrays no banco, string juntada por " - " no tile: o front ja le assim.
+    assert "array_to_string" in antenas.source.sql
+    # uf e municipio passam a ser o nome do IBGE resolvido por codigo, com acento.
+    assert "join ibge.municipio" in antenas.source.sql
+
+
+def test_infraestrutura_renomeia_para_o_contrato_do_tile():
+    """O banco normaliza os nomes do BC250; o tile publica os do IBGE original."""
+    cfg = load_config()
+    assert "tipo_via as tipovia" in cfg.dataset("rodovias").source.sql
+    assert "situacao_fisica as situacaofisica" in cfg.dataset("ferrovias").source.sql

@@ -68,11 +68,22 @@ datasets:
     tile: { minzoom: 6, maxzoom: 14, simplification: 10 }   # camada critica (~468k)
 
   - name: antenas
-    source: data/antenas/antenas.csv
-    format: csv_points
-    has_header: false          # antenas.csv nao tem cabecalho (parser posicional)
-    lon_field: lon
-    lat_field: lat
+    source:
+      kind: geodata
+      # Apelidos SEM aspas aqui: o contrato desta camada e minusculo (veio de CSV,
+      # nao do IBGE), e sem aspas o Postgres ja minusculiza. tecnologias e
+      # frequencias_mhz sao arrays no banco e string juntada por " - " no tile —
+      # array_to_string reproduz exatamente o que o front ja le.
+      # uf e municipio deixam de ser texto carregado do CSV do Teleco e passam a ser
+      # o nome oficial do IBGE resolvido por codigo: "Capao da Canoa" vira "Capão da
+      # Canoa".
+      sql: >-
+        select a.operadora, m.sigla_uf as uf, m.nome as municipio,
+               array_to_string(a.tecnologias, ' - ') as tecnologia,
+               array_to_string(a.frequencias_mhz, ' - ') as frequencia,
+               a.geom
+        from infraestrutura.antena a join ibge.municipio m using (cod_municipio)
+    geometry: point
     attributes: [operadora, uf, municipio, tecnologia, frequencia]
     tile: { minzoom: 4, maxzoom: 14 }
 
@@ -91,15 +102,21 @@ datasets:
     tile: { minzoom: 5, maxzoom: 14 }
 
   - name: rodovias
-    source: data/estradas/bc250_2023_11_23.gpkg   # IBGE BC250 2023
-    layer: rod_trecho_rodoviario_l
+    source:
+      kind: geodata
+      sql: >-
+        select sigla, tipo_via as tipovia, jurisdicao, revestimento, geom
+        from infraestrutura.rodovia
     geometry: line
     attributes: [sigla, tipovia, jurisdicao, revestimento]
     tile: { minzoom: 4, maxzoom: 13 }
 
   - name: ferrovias
-    source: data/estradas/bc250_2023_11_23.gpkg
-    layer: fer_trecho_ferroviario_l
+    source:
+      kind: geodata
+      sql: >-
+        select nome, bitola, jurisdicao, situacao_fisica as situacaofisica, geom
+        from infraestrutura.ferrovia
     geometry: line
     attributes: [nome, bitola, jurisdicao, situacaofisica]
     tile: { minzoom: 5, maxzoom: 13 }

@@ -22,6 +22,12 @@ def build_tiles(ds: DatasetConfig, output: OutputConfig) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
 
     fgb = out.with_suffix(".fgb")
+    # O -overwrite nao basta: o driver FlatGeobuf nao implementa DeleteLayer, entao
+    # ogr2ogr sobre um .fgb existente falha com "DeleteLayer() not supported by this
+    # dataset". Isso acontece sempre que um build e interrompido — o unlink do finally
+    # nao roda — e o residuo passa a quebrar TODOS os builds seguintes do dataset, o
+    # que e mais provavel justamente nas camadas lentas (setor leva ~36 min).
+    fgb.unlink(missing_ok=True)
     subprocess.run(
         ["ogr2ogr", "-f", "FlatGeobuf", "-overwrite", str(fgb), str(parquet)],
         check=True,

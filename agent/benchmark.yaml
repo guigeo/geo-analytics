@@ -94,7 +94,9 @@ casos:
       tool: setores_proximos
       args: { cd_setor: "230440005130001", raio_km: 2 }
       destaques: { camada: setor, contem_codigos: ["230440005130001"] }
-      resposta_contem: ["aproximad"]   # ressalva do centroide
+      # Nao ha assercao de ausencia de "aproximad": "aproximadamente 1.000 pessoas" e
+      # arredondamento legitimo na linguagem, e nada tem a ver com o metodo de medida.
+      # O que garante a exatidao sao os testes de query/, nao a redacao da resposta.
 
   - id: BM-11
     sessao: raio
@@ -140,3 +142,11 @@ casos:
     pergunta: "Qual era a população do Brasil em 2010?"
     espera:
       resposta_contem: ["2022"]
+
+  # --- contem (so existe desde a fachada em PostGIS) ---------------------------
+  - id: BM-17
+    pergunta: "Em que setor censitário fica o ponto de longitude -46.6558 e latitude -23.5614?"
+    espera:
+      tool: setor_que_contem
+      args: { lon: -46.6558, lat: -23.5614 }
+      destaques: { camada: setor, contem_codigos: ["355030807000249"] }

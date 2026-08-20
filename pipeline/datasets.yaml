@@ -8,7 +8,13 @@ output:
 
 datasets:
   - name: uf
-    source: data/uf/BR_UF_2025.shp
+    source:
+      kind: geodata
+      # Apelidos entre aspas: o tile publica CD_UF/NM_UF/SIGLA_UF, que e o que o
+      # frontend le. Trocar a fonte nao pode mudar o contrato do mapa.
+      sql: >-
+        select cod_uf as "CD_UF", nome as "NM_UF", sigla_uf as "SIGLA_UF", geom
+        from ibge.uf
     geometry: polygon
     attributes: [CD_UF, NM_UF, SIGLA_UF]
     tile: { minzoom: 0, maxzoom: 8 }

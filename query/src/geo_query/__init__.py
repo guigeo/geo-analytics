@@ -1,7 +1,7 @@
-"""Camada de consulta sobre o GeoParquet canonico (DuckDB).
+"""Camada de consulta sobre o geodata central (PostGIS).
 
-Backend de dados da Fase 2: expoe funcoes tipadas que a IA chamara via tool-calling.
-Construido e testavel SEM o LLM.
+Backend de dados do agente: expoe funcoes tipadas que a IA chama via tool-calling.
+Construido e testavel SEM o LLM. Exige GEODATA_DSN (ver db.py).
 """
 
 from .queries import GeoQuery

@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(
             "OPENAI_API_KEY ausente. Copie agent/.env.example para agent/.env e preencha a chave."
         )
-    state["gq"] = GeoQuery()  # falha cedo com instrucao clara se faltarem os parquets
+    state["gq"] = GeoQuery()  # falha cedo e com instrucao se faltar GEODATA_DSN
     state["client"] = openai.OpenAI(api_key=settings.openai_api_key)
     state["store"] = SessionStore()
     state["limiter"] = RateLimiter()

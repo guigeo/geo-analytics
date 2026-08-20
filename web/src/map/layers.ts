@@ -2,7 +2,7 @@ import type {
   LayerSpecification,
   SourceSpecification,
 } from "maplibre-gl";
-import { ANTENNA_ICON, HOSPITAL_ICON, SCHOOL_ICON } from "./icons";
+import { ANTENNA_ICON } from "./icons";
 import { tileUrl } from "./tileHost";
 
 export interface AttributeField {
@@ -118,36 +118,6 @@ export const LAYERS: DataLayer[] = [
       { key: "operadora", label: "Operadora" },
       { key: "tecnologia", label: "Tecnologia" },
       { key: "frequencia", label: "Frequência" },
-    ],
-  },
-  {
-    id: "saude_cnes",
-    label: "Saúde (CNES)",
-    sourceLayer: "saude_cnes",
-    geometry: "point",
-    color: "#1f9e89",
-    icon: HOSPITAL_ICON,
-    defaultVisible: false,
-    attributes: [
-      { key: "no_fantasia", label: "Estabelecimento" },
-      { key: "tp_unidade", label: "Tipo" },
-      { key: "name_muni", label: "Município" },
-      { key: "abbrev_state", label: "UF" },
-    ],
-  },
-  {
-    id: "escolas_inep",
-    label: "Escolas (INEP)",
-    sourceLayer: "escolas_inep",
-    geometry: "point",
-    color: "#e0a020",
-    icon: SCHOOL_ICON,
-    defaultVisible: false,
-    attributes: [
-      { key: "name_school", label: "Escola" },
-      { key: "tp_dependencia", label: "Dependência" },
-      { key: "name_muni", label: "Município" },
-      { key: "abbrev_state", label: "UF" },
     ],
   },
   {

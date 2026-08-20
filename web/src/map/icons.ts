@@ -2,8 +2,6 @@ import type maplibregl from "maplibre-gl";
 
 // Ids dos ícones registrados no mapa (referenciados por camadas em layers.ts).
 export const ANTENNA_ICON = "antenna-tower";
-export const SCHOOL_ICON = "school-cap";
-export const HOSPITAL_ICON = "hospital-cross";
 
 const ICON_PX = 48;
 
@@ -33,32 +31,8 @@ const ANTENNA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="
   </g>
 </svg>`;
 
-// Capelo de formatura (base "graduation-cap" do lucide, MIT) — escolas, #e0a020.
-const SCHOOL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke="#ffffff" stroke-width="4.5">
-      <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
-      <path d="M22 10v6"/>
-      <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
-    </g>
-    <g stroke="#e0a020" stroke-width="2">
-      <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
-      <path d="M22 10v6"/>
-      <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
-    </g>
-  </g>
-</svg>`;
-
-// Cruz médica em badge arredondado — saúde/CNES, #1f9e89. Símbolo universal de hospital.
-const HOSPITAL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
-  <rect x="3" y="3" width="18" height="18" rx="4.5" fill="#1f9e89" stroke="#ffffff" stroke-width="2"/>
-  <path d="M12 7.5v9M7.5 12h9" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
-</svg>`;
-
 export const ICON_SVGS: Record<string, string> = {
   [ANTENNA_ICON]: ANTENNA_SVG,
-  [SCHOOL_ICON]: SCHOOL_SVG,
-  [HOSPITAL_ICON]: HOSPITAL_SVG,
 };
 
 // Rasteriza um SVG para ImageData via <canvas>. Mais portável que

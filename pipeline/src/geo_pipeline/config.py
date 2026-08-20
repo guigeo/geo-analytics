@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -21,7 +22,22 @@ class TileConfig(BaseModel):
 
 class OutputConfig(BaseModel):
     processed_dir: str = "data/processed"
-    tiles_dir: str = "web/public/tiles"
+    # Os .pmtiles NAO sao saida desta aplicacao: sao infraestrutura compartilhada,
+    # servida por um host unico para todas as apps derivadas (ver
+    # ../webgis/docs/LOCAL.md). Por isso o diretorio e configuracao de AMBIENTE,
+    # vinda de GEO_TILES_DIR, e nao do registry versionado. Sem ela o pipeline
+    # para: escrever tile dentro do repositorio recria a copia por app que o
+    # host existe para eliminar.
+    tiles_dir: str | None = None
+
+    def tiles_root(self) -> Path:
+        destino = os.environ.get("GEO_TILES_DIR") or self.tiles_dir
+        if not destino:
+            raise ValueError(
+                "defina GEO_TILES_DIR com o diretorio do host de tiles compartilhado "
+                "(ex.: ~/Projetos/tiles-compartilhados). Ver ../webgis/docs/LOCAL.md"
+            )
+        return _resolve(destino)
 
 
 class DatasetConfig(BaseModel):
@@ -55,7 +71,7 @@ class DatasetConfig(BaseModel):
         return _resolve(output.processed_dir) / f"{self.name}.parquet"
 
     def tiles_path(self, output: OutputConfig) -> Path:
-        return _resolve(output.tiles_dir) / f"{self.name}.pmtiles"
+        return output.tiles_root() / f"{self.name}.pmtiles"
 
 
 class BasemapConfig(BaseModel):
@@ -72,7 +88,7 @@ class BasemapConfig(BaseModel):
         return v
 
     def out_path(self, output: OutputConfig) -> Path:
-        return _resolve(output.tiles_dir) / self.out
+        return output.tiles_root() / self.out
 
 
 class PipelineConfig(BaseModel):

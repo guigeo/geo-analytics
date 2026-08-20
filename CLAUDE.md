@@ -34,10 +34,17 @@ make help       # lista todos os alvos
 Caddy, mesma config de Range/compressão dos tiles). `ship*` usam `deploy/deploy.sh`
 (rsync via atalho `hetzner-gramos` do `~/.ssh/config`).
 
+**Os tiles não moram mais neste repositório.** Vivem num host compartilhado, servido
+para todas as aplicações derivadas do `webgis` — uma cópia só, em vez de uma por app
+(passo 1 do ADR-0001 de lá). O caminho vem de `TILES_DIR` no `.env` da raiz
+(`cp .env.example .env`); em dev, `web/.env.local` aponta o front para o host com
+`VITE_TILES_BASE_URL`. Ver `../webgis/docs/LOCAL.md`.
+
 ## Comandos (detalhe)
 
 ```bash
 # ETL (no container — gdal/tippecanoe/pmtiles vivem na imagem, NÃO no host)
+# Exige TILES_DIR no .env (host de tiles compartilhado; ver .env.example).
 docker compose build
 docker compose run --rm pipeline build                 # tudo: GeoParquet + tiles + basemap
 docker compose run --rm pipeline build --only <nome>   # um dataset
@@ -100,6 +107,10 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   (`search/geocode.ts`, debounce 400ms a partir de 4 chars) via `/api/geocode` — proxy do
   agente pro Nominatim/OSM (que não manda CORS, por isso não dá pra chamar direto do
   navegador); endereço aproxima no zoom de rua (17) e não ganha destaque (sem código IBGE).
+  `map/tileHost.ts` decide DE ONDE vêm os `.pmtiles`: sem `VITE_TILES_BASE_URL`, de
+  `/tiles` na própria origem (o que a VPS serve hoje pelo Caddy); com ela, do HOST DE
+  TILES COMPARTILHADO — em dev é o único caminho, porque **este repositório não guarda
+  mais tile nenhum**. Ver `../webgis/docs/LOCAL.md`.
 - **`query/`** — projeto `uv` (Fase 2). Camada de consulta DuckDB sobre os parquets canônicos —
   **backend de dados do chat**. `db.py` cria as views `setor` (censo + centroide do
   `geom_bbox`) e `municipio`; `queries.py` expõe `GeoQuery` (lookups, `busca_municipios`
@@ -121,7 +132,10 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve
   `{campo, rotulo}`. Além do loop de chat, `main.py` expõe `GET /api/geocode` — proxy pro
   Nominatim/OSM pra busca de endereço do front (rate limit próprio por IP, separado do chat).
-- **Saídas** (não versionadas): `data/processed/*.parquet`, `web/public/tiles/*.pmtiles`.
+- **Saídas** (não versionadas): `data/processed/*.parquet` e os `*.pmtiles`, que o
+  pipeline escreve direto no host de tiles compartilhado (`TILES_DIR` no `.env` →
+  `GEO_TILES_DIR=/tiles` no container). Sem `TILES_DIR`, `docker compose` e
+  `deploy.sh tiles` param com mensagem em vez de recriar a cópia por app.
 
 ## Convenções
 

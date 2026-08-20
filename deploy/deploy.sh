@@ -13,6 +13,7 @@
 #   VPS_HOST  (opcional)  atalho ssh ou usuario@IP; padrão hetzner-gramos
 #   VPS_PATH  (opcional)  destino do site na VPS; padrão /var/www/geo
 #   GEO_PATH  (opcional)  destino do agente/dados; padrão projects/geo (relativo à home ssh)
+#   TILES_DIR (.env)      diretório do host de tiles compartilhado (fora deste repo)
 set -euo pipefail
 
 # Atalho do ~/.ssh/config (rsync/ssh resolvem usuário, IP e chave por ele).
@@ -23,6 +24,10 @@ WHAT="${1:-all}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+
+# Os .pmtiles nao moram mais aqui: vivem no host de tiles compartilhado, fora de
+# qualquer repositorio de aplicacao (ver ../webgis/docs/LOCAL.md).
+if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
 
 build_app() {
   echo "▶ Build do frontend (no container)…"
@@ -36,11 +41,13 @@ push_app() {
 }
 
 push_tiles() {
+  : "${TILES_DIR:?defina TILES_DIR no .env (ver ../webgis/docs/LOCAL.md)}"
+  [[ -d "$TILES_DIR" ]] || { echo "TILES_DIR não existe: $TILES_DIR" >&2; exit 1; }
   # Sem --info=progress2: o rsync do macOS (openrsync) não suporta. -v lista
   # cada arquivo conforme envia; o acompanhamento fino é por `du` no servidor.
-  echo "▶ Enviando tiles → $VPS_HOST:$VPS_PATH/tiles/ (~2 GB, incremental)…"
+  echo "▶ Enviando tiles ($TILES_DIR) → $VPS_HOST:$VPS_PATH/tiles/ (~2 GB, incremental)…"
   rsync -avz --delete \
-    web/public/tiles/ "$VPS_HOST:$VPS_PATH/tiles/"
+    "$TILES_DIR/" "$VPS_HOST:$VPS_PATH/tiles/"
 }
 
 push_data() {

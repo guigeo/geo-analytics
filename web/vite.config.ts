@@ -19,8 +19,9 @@ export default defineConfig({
       "/api": { target: "http://host.docker.internal:8000", changeOrigin: true },
     },
   },
-  // Em dev, os tiles são servidos de public/tiles. No build de produção NÃO os
-  // copiamos para o dist (são ~2 GB) — eles sobem para a VPS por rsync próprio
-  // e o Caddy serve em /tiles. Ver deploy/.
+  // Tiles não são build desta app: vivem no host de tiles compartilhado (fora do
+  // repositório) e chegam por `map/tileHost.ts`. O dist nunca os contém — na VPS
+  // quem serve /tiles é o Caddy, alimentado por rsync próprio. Ver deploy/ e
+  // ../webgis/docs/LOCAL.md.
   build: { copyPublicDir: false },
 });

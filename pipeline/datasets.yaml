@@ -3,7 +3,8 @@
 
 output:
   processed_dir: data/processed
-  tiles_dir: web/public/tiles
+  # tiles_dir nao mora aqui: os .pmtiles vao para o host de tiles compartilhado,
+  # que e configuracao de ambiente (GEO_TILES_DIR). Ver ../webgis/docs/LOCAL.md.
 
 datasets:
   - name: uf

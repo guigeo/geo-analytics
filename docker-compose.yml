@@ -17,10 +17,14 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/repo
+      - ${TILES_DIR:?defina TILES_DIR no .env (ver ../webgis/docs/LOCAL.md)}:/tiles
     working_dir: /repo/pipeline
     environment:
       # Sobrescreva para um build mais recente: https://maps.protomaps.com/builds/
       - PROTOMAPS_BUILD_URL=${PROTOMAPS_BUILD_URL:-}
+      # Os tiles saem do repositório: o pipeline escreve direto no diretório do
+      # host de tiles compartilhado, montado abaixo.
+      - GEO_TILES_DIR=/tiles
 
   web:
     image: node:20-slim
@@ -34,6 +38,10 @@ services:
 
   # Preview de producao: serve web/dist + tiles com o MESMO Caddy/config da VPS.
   # Exige um build antes (web/dist). Espelha o layout /var/www/geo da VPS.
+  #
+  # Os tiles vêm do host compartilhado (TILES_DIR), nao mais de web/public/tiles.
+  # Para exercitar o caminho de produção da VPS — app e tiles no mesmo domínio —
+  # rode o preview SEM VITE_TILES_BASE_URL no build.
   preview:
     image: caddy:2-alpine
     profiles: ["preview"]
@@ -41,7 +49,7 @@ services:
       - "8080:80"
     volumes:
       - ./web/dist:/srv/app:ro
-      - ./web/public/tiles:/srv/tiles:ro
+      - ${TILES_DIR:?defina TILES_DIR no .env (ver ../webgis/docs/LOCAL.md)}:/srv/tiles:ro
       - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
 
 volumes:

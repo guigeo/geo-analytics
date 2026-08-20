@@ -20,5 +20,9 @@ data/*
 !data/README.md
 
 # Saidas do ETL (geradas; nao versionar)
-web/public/tiles/*.pmtiles
 web/src/search/municipios.json
+
+# Tiles nao moram mais neste repositorio: vivem no host compartilhado
+# (TILES_DIR no .env; ver ../webgis/docs/LOCAL.md). Um .pmtiles aparecendo aqui
+# significa que alguem recriou a copia por aplicacao.
+*.pmtiles

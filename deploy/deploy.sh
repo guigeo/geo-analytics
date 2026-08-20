@@ -81,6 +81,15 @@ push_agent() {
     command -v \$HOME/.local/bin/uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
     cd $GEO_PATH/agent && \$HOME/.local/bin/uv sync --no-dev --python 3.12
   "
+  # O vigia roda de cron na VPS: o agente reinicia sozinho se morrer, mas ninguem
+  # avisa quando ele sobe SEM banco — e nesse estado o mapa segue no ar e so o chat
+  # morre, em silencio. Idempotente: reinstala a linha a cada deploy.
+  echo "▶ Instalando o cron do vigia (a cada 10 min)…"
+  ssh "$VPS_HOST" "
+    linha='*/10 * * * * \$HOME/$GEO_PATH/deploy/vigia-app.sh >> \$HOME/$GEO_PATH/vigia.log 2>&1'
+    ( crontab -l 2>/dev/null | grep -v 'vigia-app.sh' ; echo \"\$linha\" ) | crontab -
+  "
+
   echo "ℹ Primeira vez? Falta o passo ROOT (systemd + Caddy /api) — rode na SUA máquina:"
   echo "    ssh -t $VPS_HOST 'sudo bash ~/$GEO_PATH/deploy/setup-agent-vps.sh'"
   echo "  Nas demais vezes, só reinicie o serviço:"

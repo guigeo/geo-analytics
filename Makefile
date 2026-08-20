@@ -3,7 +3,7 @@
 
 VPS_HOST ?= hetzner-gramos
 
-.PHONY: help dev build preview ship ship-app ship-tiles ship-ia tiles down agent dev-ia
+.PHONY: help dev build preview ship ship-app ship-ia tiles down agent dev-ia
 
 help:            ## mostra os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -30,14 +30,11 @@ preview: build   ## valida o build em http://localhost:8080 (Caddy, IGUAL à VPS
 	docker compose --profile preview up preview
 
 # ── Manda pra VPS ─────────────────────────────────────────────────────────
-ship:            ## envia app + tiles para a VPS (build incluso)
+ship:            ## envia o app para a VPS (build incluso)
 	./deploy/deploy.sh all
 
 ship-app:        ## envia só o frontend (redeploy rápido de código)
 	./deploy/deploy.sh app
-
-ship-tiles:      ## envia só os tiles (~2 GB, incremental)
-	./deploy/deploy.sh tiles
 
 ship-ia:         ## envia o agente pra VPS (1ª vez exige setup sudo — ver deploy/)
 	./deploy/deploy.sh ia

@@ -5,9 +5,11 @@
 #   ./deploy/deploy.sh            # app + tiles (site estático)
 #   ./deploy/deploy.sh app        # só o frontend (rápido)
 #   ./deploy/deploy.sh tiles      # só os tiles (~2 GB)
-#   ./deploy/deploy.sh data       # parquets do agente (setor enxuto + censo) → ~/geo
-#   ./deploy/deploy.sh agent      # código do agente (query/ + agent/ + .env) + uv sync
-#   ./deploy/deploy.sh ia         # data + agent (fase 2.1; systemd/Caddy: setup-agent-vps.sh)
+#   ./deploy/deploy.sh ia         # código do agente (query/ + agent/ + .env) + uv sync
+#                                 # (systemd/Caddy na 1ª vez: setup-agent-vps.sh)
+#
+# Não há mais alvo `data`: o agente lê o geodata (PostGIS) por GEODATA_DSN, não
+# parquets copiados para a VPS. Ver ../webgis/docs/adr, passo 3 do roteiro.
 #
 # Variáveis:
 #   VPS_HOST  (opcional)  atalho ssh ou usuario@IP; padrão hetzner-gramos
@@ -50,24 +52,6 @@ push_tiles() {
     "$TILES_DIR/" "$VPS_HOST:$VPS_PATH/tiles/"
 }
 
-push_data() {
-  # setor "enxuto": o backend só usa CD_SETOR + geom_bbox — não sobe 1 GB de geometria.
-  echo "▶ Gerando setor enxuto (CD_SETOR + geom_bbox)…"
-  (cd query && uv run python -c "
-import duckdb
-duckdb.connect().execute('''
-  COPY (SELECT CD_SETOR, geom_bbox FROM read_parquet('../data/processed/setor.parquet'))
-  TO '../data/processed/setor_slim.parquet' (FORMAT PARQUET, COMPRESSION ZSTD)
-''')
-")
-  echo "▶ Enviando parquets → $VPS_HOST:$GEO_PATH/data/processed/…"
-  ssh "$VPS_HOST" "mkdir -p $GEO_PATH/data/processed"
-  rsync -avz data/processed/setor_slim.parquet \
-    "$VPS_HOST:$GEO_PATH/data/processed/setor.parquet"
-  rsync -avz data/processed/censo_setor.parquet data/processed/censo_municipio.parquet \
-    "$VPS_HOST:$GEO_PATH/data/processed/"
-}
-
 push_agent() {
   echo "▶ Enviando query/ + agent/ + deploy/ → $VPS_HOST:$GEO_PATH/…"
   ssh "$VPS_HOST" "mkdir -p $GEO_PATH"
@@ -76,10 +60,14 @@ push_agent() {
     --exclude '.ruff_cache' --exclude '.env' \
     query agent deploy "$VPS_HOST:$GEO_PATH/"
   if [[ -f agent/.env ]]; then
-    echo "▶ Enviando agent/.env (chave OpenAI)…"
+    # O agente nao sobe sem GEODATA_DSN desde que a fachada passou a ler PostGIS.
+    # Melhor parar aqui do que descobrir pelo systemd em restart loop na VPS.
+    grep -q '^GEODATA_DSN=' agent/.env \
+      || { echo "✗ agent/.env sem GEODATA_DSN — o serviço não sobe. Ver agent/.env.example" >&2; exit 1; }
+    echo "▶ Enviando agent/.env (chave OpenAI + GEODATA_DSN)…"
     rsync -avz agent/.env "$VPS_HOST:$GEO_PATH/agent/.env"
   else
-    echo "⚠ agent/.env não existe local — o serviço não sobe sem a chave."
+    echo "⚠ agent/.env não existe local — o serviço não sobe sem a chave e o DSN."
   fi
   echo "▶ uv sync no servidor (instala uv se preciso; python gerenciado 3.12)…"
   ssh "$VPS_HOST" "
@@ -96,11 +84,9 @@ push_agent() {
 case "$WHAT" in
   app)   build_app; push_app ;;
   tiles) push_tiles ;;
-  data)  push_data ;;
-  agent) push_agent ;;
-  ia)    push_data; push_agent ;;
+  agent|ia) push_agent ;;
   all)   build_app; push_app; push_tiles ;;
-  *) echo "alvo inválido: $WHAT (use: app | tiles | data | agent | ia | all)"; exit 1 ;;
+  *) echo "alvo inválido: $WHAT (use: app | tiles | agent | ia | all)"; exit 1 ;;
 esac
 
 echo "✔ Concluído."

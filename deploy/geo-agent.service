@@ -1,9 +1,8 @@
 # Unit do agente de IA (fase 2.1) — instalado por deploy/setup-agent-vps.sh (sudo)
 # em /etc/systemd/system/geo-agent.service na VPS.
 #
-# Layout na VPS (espelha o repo, para o db.py resolver data/processed):
+# Layout na VPS (espelha o repo; os dados vem do geodata por GEODATA_DSN no .env):
 #   /home/gramos/projects/geo/query/   /home/gramos/projects/geo/agent/ (.env com a chave)
-#   /home/gramos/projects/geo/data/processed/
 # O venv e criado no deploy (`uv sync`); o servico usa o binario direto do venv
 # (sem uv em runtime). So escuta em 127.0.0.1 — quem expoe e o Caddy (/api).
 

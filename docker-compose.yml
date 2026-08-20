@@ -25,6 +25,13 @@ services:
       # Os tiles saem do repositório: o pipeline escreve direto no diretório do
       # host de tiles compartilhado, montado abaixo.
       - GEO_TILES_DIR=/tiles
+      # Dado universal vem do geodata central, não de data/ (passo 4 do roteiro).
+      # Dentro do container o banco NÃO é localhost: use host.docker.internal.
+      - GEODATA_DSN=${GEODATA_DSN:-}
+    # host-gateway faz host.docker.internal existir também no Linux, onde ele não
+    # vem de graça como no Docker Desktop.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   web:
     image: node:20-slim

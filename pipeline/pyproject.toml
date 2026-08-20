@@ -5,6 +5,11 @@ description = "ETL geoespacial: fontes IBGE/antenas -> GeoParquet canonico -> PM
 requires-python = ">=3.11"
 dependencies = [
     "geopandas>=1.0",
+    # Piso explicito: a imagem base do GDAL roda Python 3.14, e shapely so publica
+    # wheel para cp314 a partir da 2.1.2. Sem ele o uv resolve 2.1.0, que compila
+    # do fonte — e o Dockerfile expurga o build-essential, entao o build da imagem
+    # falha com "aarch64-linux-gnu-gcc: No such file or directory".
+    "shapely>=2.1.2",
     "pyarrow>=16",
     "pyyaml>=6",
     "pydantic>=2",
@@ -18,11 +23,6 @@ geo-pipeline = "geo_pipeline.cli:main"
 dev = [
     "pytest>=8",
     "ruff>=0.6",
-]
-# Ferramenta de host p/ baixar dados externos (CNES/INEP via IPEA). NAO entra na imagem
-# do container (Dockerfile roda `uv sync --no-dev`, sem grupos extras).
-fetch = [
-    "geobr>=1.0.0",
 ]
 
 [build-system]

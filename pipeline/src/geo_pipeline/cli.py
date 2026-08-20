@@ -16,9 +16,9 @@ from pathlib import Path
 
 from .antennas import convert_antennas
 from .basemap import build_basemap
-from .points import convert_points
 from .config import DatasetConfig, OutputConfig, PipelineConfig, load_config
 from .convert import convert_dataset
+from .points import convert_points
 from .tiles import build_tiles
 
 log = logging.getLogger("geo_pipeline")

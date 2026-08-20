@@ -86,7 +86,7 @@ class DatasetConfig(BaseModel):
 
     def source_path(self) -> Path:
         if isinstance(self.source, GeodataSource):
-            raise ValueError(f"dataset {self.name!r} vem do geodata, nao de arquivo")
+            raise TypeError(f"dataset {self.name!r} vem do geodata, nao de arquivo")
         return _resolve(self.source)
 
     def processed_path(self, output: OutputConfig) -> Path:

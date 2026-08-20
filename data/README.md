@@ -1,28 +1,22 @@
-# Dados (fontes brutas)
+# Dados
 
-> Estes arquivos **não são versionados** (grandes e reproduzíveis). Veja `.gitignore`.
+> Nada aqui é versionado. Veja `.gitignore`.
 
-**Todo dado universal vem do geodata**, o PostGIS central, por `GEODATA_DSN` — as
-sete camadas do mapa, sem exceção. Não há mais fonte de arquivo neste registry, e
-isso é o passo 4 do roteiro do
-[ADR-0001](../../webgis/docs/adr/0001-arquitetura-e-convergencia.md) concluído: o
-dado que é igual para todo cliente existe uma vez só, e não uma cópia por aplicação.
-
-O caminho de fonte-arquivo continua no pipeline, e é o do **dado de cliente** — que
-pela regra 4 do ADR nunca entra no `geodata`. Hoje nenhum dataset o usa.
-
-O que ainda mora aqui:
+**Não há mais fonte bruta neste repositório.** Todo dado universal vem do geodata, o
+PostGIS central, por `GEODATA_DSN` — as sete camadas do mapa e a população que ordena
+o índice de busca. Passo 4 do roteiro do
+[ADR-0001](../../webgis/docs/adr/0001-arquitetura-e-convergencia.md) concluído, e com
+ele a pendência 3 do [HERANCA.md](../../webgis/docs/HERANCA.md): a curadoria do Censo
+tem um dono só.
 
 ```text
 data/
-├── censo_2022/   # CSVs do Censo, insumo do `census.py`
-└── processed/    # saídas do pipeline (GeoParquet), regeneráveis
+└── processed/   # saídas do pipeline (GeoParquet), regeneráveis a partir do banco
 ```
 
-O `censo_2022` sai quando a **pendência 3** do
-[HERANCA.md](../../webgis/docs/HERANCA.md) for resolvida: a curadoria do Censo tem
-dois donos hoje — `THEMES` aqui e `censo_nomes.tsv` no banco — e enquanto os dois
-existirem, um vai ficar para trás.
+O caminho de fonte-arquivo continua no pipeline (`source` como string em vez de
+`{kind: geodata}`), e é o do **dado de cliente** — que pela regra 4 do ADR nunca entra
+no `geodata`. Hoje nenhum dataset o usa.
 
-Os `.pmtiles` não moram aqui nem em lugar nenhum deste repositório: vão para o host
-de tiles compartilhado, em `TILES_DIR`. Rode `docker compose run --rm pipeline build`.
+Os `.pmtiles` vão para o host de tiles compartilhado, em `TILES_DIR`. Rode
+`docker compose run --rm pipeline build`.

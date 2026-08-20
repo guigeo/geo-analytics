@@ -1,12 +1,17 @@
-"""Indice de busca do front (municipios + UFs com bbox) a partir do GeoParquet canonico.
+"""Indice de busca do front (municipios + UFs com bbox), lido do geodata.
 
-Gera web/src/search/municipios.json (gitignored) — o Vite empacota como asset com hash,
-entao a busca funciona no site ESTATICO (sem backend). Ordenado por populacao (se
-censo_municipio.parquet existir) para as sugestoes mais provaveis virem primeiro.
+Gera web/src/search/municipios.json (gitignored) — o Vite empacota como asset com
+hash, entao a busca funciona no site ESTATICO (sem backend). Ordenado por populacao
+para as sugestoes mais provaveis virem primeiro.
+
+A populacao vinha de censo_municipio.parquet, que existia por causa do census.py,
+que existia por causa de 2 GB de CSV do Censo em data/ — tudo isso para UMA coluna
+de ordenacao. Agora vem de ibge_tabular.municipio_resumo, e a curadoria do Censo
+passa a ter um dono so: o geodata (pendencia 3 do webgis/docs/HERANCA.md).
 
 Formato compacto (arrays, bbox arredondado a 3 casas ~ 110 m):
   { "ufs": [{ "sigla", "nome", "bbox" }...],
-    "municipios": [[cd_mun, nome, sigla_uf, [w, s, e, n]]...] }
+    "municipios": [[cod_municipio, nome, sigla_uf, [w, s, e, n]]...] }
 """
 
 from __future__ import annotations
@@ -15,44 +20,38 @@ import json
 import logging
 from pathlib import Path
 
-from .config import OutputConfig, _resolve
+import psycopg
+
+from .config import _resolve, geodata_dsn
 
 log = logging.getLogger(__name__)
 
 OUT_REL = "web/src/search/municipios.json"
 
+# ST_Transform para 4326: o banco guarda em 4674 (SIRGAS 2000, o datum do IBGE) e o
+# mapa fala 4326. A diferenca e sub-metrica e sumiria no arredondamento de 3 casas,
+# mas declarar a projecao e mais barato que explicar depois por que nao esta la.
+CONSULTA = """
+    select m.cod_municipio, m.nome, m.sigla_uf, m.nome_uf,
+           ST_XMin(g.b), ST_YMin(g.b), ST_XMax(g.b), ST_YMax(g.b)
+    from ibge.municipio m
+    left join ibge_tabular.municipio_resumo r using (cod_municipio)
+    cross join lateral (select ST_Transform(m.geom, 4326) as b) g
+    order by r.pop_total desc nulls last, m.nome
+"""
 
-def build_search_index(output: OutputConfig) -> Path:
-    import duckdb
 
-    municipio = _resolve(output.processed_dir) / "municipio.parquet"
-    censo_mun = _resolve(output.processed_dir) / "censo_municipio.parquet"
-    if not municipio.exists():
-        raise SystemExit(f"{municipio} ausente. Rode `build --only municipio` antes.")
+def build_search_index() -> Path:
+    # As 2 areas operacionais (lagoas do RS) ficam de fora: elas estao em
+    # ibge.area_operacional, nao em ibge.municipio. Buscar municipio deve devolver
+    # municipio — no indice antigo, que saia do tile, as duas apareciam.
+    with psycopg.connect(geodata_dsn(), connect_timeout=5) as con:
+        raw = con.execute(CONSULTA).fetchall()
 
-    con = duckdb.connect()
-    pop_join, pop_order = "", "m.NM_MUN"
-    if censo_mun.exists():
-        pop_join = (
-            f"LEFT JOIN read_parquet('{censo_mun.as_posix()}') c ON c.cd_mun = m.CD_MUN"
-        )
-        pop_order = "c.pop_total DESC NULLS LAST, m.NM_MUN"
-
-    raw = con.execute(f"""
-        SELECT m.CD_MUN, m.NM_MUN, m.SIGLA_UF, m.NM_UF,
-               m.geometry_bbox.xmin, m.geometry_bbox.ymin,
-               m.geometry_bbox.xmax, m.geometry_bbox.ymax
-        FROM read_parquet('{municipio.as_posix()}') m {pop_join}
-        ORDER BY {pop_order}
-    """).fetchall()
-    # bbox e float32 no parquet: arredondar em Python (round do DuckDB deixa
-    # artefatos tipo -46.82600021362305, que dobram o tamanho do JSON).
     rows = [
-        (cd, nm, uf, nm_uf, round(float(w), 3), round(float(s), 3),
-         round(float(e), 3), round(float(n), 3))
+        (cd, nm, uf, nm_uf, round(w, 3), round(s, 3), round(e, 3), round(n, 3))
         for cd, nm, uf, nm_uf, w, s, e, n in raw
     ]
-
     municipios = [[cd, nm, uf, [w, s, e, n]] for cd, nm, uf, _, w, s, e, n in rows]
 
     ufs_agg: dict[str, dict] = {}

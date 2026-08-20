@@ -8,7 +8,7 @@ dependencies = [
     "pyarrow>=16",
     "pyyaml>=6",
     "pydantic>=2",
-    "duckdb>=1.5.4",
+    "psycopg[binary]>=3.2",
 ]
 
 [project.scripts]

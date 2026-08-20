@@ -53,10 +53,17 @@ def test_unknown_dataset_raises():
         cfg.dataset("inexistente")
 
 
-def test_uf_vem_do_geodata():
+@pytest.mark.parametrize("nome", ["uf", "municipio", "bairro"])
+def test_malhas_vem_do_geodata(nome):
     """Passo 4 do roteiro: dado universal sai de data/ e passa a vir do banco."""
+    ds = load_config().dataset(nome)
+    assert ds.do_geodata
+    assert isinstance(ds.source, GeodataSource)
+
+
+def test_uf_vem_do_geodata():
+    """Os apelidos do SQL sao o contrato com o frontend."""
     uf = load_config().dataset("uf")
-    assert uf.do_geodata
     assert isinstance(uf.source, GeodataSource)
     # Os apelidos sao o contrato com o frontend; sem aspas o Postgres minusculiza
     # e o mapa perde os campos que le.
@@ -83,3 +90,23 @@ def test_dsn_exige_ambiente(monkeypatch):
     monkeypatch.delenv("GEODATA_DSN", raising=False)
     with pytest.raises(ValueError, match="GEODATA_DSN"):
         geodata_dsn()
+
+
+def test_municipio_inclui_areas_operacionais():
+    """As 2 lagoas do RS saem de ibge.municipio no dado, mas seguem no MAPA.
+
+    Sem elas o sul do Brasil ganha dois buracos de 13.000 km2. Separadas no banco
+    para que join por codigo nunca devolva uma lagoa; unidas no tile porque tile e
+    desenho. 5.571 + 2 = 5.573, igual ao tile que esta em producao.
+    """
+    sql = load_config().dataset("municipio").source.sql
+    assert "ibge.area_operacional" in sql
+    assert "union all" in sql.lower()
+
+
+def test_bairro_traz_nome_de_municipio_por_join():
+    """CD_BAIRRO e NM_BAIRRO vivem em ibge.bairro; NM_MUN e NM_UF vem do join."""
+    sql = load_config().dataset("bairro").source.sql
+    assert "join ibge.municipio" in sql
+    for campo in ("CD_BAIRRO", "NM_BAIRRO", "NM_MUN", "NM_UF"):
+        assert f'as "{campo}"' in sql

@@ -52,11 +52,20 @@ datasets:
     tile: { minzoom: 5, maxzoom: 13 }
 
   - name: setor
-    source: data/setor_censitario/BR_setores_CD2022.gpkg
-    layer: BR_setores_CD2022
+    source:
+      kind: geodata
+      # Ao contrario de municipio, aqui as 2 lagoas do RS NAO entram. La elas sao
+      # area operacional com nome proprio e o municipio e a camada que desenha o
+      # contorno do pais; aqui sao preenchimento de malha — codigo terminado em
+      # zeros (430000100000000) e CD_MUN, NM_MUN e SITUACAO todos nulos. O tile
+      # atual as pinta como setor de popup vazio. 468.097 em vez de 468.099.
+      sql: >-
+        select s.cod_setor as "CD_SETOR", s.cod_municipio as "CD_MUN",
+               m.nome as "NM_MUN", s.situacao as "SITUACAO", s.geom
+        from ibge.setor_censitario s join ibge.municipio m using (cod_municipio)
     geometry: polygon
     attributes: [CD_SETOR, CD_MUN, NM_MUN, SITUACAO]
-    tile: { minzoom: 6, maxzoom: 14, simplification: 10 }   # camada critica (~473k)
+    tile: { minzoom: 6, maxzoom: 14, simplification: 10 }   # camada critica (~468k)
 
   - name: antenas
     source: data/antenas/antenas.csv

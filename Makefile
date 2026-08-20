@@ -39,7 +39,7 @@ ship-app:        ## envia só o frontend (redeploy rápido de código)
 ship-tiles:      ## envia só os tiles (~2 GB, incremental)
 	./deploy/deploy.sh tiles
 
-ship-ia:         ## envia dados + agente pra VPS (fase 2.1; 1ª vez exige setup sudo — ver deploy/)
+ship-ia:         ## envia o agente pra VPS (1ª vez exige setup sudo — ver deploy/)
 	./deploy/deploy.sh ia
 
 # ── ETL ───────────────────────────────────────────────────────────────────

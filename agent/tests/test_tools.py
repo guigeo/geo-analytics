@@ -1,4 +1,4 @@
-"""Tools contra o GeoQuery real (parquets em data/processed, como query/tests)."""
+"""Tools contra o GeoQuery real (geodata em PostGIS, como query/tests)."""
 
 from __future__ import annotations
 

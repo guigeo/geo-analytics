@@ -5,7 +5,7 @@
 # Layout na VPS:
 #   /var/www/geo/                 -> build do frontend (index.html, assets/…)
 #   /var/www/geo/tiles/*.pmtiles  -> tiles (enviados por rsync)
-#   /home/gramos/geo/             -> agente de IA + parquets (fase 2.1)
+#   /home/gramos/geo/             -> agente de IA (lê o geodata por GEODATA_DSN)
 
 geo-intelligence.averisen.com {
 	root * /var/www/geo

@@ -131,7 +131,7 @@ class RankingMunicipiosArgs(BaseModel):
 
 
 class SetoresProximosArgs(BaseModel):
-    """Setores censitários num raio (km) de um setor dado. Distância APROXIMADA por centroide."""
+    """Setores censitários num raio (km) de um setor dado. Distância exata, do polígono real."""
 
     cd_setor: str = Field(min_length=15, max_length=15)
     raio_km: float = Field(2.0, gt=0, le=50)
@@ -140,12 +140,23 @@ class SetoresProximosArgs(BaseModel):
 
 class SetoresNoPontoArgs(BaseModel):
     """Setores censitários num raio (km) de um ponto lon/lat — use o centro do viewport
-    para perguntas do tipo 'por aqui'. Distância APROXIMADA por centroide."""
+    para perguntas do tipo 'por aqui'. Distância exata, do polígono real."""
 
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
     raio_km: float = Field(2.0, gt=0, le=50)
     limite: int = Field(20, ge=1, le=100)
+
+
+class SetorQueContemArgs(BaseModel):
+    """O setor censitário que CONTÉM um ponto lon/lat — um só, não um raio.
+
+    Use para "em que setor fica este endereço/ponto?". Para "o que tem por aqui",
+    que é vizinhança, use setores_no_ponto.
+    """
+
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
 
 
 # --- resultado + dispatch -------------------------------------------------------
@@ -210,6 +221,17 @@ def _setores_no_ponto(gq: GeoQuery, a: SetoresNoPontoArgs) -> ToolResult:
     return ToolResult(payload=rows, camada="setor", codigos=_codes(rows, "cd_setor"), rows=rows)
 
 
+def _setor_que_contem(gq: GeoQuery, a: SetorQueContemArgs) -> ToolResult:
+    row = gq.setor_no_ponto(a.lon, a.lat)
+    if row is None:
+        return ToolResult(
+            payload={"erro": f"nenhum setor contém o ponto ({a.lon}, {a.lat})"}, error=True
+        )
+    return ToolResult(
+        payload=row, camada="setor", codigos=[str(row["cd_setor"])], rows=[row]
+    )
+
+
 Handler = Callable[[GeoQuery, Any], ToolResult]
 
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
@@ -220,6 +242,10 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "ranking_municipios": (RankingMunicipiosArgs, _ranking),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),
+    # Nome deliberadamente distante de setores_no_ponto: o LLM escolhe tool por nome
+    # e descricao, e dois nomes quase iguais para semanticas diferentes (contem x raio)
+    # sao convite a escolha errada.
+    "setor_que_contem": (SetorQueContemArgs, _setor_que_contem),
 }
 
 

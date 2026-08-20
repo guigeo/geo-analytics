@@ -38,7 +38,9 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(
             "OPENAI_API_KEY ausente. Copie agent/.env.example para agent/.env e preencha a chave."
         )
-    state["gq"] = GeoQuery()  # falha cedo e com instrucao se faltar GEODATA_DSN
+    # O DSN vem do settings (agent/.env): pydantic-settings popula `settings`, nao
+    # o ambiente do processo, entao a fachada nao o enxergaria sozinha.
+    state["gq"] = GeoQuery(dsn=settings.geodata_dsn or None)
     state["client"] = openai.OpenAI(api_key=settings.openai_api_key)
     state["store"] = SessionStore()
     state["limiter"] = RateLimiter()

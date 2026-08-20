@@ -172,3 +172,31 @@ def test_setores_no_ponto_nao_repete_setor(gq: GeoQuery) -> None:
     viz = gq.setores_no_ponto(-57.6528, -19.0086, raio_km=20.0, limite=500)
     codigos = [v["cd_setor"] for v in viz]
     assert len(codigos) == len(set(codigos))
+
+
+def test_dsn_explicito_tem_prioridade_sobre_o_ambiente(monkeypatch):
+    """O agente passa o DSN; a variavel de ambiente e o outro caminho.
+
+    Sem isso o agente nao sobe: ele le o proprio .env com pydantic-settings, que
+    popula `settings` e NAO o ambiente do processo — entao a fachada nao enxergava
+    o DSN e falhava no startup, pedindo uma variavel que o .env ja tinha.
+    """
+    from geo_query.db import dsn
+
+    monkeypatch.setenv("GEODATA_DSN", "postgresql://do-ambiente/x")
+    assert dsn("postgresql://do-chamador/y") == "postgresql://do-chamador/y"
+    assert dsn() == "postgresql://do-ambiente/x"
+
+    monkeypatch.delenv("GEODATA_DSN")
+    assert dsn("postgresql://do-chamador/y") == "postgresql://do-chamador/y"
+    with pytest.raises(RuntimeError, match="GEODATA_DSN"):
+        dsn()
+
+
+def test_geoquery_aceita_dsn():
+    """O caminho que o main.py do agente usa."""
+    import os
+
+    q = GeoQuery(dsn=os.environ["GEODATA_DSN"])
+    assert q.municipio("2400208")["nm_mun"] == "Assú"  # nome corrigido na malha 2025
+    q.close()

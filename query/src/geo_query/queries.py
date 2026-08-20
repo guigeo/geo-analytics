@@ -45,8 +45,8 @@ def _sem_acento(expr: str) -> sql.SQL:
 class GeoQuery:
     """Fachada de consulta sobre o geodata. Uma conexao, dois caminhos de leitura."""
 
-    def __init__(self, con: psycopg.Connection | None = None) -> None:
-        self.con = con or connect()
+    def __init__(self, con: psycopg.Connection | None = None, dsn: str | None = None) -> None:
+        self.con = con or connect(dsn)
         self._resumo: dict[str, set[str]] = {}
         self._variaveis: dict[str, str] = {}
         self._carrega_catalogo()

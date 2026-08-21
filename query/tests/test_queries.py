@@ -11,7 +11,10 @@ import os
 
 import pytest
 
+from psycopg import sql
+
 from geo_query import GeoQuery
+from geo_query.db import connect
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("GEODATA_DSN"),
@@ -262,3 +265,42 @@ def test_bairro_no_ponto(gq: GeoQuery) -> None:
 def test_bairro_no_ponto_fora_de_area_urbana_e_none(gq: GeoQuery) -> None:
     """A malha de bairros nao cobre o pais — devolver None ali e o comportamento, nao falha."""
     assert gq.bairro_no_ponto(-63.0, -4.0) is None  # meio do Amazonas
+
+
+# --- reconexao (defeito medido em 2026-08-20) ---------------------------------
+
+
+def test_reconecta_quando_a_conexao_foi_fechada() -> None:
+    """Conexao fechada por baixo nao pode virar erro permanente."""
+    q = GeoQuery()
+    assert q.municipio("4106902") is not None
+    q.con.close()
+    assert q.municipio("4106902") is not None  # reabre sozinha
+    q.close()
+
+
+def test_reconecta_quando_o_servidor_derruba_a_conexao() -> None:
+    """O caso real: o Postgres reinicia e mata a conexao do lado dele.
+
+    Antes desta correcao o agente ficava 500 para sempre — o banco voltava e ele
+    nao. Reproduzido em 2026-08-20 reiniciando o container do geodata com o agente
+    de pe; aqui o mesmo efeito sem depender do Docker, via pg_terminate_backend.
+    """
+    q = GeoQuery()
+    pid = q._rows(sql.SQL("select pg_backend_pid() as pid"), [])[0]["pid"]
+
+    carrasco = connect()
+    with carrasco.cursor() as cur:
+        cur.execute("select pg_terminate_backend(%s)", [pid])
+    carrasco.close()
+
+    assert q.municipio("4106902") is not None
+    q.close()
+
+
+def test_ping_tambem_reconecta() -> None:
+    """O /api/health chama ping(): ele precisa curar, nao so diagnosticar."""
+    q = GeoQuery()
+    q.con.close()
+    q.ping()
+    q.close()

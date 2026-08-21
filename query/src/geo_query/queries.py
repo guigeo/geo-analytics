@@ -19,6 +19,7 @@ passa a rotear sozinho.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any, Literal
 
 import psycopg
@@ -50,10 +51,38 @@ class GeoQuery:
     """Fachada de consulta sobre o geodata. Uma conexao, dois caminhos de leitura."""
 
     def __init__(self, con: psycopg.Connection | None = None, dsn: str | None = None) -> None:
+        # Guardamos o DSN e se a conexao e nossa: so reabrimos o que nos abrimos.
+        # Conexao injetada (teste, script) tem dono, e reabrir por baixo dele seria
+        # trocar o objeto que ele ainda segura.
+        self._dsn = dsn
+        self._propria = con is None
         self.con = con or connect(dsn)
         self._resumo: dict[str, set[str]] = {}
         self._variaveis: dict[str, str] = {}
         self._carrega_catalogo()
+
+    # --- conexao ------------------------------------------------------------
+
+    def _reabre(self) -> None:
+        """Descarta a conexao morta e abre outra. O catalogo nao e relido: ele
+        descreve o schema, que nao muda por reinicio de servidor."""
+        with contextlib.suppress(Exception):
+            self.con.close()
+        self.con = connect(self._dsn)
+
+    def _executa(self, consulta: sql.Composed | sql.SQL, params: list[Any]) -> list[dict[str, Any]]:
+        with self.con.cursor() as cur:
+            cur.execute(consulta, params)
+            return cur.fetchall()
+
+    def ping(self) -> None:
+        """Toca o banco pelo mesmo caminho das consultas — reconectando se preciso.
+
+        E o que o /api/health chama: health que espia o atributo `con` sem consultar
+        nao exercita a reconexao, e continuaria reportando doente um agente que ja
+        teria se curado na primeira pergunta.
+        """
+        self._executa_com_retomada(sql.SQL("select 1"), [])
 
     def _carrega_catalogo(self) -> None:
         """Le uma vez o que existe: colunas numericas dos resumos e as variaveis do Censo."""
@@ -89,9 +118,30 @@ class GeoQuery:
         return metrica in self._resumo[nivel]
 
     def _rows(self, consulta: sql.Composed | sql.SQL, params: list[Any]) -> list[dict[str, Any]]:
-        with self.con.cursor() as cur:
-            cur.execute(consulta, params)
-            return cur.fetchall()
+        return self._executa_com_retomada(consulta, params)
+
+    def _executa_com_retomada(
+        self, consulta: sql.Composed | sql.SQL, params: list[Any]
+    ) -> list[dict[str, Any]]:
+        """Uma tentativa, reconexao, e mais uma. Sem isso o agente morre de vez.
+
+        A conexao nasce no startup e vive enquanto o processo viver. Quando o Postgres
+        reinicia — restart do container, manutencao, queda —, ela morre com
+        AdminShutdown e NAO se recupera sozinha: todas as perguntas seguintes falham
+        com 500 ate alguem reiniciar o agente. Medido em 2026-08-20 reiniciando o
+        geodata com o agente de pe.
+
+        Repetir e seguro porque esta fachada so le (db.py): nao ha efeito a duplicar.
+        Uma unica repeticao, nao um laco — banco fora do ar deve degradar rapido, e o
+        connect_timeout de 5 s ja limita a espera.
+        """
+        try:
+            return self._executa(consulta, params)
+        except (psycopg.OperationalError, psycopg.InterfaceError):
+            if not self._propria:
+                raise
+            self._reabre()
+            return self._executa(consulta, params)
 
     # --- lookups -----------------------------------------------------------
 

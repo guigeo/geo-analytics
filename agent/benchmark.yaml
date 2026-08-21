@@ -150,3 +150,41 @@ casos:
       tool: setor_que_contem
       args: { lon: -46.6558, lat: -23.5614 }
       destaques: { camada: setor, contem_codigos: ["355030807000249"] }
+
+  # --- bairro (nivel acrescentado em 2026-08-20) -------------------------------
+  # BM-18 e o caso que originou o trabalho: usuarios perguntaram por bairro e o
+  # agente recusava, corretamente, porque nao tinha tool nenhuma de bairro.
+  - id: BM-18
+    pergunta: "Qual a população de Copacabana, no Rio de Janeiro?"
+    espera:
+      tool: buscar_bairro
+      args: { nome: "Copacabana", municipio: "Rio de Janeiro" }
+      destaques: { camada: bairro, contem_codigos: ["3304557018"] }
+
+  - id: BM-19
+    pergunta: "Quais os 5 bairros mais populosos de Curitiba?"
+    espera:
+      tool: ranking_bairros
+      args: { metrica: pop_total, n: 5 }
+      destaques: { camada: bairro, n_codigos: 5 }
+
+  - id: BM-20
+    pergunta: "Quais os 3 bairros com pior cobertura de esgoto em Salvador?"
+    espera:
+      tool: ranking_bairros
+      args: { metrica: pct_esgoto_rede, n: 3, ordem: asc }
+      destaques: { camada: bairro, n_codigos: 3 }
+
+  - id: BM-21
+    pergunta: "Em que bairro fica o ponto de longitude -43.18758 e latitude -22.97075?"
+    espera:
+      tool: bairro_que_contem
+      args: { lon: -43.18758, lat: -22.97075 }
+      destaques: { camada: bairro, contem_codigos: ["3304557018"] }
+
+  # A malha de bairros nao cobre o pais: em zona rural nao ha bairro, e o agente
+  # deve dizer isso em vez de tratar como falha.
+  - id: BM-22
+    pergunta: "Em que bairro fica o ponto de longitude -63.0 e latitude -4.0?"
+    espera:
+      resposta_contem: ["setor"]

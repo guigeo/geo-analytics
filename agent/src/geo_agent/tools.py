@@ -14,7 +14,7 @@ from typing import Any, Literal
 from geo_query import GeoQuery
 from pydantic import BaseModel, Field, ValidationError
 
-Camada = Literal["municipio", "setor"]
+Camada = Literal["municipio", "setor", "bairro"]
 
 UF_POR_SIGLA: dict[str, str] = {
     "AC": "Acre",
@@ -91,9 +91,9 @@ METRIC_LABELS: dict[str, str] = {
 
 
 class ListarMetricasArgs(BaseModel):
-    """Lista as métricas numéricas consultáveis do Censo 2022 (por município ou setor)."""
+    """Lista as métricas numéricas consultáveis do Censo 2022 (por município, bairro ou setor)."""
 
-    nivel: Literal["municipio", "setor"] = "municipio"
+    nivel: Literal["municipio", "setor", "bairro"] = "municipio"
 
 
 class BuscarMunicipioArgs(BaseModel):
@@ -153,6 +153,51 @@ class SetorQueContemArgs(BaseModel):
 
     Use para "em que setor fica este endereço/ponto?". Para "o que tem por aqui",
     que é vizinhança, use setores_no_ponto.
+    """
+
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+
+
+class BuscarBairroArgs(BaseModel):
+    """Busca bairros pelo nome (aceita sem acento) e resolve para o código IBGE.
+
+    Use SEMPRE que o usuário citar um bairro por nome. Nome de bairro repete muito
+    ("Centro" existe em quase toda cidade): informe `municipio` sempre que a pergunta
+    disser de onde é. Sem ele, os mais populosos do Brasil vêm primeiro.
+    """
+
+    nome: str = Field(min_length=2, description="Nome (ou parte) do bairro")
+    municipio: str | None = Field(None, description="Nome do município, para desambiguar")
+    uf: str | None = Field(None, description="UF para desambiguar, por nome ou sigla")
+
+
+class InfoBairroArgs(BaseModel):
+    """Todos os atributos do Censo 2022 de um bairro pelo código IBGE (10 dígitos)."""
+
+    cd_bairro: str = Field(min_length=10, max_length=10)
+
+
+class RankingBairrosArgs(BaseModel):
+    """Top-N bairros por uma métrica do Censo 2022, dentro de um município ou de uma UF.
+
+    Prefira filtrar por município (cd_mun, de buscar_municipio): sem recorte a
+    comparação é o Brasil inteiro, que quase nunca é a pergunta.
+    ordem='desc' = maiores primeiro; 'asc' = menores primeiro (ex.: pior cobertura).
+    """
+
+    metrica: str = Field(description="Métrica numérica; em dúvida, use listar_metricas antes")
+    cd_mun: str | None = Field(None, min_length=7, max_length=7, description="Código IBGE do município")
+    uf: str | None = Field(None, description="UF por nome ou sigla (ex.: 'Paraná' ou 'PR')")
+    n: int = Field(10, ge=1, le=100)
+    ordem: Literal["asc", "desc"] = "desc"
+
+
+class BairroQueContemArgs(BaseModel):
+    """O bairro que CONTÉM um ponto lon/lat — um só, não um raio.
+
+    A malha de bairros do IBGE só cobre onde há bairro: fora de área urbana mapeada
+    não há resposta, e isso não é erro.
     """
 
     lon: float = Field(ge=-180, le=180)
@@ -232,6 +277,40 @@ def _setor_que_contem(gq: GeoQuery, a: SetorQueContemArgs) -> ToolResult:
     )
 
 
+def _buscar_bairro(gq: GeoQuery, a: BuscarBairroArgs) -> ToolResult:
+    rows = gq.busca_bairros(a.nome, municipio=a.municipio, uf=normalize_uf(a.uf))
+    return ToolResult(payload=rows, camada="bairro", codigos=_codes(rows, "cd_bairro"), rows=rows)
+
+
+def _info_bairro(gq: GeoQuery, a: InfoBairroArgs) -> ToolResult:
+    row = gq.bairro(a.cd_bairro)
+    if row is None:
+        return ToolResult(payload={"erro": f"bairro {a.cd_bairro} não encontrado"}, error=True)
+    return ToolResult(payload=row, camada="bairro", codigos=[a.cd_bairro], rows=[row])
+
+
+def _ranking_bairros(gq: GeoQuery, a: RankingBairrosArgs) -> ToolResult:
+    rows = gq.ranking_bairros(
+        a.metrica, cd_mun=a.cd_mun, uf=normalize_uf(a.uf), n=a.n, ordem=a.ordem
+    )
+    return ToolResult(payload=rows, camada="bairro", codigos=_codes(rows, "cd_bairro"), rows=rows)
+
+
+def _bairro_que_contem(gq: GeoQuery, a: BairroQueContemArgs) -> ToolResult:
+    row = gq.bairro_no_ponto(a.lon, a.lat)
+    if row is None:
+        return ToolResult(
+            payload={
+                "erro": f"nenhum bairro contém o ponto ({a.lon}, {a.lat})",
+                "motivo": "a malha de bairros do IBGE cobre apenas área urbana mapeada",
+            },
+            error=True,
+        )
+    return ToolResult(
+        payload=row, camada="bairro", codigos=[str(row["cd_bairro"])], rows=[row]
+    )
+
+
 Handler = Callable[[GeoQuery, Any], ToolResult]
 
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
@@ -240,6 +319,10 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "info_municipio": (InfoMunicipioArgs, _info_municipio),
     "info_setor": (InfoSetorArgs, _info_setor),
     "ranking_municipios": (RankingMunicipiosArgs, _ranking),
+    "buscar_bairro": (BuscarBairroArgs, _buscar_bairro),
+    "info_bairro": (InfoBairroArgs, _info_bairro),
+    "ranking_bairros": (RankingBairrosArgs, _ranking_bairros),
+    "bairro_que_contem": (BairroQueContemArgs, _bairro_que_contem),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),
     # Nome deliberadamente distante de setores_no_ponto: o LLM escolhe tool por nome

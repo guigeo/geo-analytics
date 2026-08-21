@@ -102,3 +102,69 @@ def test_tool_desconhecida(gq: GeoQuery) -> None:
 def test_args_invalidos(gq: GeoQuery) -> None:
     r = execute_tool(gq, "ranking_municipios", json.dumps({"metrica": "pop_total", "n": 0}))
     assert r.error and r.payload["erro"] == "argumentos inválidos"
+
+
+# --- bairro (tools acrescentadas em 2026-08-20) -------------------------------
+
+BAIRRO_COPACABANA = "3304557018"
+CD_MUN_RIO = "3304557"
+
+
+def test_listar_metricas_aceita_bairro(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "listar_metricas", json.dumps({"nivel": "bairro"}))
+    assert not r.error
+    assert "pop_total" in {m["campo"] for m in r.payload}
+
+
+def test_buscar_bairro_pinta_a_camada_bairro(gq: GeoQuery) -> None:
+    """O defeito de origem era o mapa nao ter como pintar bairro: camada e codigos juntos."""
+    r = execute_tool(
+        gq, "buscar_bairro", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"})
+    )
+    assert not r.error
+    assert r.camada == "bairro"
+    assert r.codigos == [BAIRRO_COPACABANA]
+
+
+def test_info_bairro(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "info_bairro", json.dumps({"cd_bairro": BAIRRO_COPACABANA}))
+    assert not r.error
+    assert r.payload["nm_bairro"] == "Copacabana"
+    assert r.payload["pop_total"] > 100_000
+    assert r.camada == "bairro"
+
+
+def test_info_bairro_codigo_inexistente_vira_erro_legivel(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "info_bairro", json.dumps({"cd_bairro": "0000000000"}))
+    assert r.error
+    assert "não encontrado" in r.payload["erro"]
+
+
+def test_ranking_bairros(gq: GeoQuery) -> None:
+    r = execute_tool(
+        gq, "ranking_bairros", json.dumps({"metrica": "pop_total", "cd_mun": CD_MUN_RIO, "n": 5})
+    )
+    assert not r.error
+    assert r.camada == "bairro"
+    assert len(r.codigos) == 5
+
+
+def test_bairro_que_contem(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "bairro_que_contem", json.dumps({"lon": -43.18758, "lat": -22.97075}))
+    assert not r.error
+    assert r.payload["nm_bairro"] == "Copacabana"
+
+
+def test_bairro_que_contem_fora_da_malha_explica_o_motivo(gq: GeoQuery) -> None:
+    """Erro que ensina: o LLM precisa saber que e cobertura da malha, nao falha de consulta."""
+    r = execute_tool(gq, "bairro_que_contem", json.dumps({"lon": -63.0, "lat": -4.0}))
+    assert r.error
+    assert "área urbana" in r.payload["motivo"]
+
+
+def test_metrica_invalida_lista_as_validas(gq: GeoQuery) -> None:
+    r = execute_tool(
+        gq, "ranking_bairros", json.dumps({"metrica": "pib_per_capita", "cd_mun": CD_MUN_RIO})
+    )
+    assert r.error
+    assert "pop_total" in r.payload["erro"]

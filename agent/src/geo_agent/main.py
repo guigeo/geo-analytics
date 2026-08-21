@@ -66,9 +66,10 @@ def health(response: Response) -> dict[str, str]:
     agente incapaz de responder qualquer pergunta.
     """
     try:
-        with state["gq"].con.cursor() as cur:
-            cur.execute("select 1")
-            cur.fetchone()
+        # ping() e nao um cursor cru: e o mesmo caminho das consultas, entao ele
+        # tambem RECONECTA se a conexao morreu. Health que so espia reportaria
+        # doente um agente capaz de se curar na proxima pergunta.
+        state["gq"].ping()
         banco = "ok"
     except Exception as exc:  # noqa: BLE001 - o motivo vai no corpo, nao no log
         banco = f"erro: {type(exc).__name__}"

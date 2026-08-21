@@ -200,3 +200,65 @@ def test_geoquery_aceita_dsn():
     q = GeoQuery(dsn=os.environ["GEODATA_DSN"])
     assert q.municipio("2400208")["nm_mun"] == "Assú"  # nome corrigido na malha 2025
     q.close()
+
+
+# --- bairro (nivel acrescentado em 2026-08-20) --------------------------------
+
+
+def test_bairro_lookup_tem_as_mesmas_metricas_do_municipio(gq: GeoQuery) -> None:
+    """bairro_resumo nao e um recorte menor: o que responde de municipio responde de bairro."""
+    assert set(gq.metricas("bairro")) == set(gq.metricas("municipio"))
+
+
+def test_bairro_lookup(gq: GeoQuery) -> None:
+    b = gq.bairro("3304557018")  # Copacabana, Rio de Janeiro
+    assert b is not None
+    assert b["nm_bairro"] == "Copacabana"
+    assert b["nm_mun"] == "Rio de Janeiro"
+    assert b["nm_uf"] == "Rio de Janeiro"
+    assert b["pop_total"] > 100_000
+    assert b["lon"] is not None and b["lat"] is not None
+
+
+def test_busca_bairros_filtra_por_municipio(gq: GeoQuery) -> None:
+    """'Centro' existe em quase toda cidade — sem o filtro a resposta e outra."""
+    curitiba = gq.busca_bairros("Centro", municipio="Curitiba")
+    assert curitiba and all(r["nm_mun"] == "Curitiba" for r in curitiba)
+
+    brasil = gq.busca_bairros("Centro")
+    assert len(brasil) > 1
+    # Sem filtro, os mais populosos primeiro (ordem decrescente, nulos por ultimo).
+    pops = [r["pop_total"] for r in brasil if r["pop_total"] is not None]
+    assert pops == sorted(pops, reverse=True)
+
+
+def test_busca_bairros_exato_antes_de_substring(gq: GeoQuery) -> None:
+    """Mesmo contrato do municipio: nome igual ganha de nome que contem."""
+    r = gq.busca_bairros("Copacabana", municipio="Rio de Janeiro")
+    assert [x["nm_bairro"] for x in r] == ["Copacabana"]
+
+
+def test_ranking_bairros_no_municipio(gq: GeoQuery) -> None:
+    top = gq.ranking_bairros("pop_total", cd_mun="3304557", n=5)
+    assert len(top) == 5
+    assert all(r["nm_mun"] == "Rio de Janeiro" for r in top)
+    valores = [r["valor"] for r in top]
+    assert valores == sorted(valores, reverse=True)
+
+
+def test_ranking_bairros_ordem_asc(gq: GeoQuery) -> None:
+    piores = gq.ranking_bairros("pct_esgoto_rede", cd_mun="3304557", n=3, ordem="asc")
+    valores = [r["valor"] for r in piores]
+    assert valores == sorted(valores)
+
+
+def test_bairro_no_ponto(gq: GeoQuery) -> None:
+    copa = gq.bairro("3304557018")
+    achado = gq.bairro_no_ponto(copa["lon"], copa["lat"])
+    assert achado is not None
+    assert achado["cd_bairro"] == copa["cd_bairro"]
+
+
+def test_bairro_no_ponto_fora_de_area_urbana_e_none(gq: GeoQuery) -> None:
+    """A malha de bairros nao cobre o pais — devolver None ali e o comportamento, nao falha."""
+    assert gq.bairro_no_ponto(-63.0, -4.0) is None  # meio do Amazonas

@@ -17,8 +17,8 @@
 
 	# Endurecimento — o MESMO do deploy/Caddyfile, com uma diferença LOCAL: o
 	# connect-src aceita o host de tiles local (:8081), que o build de dev usa.
-	# É aqui que a CSP se prova antes de ir para a VPS: abra :8080 e olhe o
-	# console — em Report-Only, violação aparece sem quebrar nada.
+	# Aqui a CSP também é enforcing: se uma origem nova entrar no app, é para
+	# quebrar no preview, não em produção.
 	header {
 		# O Caddy anuncia a si mesmo por padrão. Versão de servidor é informação
 		# para quem varre, não para quem navega.
@@ -39,7 +39,7 @@
 		# browser NÃO bloqueia nada e denuncia no console o que bloquearia. Vira
 		# `Content-Security-Policy` (sem o sufixo) depois de uma passagem pelo
 		# preview local com o console limpo — ver HERANCA §7, pendência 1.
-		Content-Security-Policy-Report-Only "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' http://localhost:8081 https://tiles.averisen.com https://protomaps.github.io"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' http://localhost:8081 https://tiles.averisen.com https://protomaps.github.io"
 	}
 
 	# Tiles → volume próprio (strip do prefixo /tiles).

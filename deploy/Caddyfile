@@ -46,11 +46,11 @@ geo-intelligence.averisen.com {
 		Permissions-Policy "camera=(), geolocation=(), microphone=()"
 		Cross-Origin-Opener-Policy "same-origin"
 		Cross-Origin-Resource-Policy "same-origin"
-		# ⚠️ REPORT-ONLY de propósito: a CSP é o único header aqui capaz de apagar
-		# o mapa, e provar que ela não apaga exige um navegador. Em Report-Only o
-		# browser NÃO bloqueia nada e denuncia no console o que bloquearia. Vira
-		# `Content-Security-Policy` (sem o sufixo) depois de uma passagem pelo
-		# preview local com o console limpo — ver HERANCA §7, pendência 1.
-		Content-Security-Policy-Report-Only "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.averisen.com https://protomaps.github.io"
+		# ENFORCING desde 2026-08-22. Entrou em Report-Only no mesmo dia — é o único
+		# header aqui capaz de apagar o mapa — e virou bloqueio de verdade depois de
+		# uma navegação real no site publicado, com camadas, satélite, busca e chat,
+		# sem uma violação no console. Se algum dia faltar origem, o sintoma é mapa
+		# ou basemap sumindo, e o console diz qual diretiva barrou. Ver HERANCA §7.
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.averisen.com https://protomaps.github.io"
 	}
 }

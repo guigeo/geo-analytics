@@ -57,8 +57,10 @@ def normalize_uf(uf: str | None) -> str | None:
     return UF_POR_SIGLA.get(uf.strip().upper(), uf.strip())
 
 
-# Rotulos legiveis (PT-BR) das colunas curadas do Censo 2022 (espelha
-# pipeline/src/geo_pipeline/census.py THEMES + DERIVED) — fonte unica pro
+# Rotulos legiveis (PT-BR) das colunas curadas do Censo 2022. A CURADORIA (quais
+# variaveis existem) e do geodata — servidor-dados-gis/cargas/censo_nomes.tsv, 41
+# delas; aqui e so a apresentacao do nome. Ate 2026-08-20 isto espelhava um THEMES
+# do pipeline, que nao existe mais — fonte unica pro
 # glossario no system prompt e pro payload de listar_metricas, pra o LLM nunca
 # precisar (nem arriscar esquecer de) inventar a traducao do nome cru da coluna.
 METRIC_LABELS: dict[str, str] = {

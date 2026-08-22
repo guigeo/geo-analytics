@@ -76,21 +76,13 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   (registry declarativo: 1 entrada por camada → adicionar dataset = editar YAML, sem refactor).
   - `convert.py` usa **`ogr2ogr` (streaming)** p/ converter arquivos grandes sem OOM (reprojeta a EPSG:4326).
   - `antennas.py` parseia CSV de pontos. `tiles.py` chama `tippecanoe`. `basemap.py` extrai recorte Protomaps.
-  - `census.py` (DuckDB) ingere os CSVs do Censo 2022 (`data/censo_2022/`) → tabela canônica de
-    atributos `censo_setor.parquet` (sem geometria, chave `cd_setor`). Variáveis curadas em `THEMES`
-    (adicionar variável = editar o dict; adicionar tema = 1 entrada nova em `THEMES`, sem tocar
-    `query/`/`agent/` — `GeoQuery.metricas()` lê o schema dinamicamente). 6 temas hoje: básico,
-    demografia, cor/raça, domicílio1/2, **renda_responsavel** (renda média/mediana mensal do
-    responsável pelo domicílio — IBGE, publicado 08/05/2026, fora do release padrão de
-    "Agregados por Setores Censitários"). `census-municipio` agrega por `cd_mun` →
-    `censo_municipio.parquet` (contagens somam; `media_moradores`/`renda_media`/`renda_mediana`
-    ponderadas via `WEIGHTED`; densidade/percentuais recalculados via `DERIVED`). Geometria +
-    censo se juntam por `cd_setor`/`cd_mun` em query-time (Fase 2).
-  - **Produção (censo):** os parquets canônicos USADOS (`censo_setor`, `censo_municipio`) são
-    artefatos de produção — sobem via `deploy.sh data` (`make ship-ia`). FICAM locais: os CSVs brutos
-    de `data/censo_2022/` (fonte reproduzível), o domicílio3 (baixado e não usado) e os temas do
-    Censo 2022 ainda não baixados (ex.: alfabetização/instrução, migração, nupcialidade — ver
-    dicionário de dados no diretório do IBGE).
+  - **A curadoria do Censo não mora mais aqui.** O `census.py` (DuckDB sobre CSV) foi
+    removido no passo 4 do roteiro, em 2026-08-20: as camadas passaram a sair do `geodata`
+    por consulta declarada no `datasets.yaml`, e `data/` deixou de guardar fonte bruta. A
+    escolha de variáveis vive num lugar só — `servidor-dados-gis/cargas/censo_nomes.tsv`,
+    41 variáveis, conferidas contra o banco em 2026-08-22 (41 distintas no formato longo).
+    Acrescentar variável é uma linha lá, não um dict aqui. Era a pendência 3 do
+    `webgis/docs/HERANCA.md`, e ela fecha por não existir mais o segundo dono.
   - venv fica em `/opt/venv` no container (fora do bind mount) — ver `Dockerfile`.
 - **`web/`** — React/Vite/TS. `map/layers.ts` define as camadas; `map/basemap.ts` monta o
   basemap vetorial (Protomaps) e o satélite (raster XYZ Esri World Imagery, sem API key) —
@@ -129,8 +121,8 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
-  `tools.py` também guarda `METRIC_LABELS` (coluna → rótulo PT-BR, espelha `THEMES`/`DERIVED`
-  do pipeline) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna
+  `tools.py` também guarda `METRIC_LABELS` (coluna → rótulo PT-BR das colunas curadas do
+  Censo) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna
   na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve
   `{campo, rotulo}`. Além do loop de chat, `main.py` expõe `GET /api/geocode` — proxy pro
   Nominatim/OSM pra busca de endereço do front (rate limit próprio por IP, separado do chat).

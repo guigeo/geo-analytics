@@ -1,11 +1,11 @@
 import type { FilterSpecification, LayerSpecification, Map } from "maplibre-gl";
 
-// Destaques do agente (Fase 2): pinta municipios/bairros/setores POR CODIGO via filtro nas
+// Destaques do agente (Fase 2): pinta municipios/distritos/bairros/setores POR CODIGO via filtro nas
 // proprias fontes PMTiles. Diferente do selection.ts (clique), nao depende de
 // queryRenderedFeatures — funciona para codigos fora do viewport atual, e as camadas
 // ficam sempre visiveis (independem do toggle da camada base).
 export interface Destaques {
-  camada: "municipio" | "setor" | "bairro";
+  camada: "municipio" | "setor" | "bairro" | "distrito";
   codigos: string[];
 }
 
@@ -13,6 +13,7 @@ const CODE_FIELDS = {
   municipio: "CD_MUN",
   setor: "CD_SETOR",
   bairro: "CD_BAIRRO",
+  distrito: "CD_DIST",
 } as const;
 
 const HIGHLIGHT = "#00b3ff";

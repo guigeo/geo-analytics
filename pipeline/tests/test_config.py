@@ -12,7 +12,7 @@ from geo_pipeline.config import GeodataSource, PipelineConfig, geodata_dsn, load
 def test_load_real_registry():
     cfg = load_config()
     names = {ds.name for ds in cfg.datasets}
-    assert {"uf", "municipio", "bairro", "setor", "antenas"} <= names
+    assert {"uf", "municipio", "distrito", "bairro", "setor", "antenas"} <= names
 
 
 def test_dataset_lookup_and_paths(monkeypatch):
@@ -61,7 +61,8 @@ def test_unknown_dataset_raises():
 
 
 @pytest.mark.parametrize(
-    "nome", ["uf", "municipio", "bairro", "setor", "antenas", "rodovias", "ferrovias"]
+    "nome",
+    ["uf", "municipio", "distrito", "bairro", "setor", "antenas", "rodovias", "ferrovias"],
 )
 def test_malhas_vem_do_geodata(nome):
     """Passo 4 do roteiro: dado universal sai de data/ e passa a vir do banco."""
@@ -127,6 +128,15 @@ def test_bairro_traz_nome_de_municipio_por_join():
     sql = load_config().dataset("bairro").source.sql
     assert "join ibge.municipio" in sql
     for campo in ("CD_BAIRRO", "NM_BAIRRO", "NM_MUN", "NM_UF"):
+        assert f'as "{campo}"' in sql
+
+
+def test_distrito_traz_nome_de_municipio_por_join():
+    """CD_DIST e NM_DIST sao os nomes do IBGE na malha de distritos (cd_dist/nm_dist),
+    pelo mesmo criterio que deu CD_BAIRRO ao bairro. NM_MUN e NM_UF vem do join."""
+    sql = load_config().dataset("distrito").source.sql
+    assert "join ibge.municipio" in sql
+    for campo in ("CD_DIST", "NM_DIST", "CD_MUN", "NM_MUN", "NM_UF"):
         assert f'as "{campo}"' in sql
 
 

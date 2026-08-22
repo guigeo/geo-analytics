@@ -38,6 +38,31 @@ datasets:
     attributes: [CD_MUN, NM_MUN, SIGLA_UF, NM_UF]
     tile: { minzoom: 0, maxzoom: 10 }
 
+  - name: distrito
+    source:
+      kind: geodata
+      # Nome de municipio e de UF vem do join, como no bairro. O tile publica CD_DIST/
+      # NM_DIST porque e assim que o IBGE nomeia na malha de distritos (cd_dist/nm_dist)
+      # — o mesmo criterio que deu CD_BAIRRO ao bairro.
+      #
+      # As 2 areas operacionais do RS nao aparecem aqui: a carga do geodata ja as
+      # descartou desta malha (elas vem sem cd_mun) e elas ja sao desenhadas pela
+      # camada de municipio.
+      sql: >-
+        select d.cod_distrito as "CD_DIST", d.nome as "NM_DIST",
+               d.cod_municipio as "CD_MUN", m.nome as "NM_MUN", m.nome_uf as "NM_UF",
+               d.geom
+        from ibge.distrito d join ibge.municipio m using (cod_municipio)
+    geometry: polygon
+    attributes: [CD_DIST, NM_DIST, CD_MUN, NM_MUN, NM_UF]
+    # Sem simplification, como o municipio — e a decisao custa 42 MB de proposito.
+    # Medido em 2026-08-22: 96,1 MB assim, 54,1 MB com simplification=10. O contorno
+    # externo dos distritos de um municipio E o contorno do municipio, e simplificar
+    # so um dos dois separa em tela duas linhas que sao a mesma linha. Os 42 MB saem
+    # de um tile compartilhado por todos os clientes (passo 1 do roteiro), ao lado de
+    # 591 MB de setor — nao e onde o disco da VPS se decide.
+    tile: { minzoom: 4, maxzoom: 12 }
+
   - name: bairro
     source:
       kind: geodata

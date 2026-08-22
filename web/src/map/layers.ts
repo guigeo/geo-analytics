@@ -75,6 +75,21 @@ export const LAYERS: DataLayer[] = [
     ],
   },
   {
+    id: "distrito",
+    label: "Distrito",
+    sourceLayer: "distrito",
+    geometry: "polygon",
+    color: "#b8577d",
+    fillOpacity: 0.16,
+    outline: { color: "#8f3a5c", width: 0.8 },
+    defaultVisible: false,
+    attributes: [
+      { key: "NM_DIST", label: "Distrito" },
+      { key: "NM_MUN", label: "Município" },
+      { key: "NM_UF", label: "UF" },
+    ],
+  },
+  {
     id: "bairro",
     label: "Bairro",
     sourceLayer: "bairro",

@@ -85,10 +85,22 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "?"
 
 
+def _limite_estourado(limiter: RateLimiter, ip: str) -> HTTPException:
+    # Retry-After vem do endurecimento do gateway (HERANCA, pendencia 1): o Nginx do
+    # webgis-core mandava 1 fixo, mas quem sabe o numero certo e o limitador — e o
+    # limite mora aqui, nao no Caddy, que nao tem rate limit sem plugin.
+    return HTTPException(
+        status_code=429,
+        detail=MSG_RATE_LIMIT,
+        headers={"Retry-After": str(limiter.segundos_para_liberar(ip))},
+    )
+
+
 @app.post("/api/chat")
 def chat(req: ChatRequest, request: Request) -> ChatResponse:
-    if not state["limiter"].allow(_client_ip(request)):
-        raise HTTPException(status_code=429, detail=MSG_RATE_LIMIT)
+    ip = _client_ip(request)
+    if not state["limiter"].allow(ip):
+        raise _limite_estourado(state["limiter"], ip)
     try:
         return run_turn(state["gq"], state["client"], state["store"], req)
     except openai.OpenAIError:
@@ -98,8 +110,9 @@ def chat(req: ChatRequest, request: Request) -> ChatResponse:
 
 @app.get("/api/geocode")
 def geocode(q: str, request: Request) -> list[GeocodeHit]:
-    if not state["geocode_limiter"].allow(_client_ip(request)):
-        raise HTTPException(status_code=429, detail=MSG_RATE_LIMIT)
+    ip = _client_ip(request)
+    if not state["geocode_limiter"].allow(ip):
+        raise _limite_estourado(state["geocode_limiter"], ip)
     if len(q.strip()) < 3:
         return []
     try:

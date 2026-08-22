@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -89,6 +90,19 @@ class RateLimiter:
             return False
         q.append(t)
         return True
+
+    def segundos_para_liberar(self, key: str, now: float | None = None) -> int:
+        """Quanto falta ate a chave voltar a ser aceita — o valor do Retry-After.
+
+        Sem isto o 429 diz "tente mais tarde" sem dizer quando, e cliente educado
+        vira cliente que repete em loop. E a janela deslizante: libera quando o hit
+        mais antigo sai dela, nao quando a janela inteira passa.
+        """
+        t = time.monotonic() if now is None else now
+        q = self._hits.get(key)
+        if not q:
+            return 0
+        return max(1, math.ceil(self.window_s - (t - q[0])))
 
 
 def _user_content(pergunta: str, ctx: ContextoMapa | None) -> str:

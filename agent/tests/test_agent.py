@@ -151,6 +151,18 @@ def test_rate_limiter_janela_deslizante() -> None:
     assert rl.allow("ip1", now=11.5)  # 1a hit expirou -> libera de novo
 
 
+def test_retry_after_conta_a_janela_deslizante() -> None:
+    # O 429 precisa dizer QUANDO tentar: sem numero, cliente educado repete em loop.
+    # E a conta e do hit mais antigo saindo da janela, nao da janela inteira.
+    rl = RateLimiter(max_requests=2, window_s=10)
+    assert rl.segundos_para_liberar("ip1") == 0  # nunca pediu nada
+    rl.allow("ip1", now=0.0)
+    rl.allow("ip1", now=1.0)
+    assert not rl.allow("ip1", now=4.0)
+    assert rl.segundos_para_liberar("ip1", now=4.0) == 6  # 10 - (4 - 0)
+    assert rl.segundos_para_liberar("ip1", now=9.9) == 1  # nunca devolve 0 estourado
+
+
 def test_trim_corta_em_fronteira_de_turno(gq: GeoQuery) -> None:
     store = SessionStore(max_msgs=4)
     client = FakeClient([texto(f"r{i}") for i in range(4)])

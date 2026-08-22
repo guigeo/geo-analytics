@@ -1,30 +1,56 @@
 # Bloco de site do Geo Intelligence — APÊNDICE ao /etc/caddy/Caddyfile da VPS.
 # A VPS já roda Caddy servindo outros sites; NÃO substitua o arquivo, apenas
-# acrescente este bloco. Ver deploy/README.md (Fase 5).
+# acrescente este bloco. Ver deploy/README.md.
+#
+# Este arquivo é a FONTE do que está em produção. Em 2026-08-20 ele ficou para
+# trás: os tiles saíram daqui para tiles.averisen.com, o bloco foi corrigido à mão
+# na VPS e ninguém trouxe a correção de volta. Descoberto em 2026-08-22 por um diff
+# contra o servidor. Editar aqui, mandar para lá — nunca o contrário.
 #
 # Layout na VPS:
-#   /var/www/geo/                 -> build do frontend (index.html, assets/…)
-#   /var/www/geo/tiles/*.pmtiles  -> tiles (enviados por rsync)
-#   /home/gramos/geo/             -> agente de IA (lê o geodata por GEODATA_DSN)
+#   /var/www/geo/       -> build do frontend (index.html, assets/…)
+#   /home/gramos/projects/geo/ -> agente de IA (lê o geodata por GEODATA_DSN)
+#   os tiles NÃO moram aqui: host compartilhado, ver ../../webgis/docs/VPS.md
 
 geo-intelligence.averisen.com {
-	root * /var/www/geo
-	file_server
-
-	# Chat IA (fase 2.1): agente FastAPI local (systemd geo-agent, :8000)
+	# Chat IA: agente FastAPI local (systemd geo-agent, :8000).
 	@api path /api/*
 	reverse_proxy @api 127.0.0.1:8000
 
-	# Comprime tudo MENOS os tiles. PMTiles usa HTTP Range requests — comprimir
-	# on-the-fly quebraria os ranges (e mandaria o arquivo inteiro por requisição).
-	@notiles not path /tiles/*
-	encode @notiles gzip zstd
+	root * /var/www/geo
+	file_server
 
-	# Tiles: grandes e imutáveis — cache longo no navegador (range já funciona).
-	@tiles path /tiles/*
-	header @tiles Cache-Control "public, max-age=2592000, immutable"
+	# Os tiles não são mais servidos daqui: vivem em tiles.averisen.com, o host
+	# compartilhado. A compressão volta a ser irrestrita — não há mais Range de
+	# PMTiles neste site para proteger.
+	encode gzip zstd
 
 	# Assets com hash no nome: cache agressivo.
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Endurecimento portado do Nginx do webgis-core — pendência 1 do HERANCA. O
+	# conteúdo é o de lá; o servidor é este, porque é este que está de pé.
+	header {
+		# O Caddy anuncia a si mesmo por padrão. Versão de servidor é informação
+		# para quem varre, não para quem navega.
+		-Server
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		# Zero DESLIGA o auditor legado do XSS, que é o recomendado: ele próprio
+		# já foi vetor. A defesa é a CSP abaixo.
+		X-XSS-Protection "0"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Nada no app usa câmera, microfone ou localização — verificado no código
+		# antes de bloquear.
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		# ⚠️ REPORT-ONLY de propósito: a CSP é o único header aqui capaz de apagar
+		# o mapa, e provar que ela não apaga exige um navegador. Em Report-Only o
+		# browser NÃO bloqueia nada e denuncia no console o que bloquearia. Vira
+		# `Content-Security-Policy` (sem o sufixo) depois de uma passagem pelo
+		# preview local com o console limpo — ver HERANCA §7, pendência 1.
+		Content-Security-Policy-Report-Only "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.averisen.com https://protomaps.github.io"
+	}
 }

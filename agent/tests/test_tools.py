@@ -168,3 +168,65 @@ def test_metrica_invalida_lista_as_validas(gq: GeoQuery) -> None:
     )
     assert r.error
     assert "pop_total" in r.payload["erro"]
+
+
+# --- distrito (tools acrescentadas em 2026-08-22) -----------------------------
+
+DIST_SE_SP = "355030878"
+CD_MUN_SP = "3550308"
+
+
+def test_listar_metricas_aceita_distrito(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "listar_metricas", json.dumps({"nivel": "distrito"}))
+    assert not r.error
+    assert "pop_total" in {m["campo"] for m in r.payload}
+
+
+def test_buscar_distrito_pinta_a_camada_distrito(gq: GeoQuery) -> None:
+    """Mesma regra do bairro: sem camada e codigos juntos, a resposta vem certa e o
+    mapa nao acende (ADR-0001, §6.7)."""
+    r = execute_tool(
+        gq, "buscar_distrito", json.dumps({"nome": "Sé", "municipio": "São Paulo"})
+    )
+    assert not r.error
+    assert r.camada == "distrito"
+    assert r.codigos == [DIST_SE_SP]
+
+
+def test_info_distrito(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "info_distrito", json.dumps({"cd_distrito": DIST_SE_SP}))
+    assert not r.error
+    assert r.payload["nm_distrito"] == "Sé"
+    assert r.payload["nm_mun"] == "São Paulo"
+    assert r.camada == "distrito"
+
+
+def test_info_distrito_codigo_inexistente_vira_erro_legivel(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "info_distrito", json.dumps({"cd_distrito": "000000000"}))
+    assert r.error
+    assert "não encontrado" in r.payload["erro"]
+
+
+def test_ranking_distritos(gq: GeoQuery) -> None:
+    r = execute_tool(
+        gq, "ranking_distritos", json.dumps({"metrica": "pop_total", "cd_mun": CD_MUN_SP, "n": 5})
+    )
+    assert not r.error
+    assert r.camada == "distrito"
+    assert len(r.codigos) == 5
+
+
+def test_distrito_que_contem(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "distrito_que_contem", json.dumps({"lon": -46.6314, "lat": -23.5475}))
+    assert not r.error
+    assert r.payload["nm_distrito"] == "Sé"
+
+
+def test_distrito_responde_onde_bairro_recusa(gq: GeoQuery) -> None:
+    """O par que o prompt oferece na regra 3b: no meio do Amazonas bairro nao tem
+    resposta e distrito tem. Sem esta tool o agente so podia dizer que nao sabe."""
+    ponto = json.dumps({"lon": -63.0, "lat": -4.0})
+    assert execute_tool(gq, "bairro_que_contem", ponto).error
+    r = execute_tool(gq, "distrito_que_contem", ponto)
+    assert not r.error
+    assert r.payload["nm_mun"] == "Coari"

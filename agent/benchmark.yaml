@@ -183,8 +183,41 @@ casos:
       destaques: { camada: bairro, contem_codigos: ["3304557018"] }
 
   # A malha de bairros nao cobre o pais: em zona rural nao ha bairro, e o agente
-  # deve dizer isso em vez de tratar como falha.
+  # deve dizer isso em vez de tratar como falha. Ate 2026-08-22 a unica saida que
+  # ele tinha para oferecer era o setor censitario; com o nivel distrito no ar, a
+  # oferta passa a ser o nivel administrativo equivalente, que ali existe (Coari).
   - id: BM-22
     pergunta: "Em que bairro fica o ponto de longitude -63.0 e latitude -4.0?"
     espera:
-      resposta_contem: ["setor"]
+      resposta_contem: ["distrito"]
+
+  # --- distrito (nivel acrescentado em 2026-08-22) -----------------------------
+  - id: BM-23
+    pergunta: "Quais os 5 distritos mais populosos de São Paulo?"
+    espera:
+      tool: ranking_distritos
+      args: { metrica: pop_total, n: 5 }
+      destaques: { camada: distrito, n_codigos: 5 }
+
+  - id: BM-24
+    pergunta: "Em que distrito fica o ponto de longitude -63.0 e latitude -4.0?"
+    espera:
+      tool: distrito_que_contem
+      args: { lon: -63.0, lat: -4.0 }
+      destaques: { camada: distrito, contem_codigos: ["130120905"] }
+
+  - id: BM-25
+    pergunta: "Qual a renda média do distrito da Sé, em São Paulo?"
+    espera:
+      tool: buscar_distrito
+      args: { nome: "Sé", municipio: "São Paulo" }
+      destaques: { camada: distrito, contem_codigos: ["355030878"] }
+
+  # A armadilha do distrito sede: 5.564 distritos levam o nome da cidade. Perguntar
+  # a populacao da CIDADE tem de continuar caindo em municipio, nao no distrito
+  # homonimo — que no caso de Curitiba responderia 1.773.718 em vez do municipio.
+  - id: BM-26
+    pergunta: "Qual a população de Curitiba?"
+    espera:
+      tool: info_municipio
+      destaques: { camada: municipio, contem_codigos: ["4106902"] }

@@ -116,10 +116,10 @@ def test_listar_metricas_aceita_bairro(gq: GeoQuery) -> None:
     assert "pop_total" in {m["campo"] for m in r.payload}
 
 
-def test_buscar_bairro_pinta_a_camada_bairro(gq: GeoQuery) -> None:
+def test_info_local_pinta_a_camada_bairro(gq: GeoQuery) -> None:
     """O defeito de origem era o mapa nao ter como pintar bairro: camada e codigos juntos."""
     r = execute_tool(
-        gq, "buscar_bairro", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"})
+        gq, "info_local", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"})
     )
     assert not r.error
     assert r.camada == "bairro"
@@ -182,11 +182,11 @@ def test_listar_metricas_aceita_distrito(gq: GeoQuery) -> None:
     assert "pop_total" in {m["campo"] for m in r.payload}
 
 
-def test_buscar_distrito_pinta_a_camada_distrito(gq: GeoQuery) -> None:
+def test_info_local_pinta_a_camada_distrito(gq: GeoQuery) -> None:
     """Mesma regra do bairro: sem camada e codigos juntos, a resposta vem certa e o
     mapa nao acende (ADR-0001, §6.7)."""
     r = execute_tool(
-        gq, "buscar_distrito", json.dumps({"nome": "Sé", "municipio": "São Paulo"})
+        gq, "info_local", json.dumps({"nome": "Sé", "municipio": "São Paulo"})
     )
     assert not r.error
     assert r.camada == "distrito"
@@ -230,3 +230,76 @@ def test_distrito_responde_onde_bairro_recusa(gq: GeoQuery) -> None:
     r = execute_tool(gq, "distrito_que_contem", ponto)
     assert not r.error
     assert r.payload["nm_mun"] == "Coari"
+
+
+# --- info_local: a cascata bairro -> distrito -> localizacao (2026-08-22) ------
+
+
+def test_info_local_bairro_direto_nao_avisa_nada(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"}))
+    assert not r.error
+    assert r.payload["nivel"] == "bairro"
+    assert r.payload["avisos"] == []
+    assert r.camada == "bairro"
+
+
+def test_info_local_cai_para_distrito_e_avisa(gq: GeoQuery) -> None:
+    """São Paulo não tem malha de bairro: Moema só existe como distrito, e a resposta
+    tem de dizer isso — é o dado saindo de um nível diferente do que foi pedido."""
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Moema", "municipio": "São Paulo"}))
+    assert not r.error
+    assert r.payload["nivel"] == "distrito"
+    assert r.camada == "distrito"
+    assert any("não existe como bairro" in a for a in r.payload["avisos"])
+
+
+def test_info_local_avisa_quando_o_distrito_e_o_municipio_inteiro(gq: GeoQuery) -> None:
+    """Dois avisos: o fallback de nível E a distorção. Sem o segundo, a renda do
+    'distrito de Curitiba' passa por recorte de bairro sendo a cidade toda."""
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Curitiba", "municipio": "Curitiba"}))
+    assert not r.error
+    assert r.payload["nivel"] == "distrito"
+    assert len(r.payload["avisos"]) == 2
+    assert any("município inteiro" in a for a in r.payload["avisos"])
+
+
+def test_info_local_nome_exato_ganha_de_substring_de_outro_nivel(gq: GeoQuery) -> None:
+    """Defeito medido em 2026-08-22: encadear 'bairro completo, depois distrito'
+    fazia 'Curitiba' parar no bairro 'Cidade Industrial de Curitiba'."""
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Curitiba", "municipio": "Curitiba"}))
+    assert r.payload["dados"]["nm_distrito"] == "Curitiba"
+
+
+def test_info_local_nome_inexistente_nao_inventa(gq: GeoQuery) -> None:
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Bairro do Xyzabc", "municipio": "Curitiba"}))
+    assert r.error
+    assert "não encontrei" in r.payload["erro"]
+
+
+def test_info_local_recusa_ponto_fora_do_municipio_pedido(gq: GeoQuery, monkeypatch) -> None:
+    """O defeito que teria dado resposta errada com cara de certeza.
+
+    Medido em 2026-08-22: "Vila Nova Conceição, São Paulo" voltava do Nominatim como
+    Vila Conceição, em LARANJAL PAULISTA, porque ele leu "São Paulo" como estado. Sem
+    confinar ao município, o agente responderia renda de 2.984 reais (interior) para
+    quem perguntou de um bairro da capital. O PostGIS é o juiz: candidato que não cai
+    dentro do município pedido não vale, e a tool erra em vez de inventar.
+    """
+    from geo_agent import tools
+
+    monkeypatch.setattr(tools, "geocode_pontos", lambda termo, limite=5: [(-47.8327, -23.0503)])
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Vila Nova Conceição", "municipio": "São Paulo"}))
+    assert r.error
+    assert "dentro de São Paulo" in r.payload["erro"]
+
+
+def test_info_local_aceita_ponto_dentro_do_municipio(gq: GeoQuery, monkeypatch) -> None:
+    """O outro lado: candidato dentro do município vira o recorte que o contém.
+    Vila Madalena não é recorte do IBGE; o distrito que a contém é Pinheiros."""
+    from geo_agent import tools
+
+    monkeypatch.setattr(tools, "geocode_pontos", lambda termo, limite=5: [(-46.6900, -23.5460)])
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Vila Madalena", "municipio": "São Paulo"}))
+    assert not r.error
+    assert r.payload["dados"]["nm_mun"] == "São Paulo"
+    assert any("não é um recorte oficial do IBGE" in a for a in r.payload["avisos"])

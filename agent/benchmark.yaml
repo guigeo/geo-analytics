@@ -157,7 +157,7 @@ casos:
   - id: BM-18
     pergunta: "Qual a população de Copacabana, no Rio de Janeiro?"
     espera:
-      tool: buscar_bairro
+      tool: info_local
       args: { nome: "Copacabana", municipio: "Rio de Janeiro" }
       destaques: { camada: bairro, contem_codigos: ["3304557018"] }
 
@@ -209,9 +209,35 @@ casos:
   - id: BM-25
     pergunta: "Qual a renda média do distrito da Sé, em São Paulo?"
     espera:
-      tool: buscar_distrito
+      tool: info_local
       args: { nome: "Sé", municipio: "São Paulo" }
       destaques: { camada: distrito, contem_codigos: ["355030878"] }
+
+  # --- cascata bairro -> distrito -> localizacao (2026-08-22) ------------------
+  # A regra: prioridade e bairro; onde nao ha malha de bairro, responde distrito e
+  # AVISA; e se o distrito for a cidade inteira, avisa isso tambem.
+  - id: BM-27
+    pergunta: "Qual a população de Copacabana, no Rio de Janeiro? Use info_local."
+    espera:
+      tool: info_local
+      args: { nome: "Copacabana", municipio: "Rio de Janeiro" }
+      destaques: { camada: bairro, contem_codigos: ["3304557018"] }
+
+  - id: BM-28
+    pergunta: "Qual a renda média de Moema, em São Paulo?"
+    espera:
+      tool: info_local
+      destaques: { camada: distrito, contem_codigos: ["355030832"] }
+      resposta_contem: ["distrito"]
+
+  # O aviso de distorcao precisa chegar ao texto: o "distrito de Curitiba" e a cidade
+  # inteira, e um numero de cidade apresentado como recorte de bairro engana.
+  - id: BM-29
+    pergunta: "Qual a renda média do bairro Curitiba, em Curitiba?"
+    espera:
+      tool: info_local
+      destaques: { camada: distrito }
+      resposta_contem: ["município"]
 
   # A armadilha do distrito sede: 5.564 distritos levam o nome da cidade. Perguntar
   # a populacao da CIDADE tem de continuar caindo em municipio, nao no distrito

@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from geo_query import GeoQuery
+
+from .geocode import GeocodeIndisponivel
+from .geocode import pontos as geocode_pontos
 from pydantic import BaseModel, Field, ValidationError
 
 Camada = Literal["municipio", "setor", "bairro", "distrito"]
@@ -159,19 +162,6 @@ class SetorQueContemArgs(BaseModel):
     lat: float = Field(ge=-90, le=90)
 
 
-class BuscarBairroArgs(BaseModel):
-    """Busca bairros pelo nome (aceita sem acento) e resolve para o código IBGE.
-
-    Use SEMPRE que o usuário citar um bairro por nome. Nome de bairro repete muito
-    ("Centro" existe em quase toda cidade): informe `municipio` sempre que a pergunta
-    disser de onde é. Sem ele, os mais populosos do Brasil vêm primeiro.
-    """
-
-    nome: str = Field(min_length=2, description="Nome (ou parte) do bairro")
-    municipio: str | None = Field(None, description="Nome do município, para desambiguar")
-    uf: str | None = Field(None, description="UF para desambiguar, por nome ou sigla")
-
-
 class InfoBairroArgs(BaseModel):
     """Todos os atributos do Censo 2022 de um bairro pelo código IBGE (10 dígitos)."""
 
@@ -202,19 +192,6 @@ class BairroQueContemArgs(BaseModel):
 
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
-
-
-class BuscarDistritoArgs(BaseModel):
-    """Busca distritos pelo nome (aceita sem acento) e resolve para o código IBGE.
-
-    ATENÇÃO: o distrito sede leva o nome do município — 5.564 dos 10.698 distritos se
-    chamam como a cidade. Buscar "Curitiba" aqui devolve o DISTRITO sede de Curitiba,
-    não o município. Pergunta sobre a cidade inteira é buscar_municipio.
-    """
-
-    nome: str = Field(min_length=2, description="Nome (ou parte) do distrito")
-    municipio: str | None = Field(None, description="Nome do município, para desambiguar")
-    uf: str | None = Field(None, description="UF para desambiguar, por nome ou sigla")
 
 
 class InfoDistritoArgs(BaseModel):
@@ -250,6 +227,24 @@ class DistritoQueContemArgs(BaseModel):
 
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
+
+
+class InfoLocalArgs(BaseModel):
+    """Dados de um lugar citado por nome, no MELHOR recorte disponível ali.
+
+    Use esta tool sempre que o usuário citar um lugar dentro de uma cidade — bairro,
+    região, nome de vizinhança. Ela tenta bairro primeiro, cai para distrito quando o
+    município não tem malha de bairro, e resolve por localização quando o nome não
+    existe no IBGE (Vila Madalena, Higienópolis). A resposta traz `nivel` e `avisos`:
+    os avisos são obrigatórios no texto da resposta.
+
+    Informe `municipio` sempre que a pergunta disser de onde é — nome de bairro
+    repete em quase toda cidade.
+    """
+
+    nome: str = Field(min_length=2, description="Nome do bairro, distrito ou região")
+    municipio: str | None = Field(None, description="Nome do município, para desambiguar")
+    uf: str | None = Field(None, description="UF para desambiguar, por nome ou sigla")
 
 
 # --- resultado + dispatch -------------------------------------------------------
@@ -325,11 +320,6 @@ def _setor_que_contem(gq: GeoQuery, a: SetorQueContemArgs) -> ToolResult:
     )
 
 
-def _buscar_bairro(gq: GeoQuery, a: BuscarBairroArgs) -> ToolResult:
-    rows = gq.busca_bairros(a.nome, municipio=a.municipio, uf=normalize_uf(a.uf))
-    return ToolResult(payload=rows, camada="bairro", codigos=_codes(rows, "cd_bairro"), rows=rows)
-
-
 def _info_bairro(gq: GeoQuery, a: InfoBairroArgs) -> ToolResult:
     row = gq.bairro(a.cd_bairro)
     if row is None:
@@ -356,13 +346,6 @@ def _bairro_que_contem(gq: GeoQuery, a: BairroQueContemArgs) -> ToolResult:
         )
     return ToolResult(
         payload=row, camada="bairro", codigos=[str(row["cd_bairro"])], rows=[row]
-    )
-
-
-def _buscar_distrito(gq: GeoQuery, a: BuscarDistritoArgs) -> ToolResult:
-    rows = gq.busca_distritos(a.nome, municipio=a.municipio, uf=normalize_uf(a.uf))
-    return ToolResult(
-        payload=rows, camada="distrito", codigos=_codes(rows, "cd_distrito"), rows=rows
     )
 
 
@@ -394,6 +377,159 @@ def _distrito_que_contem(gq: GeoQuery, a: DistritoQueContemArgs) -> ToolResult:
     )
 
 
+# Acima disto, o distrito ocupa quase todo o municipio e responder por ele e responder
+# pelo municipio. Vale para 3.377 dos 10.698 distritos — 31,6% (medido em 2026-08-22),
+# entao o aviso e caso comum, nao excecao.
+LIMIAR_DISTRITO_E_O_MUNICIPIO = 0.95
+
+
+def _avisa_distorcao(row: dict[str, Any]) -> str | None:
+    """Aviso quando o distrito nao e um recorte menor: ele E o municipio."""
+    fracao = row.get("fracao_do_municipio")
+    if fracao is None or float(fracao) < LIMIAR_DISTRITO_E_O_MUNICIPIO:
+        return None
+    return (
+        f"o distrito {row['nm_distrito']} ocupa {float(fracao) * 100:.0f}% de "
+        f"{row['nm_mun']} — este número é o do município inteiro, não de um recorte menor"
+    )
+
+
+def _resultado_nivel(
+    nivel: str, row: dict[str, Any], avisos: list[str]
+) -> ToolResult:
+    """Empacota um achado da cascata: o payload que o LLM le e o codigo que o mapa pinta."""
+    chave = "cd_bairro" if nivel == "bairro" else "cd_distrito"
+    return ToolResult(
+        payload={"nivel": nivel, "avisos": avisos, "dados": row},
+        camada=nivel,  # type: ignore[arg-type]
+        codigos=[str(row[chave])],
+        rows=[row],
+    )
+
+
+def _info_local(gq: GeoQuery, a: InfoLocalArgs) -> ToolResult:
+    """A cascata bairro -> distrito -> localizacao, em codigo e nao no prompt.
+
+    Fica aqui, e nao como instrucao no system prompt, porque o aviso e a parte que
+    nao pode falhar: e justamente quando o dado sai de um nivel diferente do que a
+    pessoa pediu que ela precisa saber. Regra do projeto — os dados e os destaques
+    saem das rows das tools; o LLM so escreve o texto.
+
+    A ordem tem uma sutileza que so apareceu executando: **nome exato em qualquer
+    nivel ganha de substring em qualquer nivel**. Encadear "bairro completo, depois
+    distrito completo" fazia "Curitiba" achar o bairro "Cidade Industrial de
+    Curitiba" por substring e nunca chegar ao distrito de Curitiba, que e exato.
+    """
+    uf = normalize_uf(a.uf)
+
+    # 1 e 2. Nome exato: bairro (recorte mais fino, 46,7% da populacao) e depois
+    #        distrito (leva a cobertura a 76,2% — e o caso de Sao Paulo, que nao tem
+    #        bairro nenhum e tem 96 distritos).
+    if bairros := gq.busca_bairros(a.nome, municipio=a.municipio, uf=uf, exato=True):
+        return _resultado_nivel("bairro", gq.bairro(bairros[0]["cd_bairro"]), [])
+
+    if distritos := gq.busca_distritos(a.nome, municipio=a.municipio, uf=uf, exato=True):
+        row = gq.distrito(distritos[0]["cd_distrito"])
+        return _resultado_nivel("distrito", row, _avisos_distrito(a.nome, row))
+
+    # 3 e 4. So agora substring, na mesma ordem de niveis.
+    if bairros := gq.busca_bairros(a.nome, municipio=a.municipio, uf=uf, exato=False):
+        return _resultado_nivel("bairro", gq.bairro(bairros[0]["cd_bairro"]), [])
+
+    if distritos := gq.busca_distritos(a.nome, municipio=a.municipio, uf=uf, exato=False):
+        row = gq.distrito(distritos[0]["cd_distrito"])
+        return _resultado_nivel("distrito", row, _avisos_distrito(a.nome, row))
+
+    # 5. O nome nao existe no IBGE em nivel nenhum. Ultimo recurso: resolver em
+    #    coordenada e perguntar ao PostGIS quem a contem. E o caso "Vila Nova
+    #    Conceicao", ausente de bairro, distrito e do nome_bairro do setor.
+    return _info_local_por_localizacao(gq, a, uf)
+
+
+def _avisos_distrito(pedido: str, row: dict[str, Any]) -> list[str]:
+    """Os dois avisos do nivel distrito: o fallback e, se for o caso, a distorcao."""
+    avisos = [
+        f"{pedido} não existe como bairro na malha do IBGE; "
+        f"os números abaixo são do DISTRITO {row['nm_distrito']}"
+    ]
+    if (d := _avisa_distorcao(row)) is not None:
+        avisos.append(d)
+    return avisos
+
+
+def _info_local_por_localizacao(
+    gq: GeoQuery, a: InfoLocalArgs, uf: str | None
+) -> ToolResult:
+    """Resolve o nome em coordenada e devolve o recorte do IBGE que a contem.
+
+    O geocoding e CONFINADO ao municipio informado, e isso nao e refinamento: sem
+    o confinamento, "Vila Nova Conceicao, Sao Paulo" voltava de Laranjal Paulista,
+    no interior, porque o Nominatim leu "Sao Paulo" como estado. A resposta vinha
+    com numeros de outra cidade e cara de certeza. O PostGIS e o juiz — dos
+    candidatos do Nominatim, vale o primeiro que cai dentro do municipio pedido.
+    """
+    alvo = None
+    if a.municipio:
+        achados = gq.busca_municipios(a.municipio, uf=uf)
+        if not achados:
+            return ToolResult(
+                payload={"erro": f"município '{a.municipio}' não encontrado"}, error=True
+            )
+        alvo = str(achados[0]["cd_mun"])
+
+    termo = ", ".join(t for t in (a.nome, a.municipio, uf, "Brasil") if t)
+    try:
+        candidatos = geocode_pontos(termo, limite=5)
+    except GeocodeIndisponivel:
+        return ToolResult(
+            payload={
+                "erro": f"'{a.nome}' não existe na malha do IBGE e a busca por "
+                "localização está indisponível agora",
+                "sugestao": "tente o nome do distrito ou do município",
+            },
+            error=True,
+        )
+
+    ponto = None
+    for lon, lat in candidatos:
+        if alvo is None:
+            ponto = (lon, lat)
+            break
+        m = gq.municipio_no_ponto(lon, lat)
+        if m is not None and str(m["cd_mun"]) == alvo:
+            ponto = (lon, lat)
+            break
+
+    if ponto is None:
+        return ToolResult(
+            payload={
+                "erro": f"não encontrei '{a.nome}'"
+                + (f" dentro de {a.municipio}" if a.municipio else ""),
+                "motivo": "o nome não existe na malha do IBGE e não foi localizado no município",
+            },
+            error=True,
+        )
+
+    lon, lat = ponto
+    row = gq.bairro_no_ponto(lon, lat) or gq.distrito_no_ponto(lon, lat)
+    if row is None:
+        return ToolResult(
+            payload={"erro": f"'{a.nome}' foi localizado mas não caiu em nenhum recorte do IBGE"},
+            error=True,
+        )
+
+    e_bairro = "cd_bairro" in row
+    nivel = "bairro" if e_bairro else "distrito"
+    avisos = [
+        f"'{a.nome}' não é um recorte oficial do IBGE; localizei o nome e trouxe o "
+        f"{nivel.upper()} que o contém, "
+        f"{row['nm_bairro'] if e_bairro else row['nm_distrito']}, em {row['nm_mun']}"
+    ]
+    if not e_bairro and (d := _avisa_distorcao(row)) is not None:
+        avisos.append(d)
+    return _resultado_nivel(nivel, row, avisos)
+
+
 Handler = Callable[[GeoQuery, Any], ToolResult]
 
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
@@ -402,11 +538,18 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "info_municipio": (InfoMunicipioArgs, _info_municipio),
     "info_setor": (InfoSetorArgs, _info_setor),
     "ranking_municipios": (RankingMunicipiosArgs, _ranking),
-    "buscar_bairro": (BuscarBairroArgs, _buscar_bairro),
+    # Lugar citado por NOME dentro de uma cidade tem uma porta so: info_local, que
+    # cascateia bairro -> distrito -> localizacao e devolve os avisos. buscar_bairro e
+    # buscar_distrito saíram do registry em 2026-08-22 por disputarem essa mesma
+    # pergunta: no benchmark o LLM escolheu buscar_bairro para "bairro Curitiba, em
+    # Curitiba" e parou em "Cidade Industrial de Curitiba" — o defeito que a cascata
+    # existe para evitar. Mesma lição do par setores_no_ponto/setor_que_contem, logo
+    # abaixo: semânticas próximas com nomes próximos são convite à escolha errada.
+    # As funções seguem na fachada, que é de onde a cascata as chama.
+    "info_local": (InfoLocalArgs, _info_local),
     "info_bairro": (InfoBairroArgs, _info_bairro),
     "ranking_bairros": (RankingBairrosArgs, _ranking_bairros),
     "bairro_que_contem": (BairroQueContemArgs, _bairro_que_contem),
-    "buscar_distrito": (BuscarDistritoArgs, _buscar_distrito),
     "info_distrito": (InfoDistritoArgs, _info_distrito),
     "ranking_distritos": (RankingDistritosArgs, _ranking_distritos),
     "distrito_que_contem": (DistritoQueContemArgs, _distrito_que_contem),

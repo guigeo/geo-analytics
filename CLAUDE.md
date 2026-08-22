@@ -120,12 +120,12 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   tem dois caminhos — resumo materializado quando a coluna existe lá, formato longo quando não
   (medido; ver `webgis/docs/HERANCA.md` §7.4).
 - **`agent/`** — projeto `uv` (Fase 2). Backend do chat: FastAPI + SDK `openai` PURO (sem
-  framework de agente — decisão de aprendizado). `tools.py` = 16 tools (args Pydantic →
+  framework de agente — decisão de aprendizado). `tools.py` = 15 tools (args Pydantic →
   JSON Schema; `TOOL_REGISTRY` despacha p/ o `GeoQuery`); `agent.py` = loop de tool-calling
   explícito (teto 6 iterações; erro de tool volta ao LLM p/ autocorreção 1x) + sessões em
   memória (TTL 1 h). **Grounding:** `destaques`/`dados` da resposta saem das rows das tools
   (determinístico), o LLM só escreve o texto. Config via `agent/.env`
-  (`OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5-mini`). Benchmark de 27 casos em `benchmark.yaml`.
+  (`OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5-mini`). Benchmark de 30 casos em `benchmark.yaml`.
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).

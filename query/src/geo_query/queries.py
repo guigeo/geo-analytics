@@ -225,7 +225,12 @@ class GeoQuery:
         return rows[0] if rows else None
 
     def busca_bairros(
-        self, nome: str, municipio: str | None = None, uf: str | None = None, limite: int = 10
+        self,
+        nome: str,
+        municipio: str | None = None,
+        uf: str | None = None,
+        limite: int = 10,
+        exato: bool | None = None,
     ) -> list[dict[str, Any]]:
         """Bairros pelo nome, mais populosos primeiro. Exato antes de substring.
 
@@ -233,6 +238,8 @@ class GeoQuery:
         toda cidade —, entao o filtro por municipio e o que torna a busca util, e o
         desempate por populacao e o que salva quem nao filtrou.
         """
+        if exato is not None:
+            return self._busca_bairros(nome, municipio, uf, limite, exato=exato)
         exatos = self._busca_bairros(nome, municipio, uf, limite, exato=True)
         return exatos or self._busca_bairros(nome, municipio, uf, limite, exato=False)
 
@@ -280,6 +287,12 @@ class GeoQuery:
                        r.cod_municipio as cd_mun, r.nome_municipio as nm_mun,
                        m.nome_uf as nm_uf, r.sigla_uf,
                        d.area_km2_calculada as area_km2,
+                       -- Quanto do municipio este distrito ocupa. Em 3.377 dos 10.698
+                       -- distritos isso passa de 0,95: o "distrito" e o municipio
+                       -- inteiro, e responder por ele sem dizer isso engana quem
+                       -- perguntou por um recorte menor (medido em 2026-08-22).
+                       round((d.area_km2_calculada / nullif(m.area_km2, 0))::numeric, 4)
+                         as fracao_do_municipio,
                        r.pop_total, r.domicilios_ocupados, r.media_moradores,
                        r.pop_masculino, r.pop_feminino,
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
@@ -297,7 +310,12 @@ class GeoQuery:
         return rows[0] if rows else None
 
     def busca_distritos(
-        self, nome: str, municipio: str | None = None, uf: str | None = None, limite: int = 10
+        self,
+        nome: str,
+        municipio: str | None = None,
+        uf: str | None = None,
+        limite: int = 10,
+        exato: bool | None = None,
     ) -> list[dict[str, Any]]:
         """Distritos pelo nome, mais populosos primeiro. Exato antes de substring.
 
@@ -307,6 +325,8 @@ class GeoQuery:
         sede leva o nome da cidade. Buscar "Curitiba" aqui devolve o distrito sede de
         Curitiba, nao o municipio: quem quer o municipio usa busca_municipios.
         """
+        if exato is not None:
+            return self._busca_distritos(nome, municipio, uf, limite, exato=exato)
         exatos = self._busca_distritos(nome, municipio, uf, limite, exato=True)
         return exatos or self._busca_distritos(nome, municipio, uf, limite, exato=False)
 
@@ -334,9 +354,12 @@ class GeoQuery:
         consulta = sql.SQL("""
             select r.cod_distrito as cd_distrito, r.nome as nm_distrito,
                    r.cod_municipio as cd_mun, r.nome_municipio as nm_mun,
-                   m.nome_uf as nm_uf, r.pop_total
+                   m.nome_uf as nm_uf, r.pop_total,
+                   round((d.area_km2_calculada / nullif(m.area_km2, 0))::numeric, 4)
+                     as fracao_do_municipio
             from ibge_tabular.distrito_resumo r
-            join ibge.municipio m using (cod_municipio)
+            join ibge.distrito d using (cod_distrito)
+            join ibge.municipio m on m.cod_municipio = r.cod_municipio
             where {}
             order by r.pop_total desc nulls last
             limit %s
@@ -566,6 +589,19 @@ class GeoQuery:
             [float(lon), float(lat)],
         )
         return self.distrito(rows[0]["cod_distrito"]) if rows else None
+
+    def municipio_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
+        """Qual municipio CONTEM este ponto. E o juiz de um geocoding: nome resolvido
+        fora do municipio que a pessoa disse e resultado errado, nao resultado pobre."""
+        rows = self._rows(
+            sql.SQL("""
+                select cod_municipio from ibge.municipio
+                where ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4674))
+                limit 1
+            """),
+            [float(lon), float(lat)],
+        )
+        return self.municipio(rows[0]["cod_municipio"]) if rows else None
 
     def setores_no_ponto(
         self, lon: float, lat: float, raio_km: float = 2.0, limite: int = 20

@@ -382,3 +382,31 @@ def test_ping_tambem_reconecta() -> None:
     q.con.close()
     q.ping()
     q.close()
+
+
+# --- cascata: fracao do municipio e busca com modo fixo (2026-08-22) -----------
+
+
+def test_fracao_do_municipio_separa_recorte_de_municipio_inteiro(gq: GeoQuery) -> None:
+    """O dado que sustenta o aviso de distorção: 3.377 dos 10.698 distritos passam
+    de 0,95 e são, na prática, o município."""
+    se = gq.distrito(DIST_SE_SP)
+    assert float(se["fracao_do_municipio"]) < 0.01  # 1 de 96 distritos
+
+    curitiba = gq.busca_distritos("Curitiba", municipio="Curitiba", exato=True)[0]
+    assert float(curitiba["fracao_do_municipio"]) > 0.95  # distrito único
+
+
+def test_busca_com_modo_exato_fixo(gq: GeoQuery) -> None:
+    """Sem poder fixar o modo, um substring de bairro ganhava de um nome exato de
+    distrito: 'Curitiba' achava o bairro 'Cidade Industrial de Curitiba'."""
+    assert gq.busca_bairros("Curitiba", municipio="Curitiba", exato=True) == []
+    porsubstring = gq.busca_bairros("Curitiba", municipio="Curitiba", exato=False)
+    assert any("Curitiba" in b["nm_bairro"] for b in porsubstring)
+
+
+def test_municipio_no_ponto(gq: GeoQuery) -> None:
+    """O juiz do geocoding: ponto resolvido fora do município pedido é erro, não
+    resultado pobre."""
+    assert gq.municipio_no_ponto(-46.67, -23.59)["nm_mun"] == "São Paulo"
+    assert gq.municipio_no_ponto(-47.83, -23.05)["nm_mun"] == "Laranjal Paulista"

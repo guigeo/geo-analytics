@@ -14,7 +14,7 @@ from typing import Any, Literal
 from geo_query import GeoQuery
 from pydantic import BaseModel, Field, ValidationError
 
-Camada = Literal["municipio", "setor", "bairro"]
+Camada = Literal["municipio", "setor", "bairro", "distrito"]
 
 UF_POR_SIGLA: dict[str, str] = {
     "AC": "Acre",
@@ -93,7 +93,7 @@ METRIC_LABELS: dict[str, str] = {
 class ListarMetricasArgs(BaseModel):
     """Lista as métricas numéricas consultáveis do Censo 2022 (por município, bairro ou setor)."""
 
-    nivel: Literal["municipio", "setor", "bairro"] = "municipio"
+    nivel: Literal["municipio", "setor", "bairro", "distrito"] = "municipio"
 
 
 class BuscarMunicipioArgs(BaseModel):
@@ -198,6 +198,54 @@ class BairroQueContemArgs(BaseModel):
 
     A malha de bairros do IBGE só cobre onde há bairro: fora de área urbana mapeada
     não há resposta, e isso não é erro.
+    """
+
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+
+
+class BuscarDistritoArgs(BaseModel):
+    """Busca distritos pelo nome (aceita sem acento) e resolve para o código IBGE.
+
+    ATENÇÃO: o distrito sede leva o nome do município — 5.564 dos 10.698 distritos se
+    chamam como a cidade. Buscar "Curitiba" aqui devolve o DISTRITO sede de Curitiba,
+    não o município. Pergunta sobre a cidade inteira é buscar_municipio.
+    """
+
+    nome: str = Field(min_length=2, description="Nome (ou parte) do distrito")
+    municipio: str | None = Field(None, description="Nome do município, para desambiguar")
+    uf: str | None = Field(None, description="UF para desambiguar, por nome ou sigla")
+
+
+class InfoDistritoArgs(BaseModel):
+    """Todos os atributos do Censo 2022 de um distrito pelo código IBGE (9 dígitos)."""
+
+    cd_distrito: str = Field(min_length=9, max_length=9)
+
+
+class RankingDistritosArgs(BaseModel):
+    """Top-N distritos por uma métrica do Censo 2022, dentro de um município ou de uma UF.
+
+    Diferente do ranking de bairros, aqui os dois recortes servem: distrito cobre o
+    país, então "maiores distritos do Paraná" é pergunta legítima — mas o resultado
+    virá dominado por distritos sede, que têm o nome da cidade e são a cidade quase
+    inteira. Para comparar partes de uma cidade, filtre por cd_mun.
+    ordem='desc' = maiores primeiro; 'asc' = menores primeiro (ex.: pior cobertura).
+    """
+
+    metrica: str = Field(description="Métrica numérica; em dúvida, use listar_metricas antes")
+    cd_mun: str | None = Field(None, min_length=7, max_length=7, description="Código IBGE do município")
+    uf: str | None = Field(None, description="UF por nome ou sigla (ex.: 'Paraná' ou 'PR')")
+    n: int = Field(10, ge=1, le=100)
+    ordem: Literal["asc", "desc"] = "desc"
+
+
+class DistritoQueContemArgs(BaseModel):
+    """O distrito que CONTÉM um ponto lon/lat — um só, não um raio.
+
+    Cobre praticamente todo o território: todo município instalado até o Censo 2022
+    tem ao menos o distrito sede. É a alternativa quando bairro_que_contem não acha
+    nada por estar fora de área urbana mapeada.
     """
 
     lon: float = Field(ge=-180, le=180)
@@ -311,6 +359,41 @@ def _bairro_que_contem(gq: GeoQuery, a: BairroQueContemArgs) -> ToolResult:
     )
 
 
+def _buscar_distrito(gq: GeoQuery, a: BuscarDistritoArgs) -> ToolResult:
+    rows = gq.busca_distritos(a.nome, municipio=a.municipio, uf=normalize_uf(a.uf))
+    return ToolResult(
+        payload=rows, camada="distrito", codigos=_codes(rows, "cd_distrito"), rows=rows
+    )
+
+
+def _info_distrito(gq: GeoQuery, a: InfoDistritoArgs) -> ToolResult:
+    row = gq.distrito(a.cd_distrito)
+    if row is None:
+        return ToolResult(payload={"erro": f"distrito {a.cd_distrito} não encontrado"}, error=True)
+    return ToolResult(payload=row, camada="distrito", codigos=[a.cd_distrito], rows=[row])
+
+
+def _ranking_distritos(gq: GeoQuery, a: RankingDistritosArgs) -> ToolResult:
+    rows = gq.ranking_distritos(
+        a.metrica, cd_mun=a.cd_mun, uf=normalize_uf(a.uf), n=a.n, ordem=a.ordem
+    )
+    return ToolResult(
+        payload=rows, camada="distrito", codigos=_codes(rows, "cd_distrito"), rows=rows
+    )
+
+
+def _distrito_que_contem(gq: GeoQuery, a: DistritoQueContemArgs) -> ToolResult:
+    row = gq.distrito_no_ponto(a.lon, a.lat)
+    if row is None:
+        return ToolResult(
+            payload={"erro": f"nenhum distrito contém o ponto ({a.lon}, {a.lat})"},
+            error=True,
+        )
+    return ToolResult(
+        payload=row, camada="distrito", codigos=[str(row["cd_distrito"])], rows=[row]
+    )
+
+
 Handler = Callable[[GeoQuery, Any], ToolResult]
 
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
@@ -323,6 +406,10 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "info_bairro": (InfoBairroArgs, _info_bairro),
     "ranking_bairros": (RankingBairrosArgs, _ranking_bairros),
     "bairro_que_contem": (BairroQueContemArgs, _bairro_que_contem),
+    "buscar_distrito": (BuscarDistritoArgs, _buscar_distrito),
+    "info_distrito": (InfoDistritoArgs, _info_distrito),
+    "ranking_distritos": (RankingDistritosArgs, _ranking_distritos),
+    "distrito_que_contem": (DistritoQueContemArgs, _distrito_que_contem),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),
     # Nome deliberadamente distante de setores_no_ponto: o LLM escolhe tool por nome

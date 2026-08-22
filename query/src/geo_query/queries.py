@@ -28,7 +28,7 @@ from psycopg import sql
 from .db import connect
 
 Ordem = Literal["asc", "desc"]
-Nivel = Literal["setor", "municipio", "bairro"]
+Nivel = Literal["setor", "municipio", "bairro", "distrito"]
 
 # Sem a extensao unaccent: a fachada le, nao altera o schema do banco central (db.py).
 # Em 5.571 municipios a varredura e irrelevante; o que importa e nao virar dona do DDL.
@@ -38,9 +38,20 @@ _RESUMO = {
     "setor": "setor_resumo",
     "municipio": "municipio_resumo",
     "bairro": "bairro_resumo",
+    "distrito": "distrito_resumo",
 }
-_LONGO = {"setor": "setor", "municipio": "municipio", "bairro": "bairro"}
-_CHAVE = {"setor": "cod_setor", "municipio": "cod_municipio", "bairro": "cod_bairro"}
+_LONGO = {
+    "setor": "setor",
+    "municipio": "municipio",
+    "bairro": "bairro",
+    "distrito": "distrito",
+}
+_CHAVE = {
+    "setor": "cod_setor",
+    "municipio": "cod_municipio",
+    "bairro": "cod_bairro",
+    "distrito": "cod_distrito",
+}
 
 
 def _sem_acento(expr: str) -> sql.SQL:
@@ -256,6 +267,82 @@ class GeoQuery:
         """).format(sql.SQL(" and ").join(clauses))
         return self._rows(consulta, params)
 
+    def distrito(self, cd_distrito: str) -> dict[str, Any] | None:
+        """Atributos de um distrito pelo codigo IBGE (9 digitos), com o centroide.
+
+        Mesmas 16 colunas de bairro_resumo — distrito_resumo sai do mesmo modelo de
+        view. O que muda e a cobertura: bairro so existe em area urbana mapeada,
+        distrito cobre todo municipio instalado ate o Censo 2022.
+        """
+        rows = self._rows(
+            sql.SQL("""
+                select r.cod_distrito as cd_distrito, r.nome as nm_distrito,
+                       r.cod_municipio as cd_mun, r.nome_municipio as nm_mun,
+                       m.nome_uf as nm_uf, r.sigla_uf,
+                       d.area_km2_calculada as area_km2,
+                       r.pop_total, r.domicilios_ocupados, r.media_moradores,
+                       r.pop_masculino, r.pop_feminino,
+                       r.renda_media, r.renda_mediana, r.densidade_hab_km2,
+                       r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
+                       ST_X(ST_Centroid(d.geom)) as lon, ST_Y(ST_Centroid(d.geom)) as lat
+                from ibge_tabular.distrito_resumo r
+                join ibge.distrito d using (cod_distrito)
+                -- ON explicito pelo mesmo motivo do setor e do bairro: depois do join
+                -- acima cod_municipio existe nas duas tabelas e o USING fica ambiguo.
+                join ibge.municipio m on m.cod_municipio = d.cod_municipio
+                where r.cod_distrito = %s
+            """),
+            [cd_distrito],
+        )
+        return rows[0] if rows else None
+
+    def busca_distritos(
+        self, nome: str, municipio: str | None = None, uf: str | None = None, limite: int = 10
+    ) -> list[dict[str, Any]]:
+        """Distritos pelo nome, mais populosos primeiro. Exato antes de substring.
+
+        Mesma forma da busca de bairros, pelo mesmo motivo: nome de distrito repete
+        entre municipios. E repete tambem o nome do PROPRIO municipio — 5.564 dos
+        10.698 distritos se chamam como ele (medido em 2026-08-22), porque o distrito
+        sede leva o nome da cidade. Buscar "Curitiba" aqui devolve o distrito sede de
+        Curitiba, nao o municipio: quem quer o municipio usa busca_municipios.
+        """
+        exatos = self._busca_distritos(nome, municipio, uf, limite, exato=True)
+        return exatos or self._busca_distritos(nome, municipio, uf, limite, exato=False)
+
+    def _busca_distritos(
+        self, nome: str, municipio: str | None, uf: str | None, limite: int, exato: bool
+    ) -> list[dict[str, Any]]:
+        alvo = _sem_acento("r.nome")
+        termo = _sem_acento("%s")
+        match = (
+            sql.SQL("{} = {}").format(alvo, termo)
+            if exato
+            else sql.SQL("{} like '%%' || {} || '%%'").format(alvo, termo)
+        )
+        clauses = [match]
+        params: list[Any] = [nome]
+        if municipio:
+            clauses.append(
+                sql.SQL("{} = {}").format(_sem_acento("r.nome_municipio"), _sem_acento("%s"))
+            )
+            params.append(municipio)
+        if uf:
+            clauses.append(sql.SQL("m.nome_uf = %s"))
+            params.append(uf)
+        params.append(int(limite))
+        consulta = sql.SQL("""
+            select r.cod_distrito as cd_distrito, r.nome as nm_distrito,
+                   r.cod_municipio as cd_mun, r.nome_municipio as nm_mun,
+                   m.nome_uf as nm_uf, r.pop_total
+            from ibge_tabular.distrito_resumo r
+            join ibge.municipio m using (cod_municipio)
+            where {}
+            order by r.pop_total desc nulls last
+            limit %s
+        """).format(sql.SQL(" and ").join(clauses))
+        return self._rows(consulta, params)
+
     def busca_municipios(
         self, nome: str, uf: str | None = None, limite: int = 10
     ) -> list[dict[str, Any]]:
@@ -384,6 +471,61 @@ class GeoQuery:
         params.append(int(n))
         return self._rows(consulta, params)
 
+    def ranking_distritos(
+        self,
+        metrica: str,
+        cd_mun: str | None = None,
+        uf: str | None = None,
+        n: int = 10,
+        ordem: Ordem = "desc",
+    ) -> list[dict[str, Any]]:
+        """Top-N distritos por uma metrica, filtrando por municipio (codigo) ou por UF.
+
+        Os dois filtros servem de verdade aqui, e e a diferenca para o ranking de
+        bairros. Bairro so faz sentido comparado dentro da cidade; distrito cobre o
+        pais, entao "maiores distritos do Parana" e uma pergunta legitima. Ao mesmo
+        tempo 2.223 dos 5.570 municipios tem mais de um distrito — Sao Paulo tem 96 —,
+        e neles o recorte municipal continua sendo o util (medido em 2026-08-22).
+        """
+        self._check_metric("distrito", metrica)
+        direcao = sql.SQL("desc") if ordem == "desc" else sql.SQL("asc")
+        clauses: list[sql.SQL | sql.Composed] = []
+        pos: list[Any] = []
+        if cd_mun:
+            clauses.append(sql.SQL("and r.cod_municipio = %s"))
+            pos.append(cd_mun)
+        if uf:
+            clauses.append(sql.SQL("and m.nome_uf = %s"))
+            pos.append(uf)
+        filtros = sql.SQL(" ").join(clauses) if clauses else sql.SQL("")
+
+        if self._no_resumo("distrito", metrica):
+            consulta = sql.SQL("""
+                select r.cod_distrito as cd_distrito, r.nome as nm_distrito,
+                       r.nome_municipio as nm_mun, m.nome_uf as nm_uf, r.{met} as valor
+                from ibge_tabular.distrito_resumo r
+                join ibge.municipio m using (cod_municipio)
+                where r.{met} is not null {filtros}
+                order by r.{met} {dir}
+                limit %s
+            """).format(met=sql.Identifier(metrica), filtros=filtros, dir=direcao)
+            params: list[Any] = list(pos)
+        else:
+            consulta = sql.SQL("""
+                select r.cod_distrito as cd_distrito, r.nome as nm_distrito,
+                       r.nome_municipio as nm_mun, m.nome_uf as nm_uf, t.valor
+                from ibge_tabular.distrito t
+                join ibge_tabular.distrito_resumo r using (cod_distrito)
+                join ibge.municipio m on m.cod_municipio = r.cod_municipio
+                where t.cod_variavel = %s and t.valor is not null {filtros}
+                order by t.valor {dir}
+                limit %s
+            """).format(filtros=filtros, dir=direcao)
+            params = [self._variaveis[metrica], *pos]
+
+        params.append(int(n))
+        return self._rows(consulta, params)
+
     # --- espacial (poligono real) ------------------------------------------
 
     def setor_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
@@ -410,6 +552,20 @@ class GeoQuery:
             [float(lon), float(lat)],
         )
         return self.bairro(rows[0]["cod_bairro"]) if rows else None
+
+    def distrito_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
+        """Qual distrito CONTEM este ponto. Ao contrario do bairro, responde em
+        praticamente todo o territorio: todo municipio instalado ate o Censo 2022 tem
+        ao menos o distrito sede."""
+        rows = self._rows(
+            sql.SQL("""
+                select cod_distrito from ibge.distrito
+                where ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4674))
+                limit 1
+            """),
+            [float(lon), float(lat)],
+        )
+        return self.distrito(rows[0]["cod_distrito"]) if rows else None
 
     def setores_no_ponto(
         self, lon: float, lat: float, raio_km: float = 2.0, limite: int = 20

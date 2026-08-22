@@ -11,12 +11,15 @@ gera os tiles. Sem banco de dados, sem backend em runtime.
 
 | Fase | Entrega | Estado |
 |------|---------|--------|
-| **1 — Visualização** | Mapa com 5 camadas, toggle, clique→atributos | ✅ Shipped |
+| **1 — Visualização** | Mapa com 8 camadas, toggle, clique→atributos | ✅ Shipped |
 | **1.5 — Refinamento visual** | Basemap z13, paleta, rótulos, highlight, legenda | ✅ Shipped |
 | **2 — Chat com IA** | Perguntas em PT sobre os dados (DuckDB spatial + tool-calling) | 🔜 Planejado |
 | **3 — Expansão de dados** | Novos datasets sem refactor | 🔜 Planejado |
 
-**Camadas:** UF · Município · Bairro · Setor censitário (~473k) · Antenas (~111k).
+**Camadas:** UF · Município · Distrito (10.698) · Bairro (17.575) · Setor censitário
+(~468k) · Antenas (~111k) · Rodovias · Ferrovias. Todas vêm do `geodata` (passo 4 do
+roteiro) e todo nível administrativo desenhado tem tool correspondente no agente
+(ADR-0001, §6.7).
 
 ## Arquitetura
 

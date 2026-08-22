@@ -267,6 +267,84 @@ def test_bairro_no_ponto_fora_de_area_urbana_e_none(gq: GeoQuery) -> None:
     assert gq.bairro_no_ponto(-63.0, -4.0) is None  # meio do Amazonas
 
 
+# --- distrito (nivel acrescentado em 2026-08-22) ------------------------------
+
+DIST_SE_SP = "355030878"  # distrito da Se, Sao Paulo
+
+
+def test_distrito_tem_as_mesmas_metricas_do_municipio(gq: GeoQuery) -> None:
+    """distrito_resumo sai do mesmo modelo de view de bairro_resumo: 16 colunas iguais."""
+    assert set(gq.metricas("distrito")) == set(gq.metricas("municipio"))
+
+
+def test_distrito_lookup(gq: GeoQuery) -> None:
+    d = gq.distrito(DIST_SE_SP)
+    assert d is not None
+    assert d["nm_distrito"] == "Sé"
+    assert d["nm_mun"] == "São Paulo"
+    assert d["nm_uf"] == "São Paulo"
+    assert d["area_km2"] > 0
+    assert d["lon"] is not None and d["lat"] is not None
+
+
+def test_busca_distritos_filtra_por_municipio(gq: GeoQuery) -> None:
+    """'Sao Jose' nomeia 17 distritos — sem o filtro a resposta e outra."""
+    alcobaca = gq.busca_distritos("São José", municipio="Alcobaça")
+    assert alcobaca and all(r["nm_mun"] == "Alcobaça" for r in alcobaca)
+
+    brasil = gq.busca_distritos("São José")
+    assert len(brasil) > 1
+    pops = [r["pop_total"] for r in brasil if r["pop_total"] is not None]
+    assert pops == sorted(pops, reverse=True)
+
+
+def test_busca_distritos_acha_o_distrito_sede_com_nome_da_cidade(gq: GeoQuery) -> None:
+    """A armadilha que o prompt precisa evitar: 5.564 distritos se chamam como o
+    municipio. Buscar 'Curitiba' aqui devolve o DISTRITO sede, nao a cidade."""
+    r = gq.busca_distritos("Curitiba", municipio="Curitiba")
+    assert [x["nm_distrito"] for x in r] == ["Curitiba"]
+    assert r[0]["cd_distrito"] != r[0]["cd_mun"]
+
+
+def test_ranking_distritos_no_municipio(gq: GeoQuery) -> None:
+    """Sao Paulo e o municipio mais subdividido do pais: 96 distritos."""
+    top = gq.ranking_distritos("pop_total", cd_mun="3550308", n=5)
+    assert len(top) == 5
+    assert all(r["nm_mun"] == "São Paulo" for r in top)
+    valores = [r["valor"] for r in top]
+    assert valores == sorted(valores, reverse=True)
+
+
+def test_ranking_distritos_por_uf(gq: GeoQuery) -> None:
+    """O recorte que bairro nao tem: distrito cobre o pais, entao UF e pergunta valida."""
+    top = gq.ranking_distritos("pop_total", uf="Paraná", n=3)
+    assert len(top) == 3
+    assert all(r["nm_uf"] == "Paraná" for r in top)
+
+
+def test_ranking_distritos_ordem_asc(gq: GeoQuery) -> None:
+    piores = gq.ranking_distritos("pct_esgoto_rede", cd_mun="3550308", n=3, ordem="asc")
+    valores = [r["valor"] for r in piores]
+    assert valores == sorted(valores)
+
+
+def test_distrito_no_ponto(gq: GeoQuery) -> None:
+    se = gq.distrito(DIST_SE_SP)
+    achado = gq.distrito_no_ponto(se["lon"], se["lat"])
+    assert achado is not None
+    assert achado["cd_distrito"] == se["cd_distrito"]
+
+
+def test_distrito_cobre_onde_bairro_nao_cobre(gq: GeoQuery) -> None:
+    """A razao de existir deste nivel. No meio do Amazonas nao ha bairro mapeado pelo
+    IBGE, e ate 2026-08-22 o agente so tinha 'nao sei' para oferecer ali."""
+    lon, lat = -63.0, -4.0
+    assert gq.bairro_no_ponto(lon, lat) is None
+    d = gq.distrito_no_ponto(lon, lat)
+    assert d is not None
+    assert d["nm_mun"] == "Coari"
+
+
 # --- reconexao (defeito medido em 2026-08-20) ---------------------------------
 
 

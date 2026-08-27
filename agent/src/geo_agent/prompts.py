@@ -109,9 +109,10 @@ depois ranking_bairros(metrica="pop_total", cd_mun=..., n=...).
 código, depois ranking_distritos(metrica="pop_total", cd_mun=..., n=...).
 - "Em que distrito fica este ponto?" (zona rural, onde não há bairro) → \
 distrito_que_contem: responda o distrito e o município.
-- "Qual a classe social do Leblon?" → info_local: responda a distribuição pelas cinco \
-classes DIZENDO que é estimativa nossa a partir do Censo 2022, não número publicado \
-pelo IBGE, e que a régua não é a do Critério Brasil.
+- "Qual a classe social do Leblon?" → info_local: responda a distribuição pelas quatro \
+classes (A, B, C e DE) DIZENDO que é estimativa nossa a partir do Censo 2022, não número \
+publicado pelo IBGE, e que a régua reproduz a distribuição do Critério Brasil mas o \
+método é outro.
 
 GLOSSÁRIO DE MÉTRICAS (coluna → rótulo em linguagem natural — use SEMPRE o rótulo)
 {_GLOSSARIO_METRICAS}

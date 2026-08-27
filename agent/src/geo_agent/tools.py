@@ -448,9 +448,11 @@ def _avisos_classe_social(row: dict[str, Any]) -> list[str]:
     if row.get("classe_social_score") is None and row.get("pct_classe_a") is None:
         return []
     avisos = [
-        "as classes A–E abaixo são ESTIMATIVA NOSSA a partir do Censo 2022, não número "
-        "publicado pelo IBGE — ele não divulga classe social — e a régua é própria e "
-        "provisória, não a do Critério Brasil/ABEP"
+        "as classes abaixo são ESTIMATIVA NOSSA a partir do Censo 2022, não número "
+        "publicado pelo IBGE — ele não divulga classe social. Os cortes reproduzem a "
+        "distribuição nacional do Critério Brasil 2024 (A 3,1%, B 21,5%, C 47,0%, "
+        "DE 28,4%), mas o método é outro: a ABEP classifica por posse de bens e "
+        "instrução, e aqui é renda domiciliar estimada. D e E não são separados"
     ]
     if motivo := _SITUACAO_CLASSE_SOCIAL.get(str(row.get("classe_social_situacao"))):
         avisos.append(f"a estimativa de classe social aqui é menos confiável: {motivo}")

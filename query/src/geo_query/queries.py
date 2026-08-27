@@ -191,8 +191,7 @@ class GeoQuery:
                        -- merecem confianca (ver docs/classe-social.md no
                        -- servidor-dados-gis).
                        r.renda_domiciliar_estimada,
-                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
-                       r.pct_classe_d, r.pct_classe_e,
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de,
                        r.classe_social_score, r.classe_social_situacao,
                        s.area_km2,
                        ST_X(ST_Centroid(s.geom)) as lon, ST_Y(ST_Centroid(s.geom)) as lat
@@ -218,8 +217,7 @@ class GeoQuery:
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        -- Classe social: estimativa nossa; ver a busca do setor.
                        r.renda_domiciliar_estimada,
-                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
-                       r.pct_classe_d, r.pct_classe_e,
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de,
                        r.classe_social_score, r.classe_social_situacao
                 from ibge_tabular.municipio_resumo r
                 join ibge.municipio m using (cod_municipio)
@@ -247,8 +245,7 @@ class GeoQuery:
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        -- Classe social: estimativa nossa; ver a busca do setor.
                        r.renda_domiciliar_estimada,
-                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
-                       r.pct_classe_d, r.pct_classe_e,
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de,
                        r.classe_social_score, r.classe_social_situacao,
                        ST_X(ST_Centroid(b.geom)) as lon, ST_Y(ST_Centroid(b.geom)) as lat
                 from ibge_tabular.bairro_resumo r
@@ -337,8 +334,7 @@ class GeoQuery:
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        -- Classe social: estimativa nossa; ver a busca do setor.
                        r.renda_domiciliar_estimada,
-                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
-                       r.pct_classe_d, r.pct_classe_e,
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de,
                        r.classe_social_score, r.classe_social_situacao,
                        ST_X(ST_Centroid(d.geom)) as lon, ST_Y(ST_Centroid(d.geom)) as lat
                 from ibge_tabular.distrito_resumo r

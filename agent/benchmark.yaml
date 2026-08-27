@@ -266,3 +266,11 @@ casos:
       args: { metrica: pct_classe_a, n: 5 }
       destaques: { camada: distrito, n_codigos: 5 }
       resposta_contem: ["estimativa"]
+
+  # D e E nao sao separados: a ABEP nao os separa, e um corte D|E seria invencao nossa
+  # no meio de tres cortes ancorados. Perguntar por classe E isolada tem de receber
+  # explicacao, nao um numero inventado nem um erro de metrica.
+  - id: BM-32
+    pergunta: "Qual o percentual de classe E no bairro Leblon, no Rio de Janeiro?"
+    espera:
+      resposta_contem: ["D", "E"]

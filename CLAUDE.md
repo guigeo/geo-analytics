@@ -121,6 +121,11 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
+  **As classes são A / B / C / DE — quatro, não cinco.** Os cortes foram calibrados para a
+  distribuição nacional reproduzir a do Critério Brasil 2024 (A 3,1%, B 21,5%, C 47,0%,
+  DE 28,4%), e a ABEP não separa D de E. Diga "na mesma régua do Critério Brasil", nunca
+  "segundo a ABEP": o método é outro — eles classificam por posse e instrução, aqui é
+  renda domiciliar estimada.
   **Classe social é a única métrica aqui que o IBGE NÃO publica** (estimativa do
   `servidor-dados-gis`, schema `indicadores`, desde 2026-08-27). Três coisas garantem que
   ela não passe por dado oficial, e são três porque uma só cai: o rótulo diz "(estimada)",

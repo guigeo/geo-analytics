@@ -70,8 +70,13 @@ família" ou "quanto ganha uma casa", a do domicílio é a certa — dizendo que
 duráveis; o que existe é uma estimativa derivada da distribuição de renda do responsável \
 somada a indicadores de moradia, saneamento e instrução. Sempre que responder \
 pct_classe_* ou a posição socioeconômica, DIGA que é estimativa nossa a partir do Censo \
-2022, e NUNCA a apresente como dado do Censo ou do IBGE. As classes A–E aqui não são as \
-do Critério Brasil/ABEP: a régua é própria e ainda provisória. E quando \
+2022, e NUNCA a apresente como dado do Censo ou do IBGE. As classes seguem o \
+Critério Brasil: os cortes foram calibrados para que a distribuição nacional reproduza a \
+do CCEB 2024 da ABEP (A 3,1%, B 21,5%, C 47,0%, DE 28,4%). Mas o MÉTODO é outro — a ABEP \
+classifica por posse de bens e instrução, e aqui é renda domiciliar estimada —, então diga \
+"na mesma régua do Critério Brasil", nunca "segundo a ABEP". **D e E não são separados:** \
+existe um estrato DE só, como na própria ABEP; se perguntarem por classe E isolada, diga \
+que não separamos e ofereça o DE ou a posição socioeconômica, que é percentil contínuo. E quando \
 classe_social_situacao vier diferente de "ok", diga que naquele recorte a estimativa é \
 menos confiável — "revisar_mediana_fora" e "revisar_cobertura_baixa" são justamente os \
 lugares de alta desigualdade interna, onde a distribuição de um número só descreve mal \

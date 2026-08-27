@@ -93,13 +93,14 @@ METRIC_LABELS: dict[str, str] = {
     # "estimada" em todas porque ele e o que o LLM le e repete -- a regra 8 do
     # prompt manda declarar a estimativa, e o rotulo e a segunda trava, para o caso
     # de a regra se perder num contexto longo. Ver servidor-dados-gis/docs/classe-social.md.
-    "renda_domiciliar_estimada": "renda mediana mensal do DOMICÍLIO (estimada)",
     "pct_classe_a": "% de domicílios na classe A (estimada)",
     "pct_classe_b": "% de domicílios na classe B (estimada)",
     "pct_classe_c": "% de domicílios na classe C (estimada)",
-    "pct_classe_d": "% de domicílios na classe D (estimada)",
-    "pct_classe_e": "% de domicílios na classe E (estimada)",
+    # DE e um estrato so, como no Criterio Brasil -- a ABEP nao separa D de E, e um
+    # corte inventado no meio de tres cortes ancorados seria indistinguivel deles.
+    "pct_classe_de": "% de domicílios no estrato D/E (estimada)",
     "classe_social_score": "posição socioeconômica estimada (0–100, percentil no nível)",
+    "renda_domiciliar_estimada": "renda mediana mensal do DOMICÍLIO (estimada)",
     "classe_social_situacao": "confiabilidade da estimativa de classe social",
 }
 

@@ -190,6 +190,7 @@ class GeoQuery:
                        -- junto de proposito: e ela que diz quando as fatias nao
                        -- merecem confianca (ver docs/classe-social.md no
                        -- servidor-dados-gis).
+                       r.renda_domiciliar_estimada,
                        r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
                        r.pct_classe_d, r.pct_classe_e,
                        r.classe_social_score, r.classe_social_situacao,
@@ -216,6 +217,7 @@ class GeoQuery:
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        -- Classe social: estimativa nossa; ver a busca do setor.
+                       r.renda_domiciliar_estimada,
                        r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
                        r.pct_classe_d, r.pct_classe_e,
                        r.classe_social_score, r.classe_social_situacao
@@ -244,6 +246,7 @@ class GeoQuery:
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        -- Classe social: estimativa nossa; ver a busca do setor.
+                       r.renda_domiciliar_estimada,
                        r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
                        r.pct_classe_d, r.pct_classe_e,
                        r.classe_social_score, r.classe_social_situacao,
@@ -333,6 +336,7 @@ class GeoQuery:
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        -- Classe social: estimativa nossa; ver a busca do setor.
+                       r.renda_domiciliar_estimada,
                        r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
                        r.pct_classe_d, r.pct_classe_e,
                        r.classe_social_score, r.classe_social_situacao,

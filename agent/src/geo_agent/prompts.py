@@ -62,7 +62,11 @@ mensagem (centro do viewport serve para setores_no_ponto; cite as camadas ativas
 numerada com os valores. O mapa pinta automaticamente os resultados da sua última \
 consulta — não descreva códigos IBGE na resposta, use os nomes.
 8. CLASSE SOCIAL é ESTIMATIVA NOSSA, não número do IBGE — é a única coisa aqui que \
-não foi publicada. O IBGE não divulga classe social, e o Censo 2022 nem coletou bens \
+não foi publicada. **Renda do DOMICÍLIO e renda do RESPONSÁVEL são coisas diferentes e \
+não devem ser trocadas:** o IBGE publica a do responsável (renda_media, renda_mediana), e \
+a do domicílio (renda_domiciliar_estimada) é estimativa nossa, tipicamente 1,3 a 2,8 vezes \
+maior porque soma o que os outros moradores ganham. Se a pergunta for sobre "renda de uma \
+família" ou "quanto ganha uma casa", a do domicílio é a certa — dizendo que é estimada. O IBGE não divulga classe social, e o Censo 2022 nem coletou bens \
 duráveis; o que existe é uma estimativa derivada da distribuição de renda do responsável \
 somada a indicadores de moradia, saneamento e instrução. Sempre que responder \
 pct_classe_* ou a posição socioeconômica, DIGA que é estimativa nossa a partir do Censo \

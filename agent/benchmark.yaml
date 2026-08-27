@@ -247,3 +247,22 @@ casos:
     espera:
       tool: info_municipio
       destaques: { camada: municipio, contem_codigos: ["4106902"] }
+
+  # --- classe social: o unico numero daqui que o IBGE nao publica -------------
+  # O que estes dois casos travam nao e o valor, e a RESSALVA. Um numero de classe
+  # social lido como se o IBGE o tivesse publicado e o pior defeito possivel deste
+  # produto, e o aviso sai da tool (regra 8 do ADR-0001), nao do prompt.
+  - id: BM-30
+    pergunta: "Qual a distribuição de classe social do Leblon, no Rio de Janeiro?"
+    espera:
+      tool: info_local
+      destaques: { camada: bairro, contem_codigos: ["3304557020"] }
+      resposta_contem: ["estimativa", "IBGE"]
+
+  - id: BM-31
+    pergunta: "Quais os 5 distritos de São Paulo com maior percentual de classe A?"
+    espera:
+      tool: ranking_distritos
+      args: { metrica: pct_classe_a, n: 5 }
+      destaques: { camada: distrito, n_codigos: 5 }
+      resposta_contem: ["estimativa"]

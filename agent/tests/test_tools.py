@@ -235,12 +235,35 @@ def test_distrito_responde_onde_bairro_recusa(gq: GeoQuery) -> None:
 # --- info_local: a cascata bairro -> distrito -> localizacao (2026-08-22) ------
 
 
-def test_info_local_bairro_direto_nao_avisa_nada(gq: GeoQuery) -> None:
+def test_info_local_bairro_direto_nao_avisa_nada_de_nivel(gq: GeoQuery) -> None:
+    """Copacabana e bairro de verdade: nada a avisar sobre o NIVEL do dado.
+
+    A asserção é sobre conteúdo, não sobre contagem. Ela já foi `avisos == []` e
+    quebrou quando a classe social passou a avisar que é estimativa (2026-08-27) —
+    um aviso legítimo, que não tem nada a ver com o que este teste protege.
+    """
     r = execute_tool(gq, "info_local", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"}))
     assert not r.error
     assert r.payload["nivel"] == "bairro"
-    assert r.payload["avisos"] == []
+    assert not any(
+        "não existe como bairro" in a or "município inteiro" in a
+        for a in r.payload["avisos"]
+    )
     assert r.camada == "bairro"
+
+
+def test_info_local_avisa_que_classe_social_e_estimativa(gq: GeoQuery) -> None:
+    """Regra 8 do ADR-0001: o que muda o sentido do número sai da tool, não do prompt.
+
+    Um número de classe social lido como se o IBGE o tivesse publicado é o pior
+    defeito possível deste produto — o IBGE não divulga classe social. Deixar a
+    ressalva por conta de uma instrução num prompt longo é deixá-la cair no dia em
+    que o contexto encher.
+    """
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Leblon", "municipio": "Rio de Janeiro"}))
+    assert not r.error
+    assert r.payload["dados"]["classe_social_score"] is not None
+    assert any("ESTIMATIVA NOSSA" in a and "IBGE" in a for a in r.payload["avisos"])
 
 
 def test_info_local_cai_para_distrito_e_avisa(gq: GeoQuery) -> None:
@@ -259,7 +282,9 @@ def test_info_local_avisa_quando_o_distrito_e_o_municipio_inteiro(gq: GeoQuery) 
     r = execute_tool(gq, "info_local", json.dumps({"nome": "Curitiba", "municipio": "Curitiba"}))
     assert not r.error
     assert r.payload["nivel"] == "distrito"
-    assert len(r.payload["avisos"]) == 2
+    # Os DOIS avisos de nível, por conteúdo. Contar avisos amarraria este teste a
+    # quantos avisos existem no total, e a classe social já acrescentou o dela.
+    assert any("não existe como bairro" in a for a in r.payload["avisos"])
     assert any("município inteiro" in a for a in r.payload["avisos"])
 
 

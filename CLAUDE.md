@@ -121,6 +121,13 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
+  **Classe social é a única métrica aqui que o IBGE NÃO publica** (estimativa do
+  `servidor-dados-gis`, schema `indicadores`, desde 2026-08-27). Três coisas garantem que
+  ela não passe por dado oficial, e são três porque uma só cai: o rótulo diz "(estimada)",
+  a regra 8 do system prompt manda declarar, e `_avisos_classe_social()` devolve o aviso
+  **junto da linha** — que é a regra 8 do ADR-0001 (o que muda o sentido do número é dado,
+  não instrução de prompt). O aviso da tool só existe hoje na cascata `info_local`, porque
+  é lá que o canal de `avisos` existe; nas outras `info_*` a marca viaja só pelo rótulo.
   `tools.py` também guarda `METRIC_LABELS` (coluna → rótulo PT-BR das colunas curadas do
   Censo) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna
   na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve

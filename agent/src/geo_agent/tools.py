@@ -89,6 +89,17 @@ METRIC_LABELS: dict[str, str] = {
     "pct_lixo_coletado": "% de domicílios com lixo coletado",
     "lon": "longitude do centroide",
     "lat": "latitude do centroide",
+    # Classe social: as UNICAS metricas aqui que o IBGE NAO publica. O rotulo diz
+    # "estimada" em todas porque ele e o que o LLM le e repete -- a regra 8 do
+    # prompt manda declarar a estimativa, e o rotulo e a segunda trava, para o caso
+    # de a regra se perder num contexto longo. Ver servidor-dados-gis/docs/classe-social.md.
+    "pct_classe_a": "% de domicílios na classe A (estimada)",
+    "pct_classe_b": "% de domicílios na classe B (estimada)",
+    "pct_classe_c": "% de domicílios na classe C (estimada)",
+    "pct_classe_d": "% de domicílios na classe D (estimada)",
+    "pct_classe_e": "% de domicílios na classe E (estimada)",
+    "classe_social_score": "posição socioeconômica estimada (0–100, percentil no nível)",
+    "classe_social_situacao": "confiabilidade da estimativa de classe social",
 }
 
 
@@ -396,13 +407,61 @@ def _avisa_distorcao(row: dict[str, Any]) -> str | None:
     )
 
 
+# Como a situacao da estimativa se le em portugues. O banco guarda o token canonico
+# (ele e a chave, e traduzir na carga apagaria a chave); a traducao mora aqui, do lado
+# de quem escreve para gente.
+_SITUACAO_CLASSE_SOCIAL = {
+    "revisar_mediana_fora": (
+        "neste recorte o ajuste erra a mediana que ficou retida como prova, e isso "
+        "acontece onde a desigualdade interna é alta — que é justamente onde uma "
+        "distribuição só descreve mal quem mora ali"
+    ),
+    "revisar_cobertura_baixa": (
+        "parte dos setores deste recorte está sem dado de renda por sigilo, então a "
+        "estimativa cobre menos gente do que o recorte inteiro"
+    ),
+    "revisar_n_pequeno": (
+        "há poucos responsáveis neste recorte, e com poucos a renda fica instável"
+    ),
+    "revisar_sem_mediana": (
+        "o IBGE não publica a mediana deste recorte, então a prova que marcaria um "
+        "ajuste ruim não pode ser feita aqui"
+    ),
+    "sem_dado_de_renda": (
+        "a renda deste recorte está suprimida por sigilo, e sem ela não há estimativa "
+        "de classe social — o que não é o mesmo que ser pobre"
+    ),
+}
+
+
+def _avisos_classe_social(row: dict[str, Any]) -> list[str]:
+    """Os avisos que a classe social obriga: que ela e estimativa, e quando duvidar dela.
+
+    Sai da TOOL e nao do prompt por causa da regra 8 do ADR-0001: o que muda o sentido
+    de um numero e dado, e ao prompt cabe so escolher as palavras. Um numero de classe
+    social lido como se o IBGE o tivesse publicado e o pior defeito possivel deste
+    produto, e deixar a ressalva por conta de uma instrucao num prompt longo e deixa-la
+    cair no dia em que o contexto ficar cheio.
+    """
+    if row.get("classe_social_score") is None and row.get("pct_classe_a") is None:
+        return []
+    avisos = [
+        "as classes A–E abaixo são ESTIMATIVA NOSSA a partir do Censo 2022, não número "
+        "publicado pelo IBGE — ele não divulga classe social — e a régua é própria e "
+        "provisória, não a do Critério Brasil/ABEP"
+    ]
+    if motivo := _SITUACAO_CLASSE_SOCIAL.get(str(row.get("classe_social_situacao"))):
+        avisos.append(f"a estimativa de classe social aqui é menos confiável: {motivo}")
+    return avisos
+
+
 def _resultado_nivel(
     nivel: str, row: dict[str, Any], avisos: list[str]
 ) -> ToolResult:
     """Empacota um achado da cascata: o payload que o LLM le e o codigo que o mapa pinta."""
     chave = "cd_bairro" if nivel == "bairro" else "cd_distrito"
     return ToolResult(
-        payload={"nivel": nivel, "avisos": avisos, "dados": row},
+        payload={"nivel": nivel, "avisos": avisos + _avisos_classe_social(row), "dados": row},
         camada=nivel,  # type: ignore[arg-type]
         codigos=[str(row[chave])],
         rows=[row],

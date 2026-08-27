@@ -99,11 +99,27 @@ class GeoQuery:
         """Le uma vez o que existe: colunas numericas dos resumos e as variaveis do Censo."""
         with self.con.cursor() as cur:
             for nivel, tabela in _RESUMO.items():
+                # pg_attribute, e nao information_schema.columns: o padrao SQL nao
+                # conhece view materializada, e o information_schema tambem nao --
+                # ele lista relkind 'r' e 'v', nunca 'm'. Como setor_resumo foi
+                # materializada para derrubar uma consulta de 18 s para 4,5 ms, o
+                # catalogo do setor vinha VAZIO desde entao: as 17 colunas
+                # numericas existiam e nenhuma era oferecida como metrica, entao
+                # toda pergunta de setor caia no formato longo e as colunas
+                # derivadas (densidade, pct_agua_rede, pct_esgoto_rede,
+                # pct_lixo_coletado) simplesmente nao existiam naquele nivel.
+                # Nao dava erro: dava uma lista de metricas mais curta do que devia.
                 cur.execute(
                     """
-                    select column_name from information_schema.columns
-                    where table_schema = 'ibge_tabular' and table_name = %s
-                      and data_type in ('numeric','integer','bigint','double precision','real')
+                    select a.attname as column_name
+                    from pg_attribute a
+                    join pg_class c on c.oid = a.attrelid
+                    join pg_namespace n on n.oid = c.relnamespace
+                    where n.nspname = 'ibge_tabular' and c.relname = %s
+                      and c.relkind in ('r','v','m')
+                      and a.attnum > 0 and not a.attisdropped
+                      and format_type(a.atttypid, null) in
+                          ('numeric','integer','bigint','double precision','real')
                     """,
                     (tabela,),
                 )
@@ -166,6 +182,17 @@ class GeoQuery:
                        r.media_moradores, r.pop_masculino, r.pop_feminino,
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
+                       -- Classe social: ESTIMATIVA NOSSA, nao numero do IBGE. O
+                       -- catalogo de metricas ja a alcanca pelo resumo, mas estas
+                       -- buscas tem lista de colunas CURADA -- sem entrar aqui, o
+                       -- agente responderia a classe social quando perguntado por
+                       -- ela e a omitiria em 'me fale sobre o Leblon'. situacao vem
+                       -- junto de proposito: e ela que diz quando as fatias nao
+                       -- merecem confianca (ver docs/classe-social.md no
+                       -- servidor-dados-gis).
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
+                       r.pct_classe_d, r.pct_classe_e,
+                       r.classe_social_score, r.classe_social_situacao,
                        s.area_km2,
                        ST_X(ST_Centroid(s.geom)) as lon, ST_Y(ST_Centroid(s.geom)) as lat
                 from ibge_tabular.setor_resumo r
@@ -187,7 +214,11 @@ class GeoQuery:
                        m.sigla_uf, m.area_km2, r.pop_total, r.domicilios_ocupados,
                        r.domicilios_vagos, r.media_moradores, r.pop_masculino, r.pop_feminino,
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
-                       r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado
+                       r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
+                       -- Classe social: estimativa nossa; ver a busca do setor.
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
+                       r.pct_classe_d, r.pct_classe_e,
+                       r.classe_social_score, r.classe_social_situacao
                 from ibge_tabular.municipio_resumo r
                 join ibge.municipio m using (cod_municipio)
                 where r.cod_municipio = %s
@@ -212,6 +243,10 @@ class GeoQuery:
                        r.pop_masculino, r.pop_feminino,
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
+                       -- Classe social: estimativa nossa; ver a busca do setor.
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
+                       r.pct_classe_d, r.pct_classe_e,
+                       r.classe_social_score, r.classe_social_situacao,
                        ST_X(ST_Centroid(b.geom)) as lon, ST_Y(ST_Centroid(b.geom)) as lat
                 from ibge_tabular.bairro_resumo r
                 join ibge.bairro b using (cod_bairro)
@@ -297,6 +332,10 @@ class GeoQuery:
                        r.pop_masculino, r.pop_feminino,
                        r.renda_media, r.renda_mediana, r.densidade_hab_km2,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
+                       -- Classe social: estimativa nossa; ver a busca do setor.
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c,
+                       r.pct_classe_d, r.pct_classe_e,
+                       r.classe_social_score, r.classe_social_situacao,
                        ST_X(ST_Centroid(d.geom)) as lon, ST_Y(ST_Centroid(d.geom)) as lat
                 from ibge_tabular.distrito_resumo r
                 join ibge.distrito d using (cod_distrito)

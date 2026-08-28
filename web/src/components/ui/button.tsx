@@ -38,20 +38,25 @@ const buttonVariants = cva(
   }
 )
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
+type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
-  }) {
+  }
+
+// forwardRef NÃO é decoração: este projeto está no React 18, e lá `ref` não é
+// prop comum como no 19 (que é para onde este arquivo foi escrito, no estilo
+// shadcn novo). Sem ele, todo Radix que usa o Button como gatilho por `asChild`
+// — Tooltip, Popover — fica sem o nó DOM para ancorar: o estado abre, o painel
+// não aparece, e nada dá erro. Medido em 2026-08-27 com o popover de novidades.
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant = "default", size = "default", asChild = false, ...props },
+  ref
+) {
   const Comp = asChild ? Slot.Root : "button"
 
   return (
     <Comp
+      ref={ref}
       data-slot="button"
       data-variant={variant}
       data-size={size}
@@ -59,6 +64,6 @@ function Button({
       {...props}
     />
   )
-}
+})
 
 export { Button, buttonVariants }

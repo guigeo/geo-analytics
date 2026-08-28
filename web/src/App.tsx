@@ -10,7 +10,7 @@ import {
 import type { SearchHit } from "@/search";
 import { LayerPanel } from "@/panels/LayerPanel";
 import { AttributePanel } from "@/panels/AttributePanel";
-import { ChatPanel } from "@/chat/ChatPanel";
+import { ChatPanel, type PerguntaExterna } from "@/chat/ChatPanel";
 import { LAYERS } from "@/map/layers";
 import type { Destaques } from "@/map/highlight";
 import type { ContextoMapa } from "@/chat/api";
@@ -28,6 +28,10 @@ export function App() {
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [destaques, setDestaques] = useState<Destaques | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
+  // Pergunta disparada de fora do chat (hoje, pelo painel de novidades). A `key`
+  // existe para a MESMA pergunta poder ser pedida duas vezes — sem ela, o efeito
+  // do ChatPanel não veria mudança nenhuma na segunda.
+  const [pergunta, setPergunta] = useState<PerguntaExterna | null>(null);
   // Viewport em ref: muda a cada pan/zoom sem re-renderizar; lido só no envio do chat.
   const viewportRef = useRef<Viewport | null>(null);
   const visibleRef = useRef(visible);
@@ -62,6 +66,7 @@ export function App() {
           satelliteOverlay={satelliteOverlay}
           onToggleSatelliteOverlay={() => setSatelliteOverlay((s) => !s)}
           onSearchSelect={onSearchSelect}
+          onPerguntar={(texto) => setPergunta({ texto, key: Date.now() })}
         />
         <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
           <LayerPanel visible={visible} onToggle={toggleLayer} />
@@ -85,7 +90,11 @@ export function App() {
               <AttributePanel selected={selected} />
             </div>
             <div className="min-h-0 flex-[1.4]">
-              <ChatPanel onDestaques={setDestaques} getContexto={getContexto} />
+              <ChatPanel
+                onDestaques={setDestaques}
+                getContexto={getContexto}
+                pergunta={pergunta}
+              />
             </div>
           </div>
         </div>

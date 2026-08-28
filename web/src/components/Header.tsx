@@ -5,6 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Novidades } from "@/components/Novidades";
 import { SearchBox } from "@/components/SearchBox";
 import type { SearchHit } from "@/search";
 import type { Theme } from "@/hooks/use-theme";
@@ -17,6 +18,8 @@ interface Props {
   satelliteOverlay: boolean;
   onToggleSatelliteOverlay: () => void;
   onSearchSelect: (hit: SearchHit) => void;
+  /** Uma novidade pediu para ser demonstrada: vai virar pergunta no chat. */
+  onPerguntar: (texto: string) => void;
 }
 
 export function Header({
@@ -27,6 +30,7 @@ export function Header({
   satelliteOverlay,
   onToggleSatelliteOverlay,
   onSearchSelect,
+  onPerguntar,
 }: Props) {
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4">
@@ -45,6 +49,8 @@ export function Header({
       <SearchBox onSelect={onSearchSelect} />
 
       <div className="ml-auto flex items-center gap-1">
+        <Novidades onPerguntar={onPerguntar} />
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

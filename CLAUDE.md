@@ -103,6 +103,13 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   `/tiles` na própria origem (o que a VPS serve hoje pelo Caddy); com ela, do HOST DE
   TILES COMPARTILHADO — em dev é o único caminho, porque **este repositório não guarda
   mais tile nenhum**. Ver `../webgis/docs/LOCAL.md`.
+  `lib/novidades.ts` é o anúncio de feature nova, e é **dado, não JSX**: a lista mora ali e
+  `components/Novidades.tsx` só renderiza — com a casca sendo derivada por cliente, changelog
+  escrito em componente é conteúdo de um cliente dentro de código compartilhado. Cada novidade
+  carrega a `pergunta` que o botão dispara no chat (via `PerguntaExterna`, o mesmo padrão
+  `{texto, key}` do `MapFocus`) e o `chip` que entra na frente das sugestões do estado vazio:
+  anunciar e DEMONSTRAR no mesmo clique. A pergunta precisa ser específica — medido: sem
+  "porcentagem" e "top 10" o agente pede esclarecimento em vez de pintar o mapa.
 - **`query/`** — projeto `uv` (Fase 2). Camada de consulta PostGIS sobre o geodata central —
   **backend de dados do chat**. `db.py` abre a conexão (`GEODATA_DSN`, papel `geo_reader`,
   `autocommit`); `queries.py` expõe `GeoQuery` (lookups, `busca_municipios` nome→código,

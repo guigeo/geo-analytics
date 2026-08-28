@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Destaques } from "@/map/highlight";
 import { sendChat, type ContextoMapa } from "./api";
+import { NOVIDADES } from "@/lib/novidades";
 
 interface Msg {
   role: "user" | "assistant";
@@ -12,11 +13,20 @@ interface Msg {
   isError?: boolean;
 }
 
+/** Pergunta pedida de fora do chat. A `key` muda a cada pedido — sem ela, pedir
+ *  a MESMA pergunta duas vezes não dispararia o efeito na segunda. */
+export interface PerguntaExterna {
+  texto: string;
+  key: number;
+}
+
 interface Props {
   /** Destaques da última resposta — o App repassa ao MapView pintar. */
   onDestaques: (destaques: Destaques | null) => void;
   /** Contexto do mapa no momento do envio (viewport + camadas ativas). */
   getContexto: () => ContextoMapa | null;
+  /** Pergunta vinda do painel de novidades; dispara sozinha ao chegar. */
+  pergunta?: PerguntaExterna | null;
 }
 
 const SUGESTOES = [
@@ -25,7 +35,26 @@ const SUGESTOES = [
   "Qual a população de Curitiba?",
 ];
 
-export function ChatPanel({ onDestaques, getContexto }: Props) {
+interface Chip {
+  rotulo: string;
+  pergunta: string;
+  novo?: boolean;
+}
+
+// As novidades entram na FRENTE das sugestões fixas: o estado vazio do chat é
+// onde a pessoa olha quando não sabe o que perguntar, então é onde a feature
+// nova se apresenta. E o clique EXECUTA em vez de descrever — a demonstração é
+// o que desperta a curiosidade, não o nome da feature.
+const CHIPS: Chip[] = [
+  ...NOVIDADES.flatMap((n) =>
+    n.chip && n.pergunta
+      ? [{ rotulo: n.chip, pergunta: n.pergunta, novo: true }]
+      : [],
+  ),
+  ...SUGESTOES.map((s) => ({ rotulo: s, pergunta: s })),
+];
+
+export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +65,11 @@ export function ChatPanel({ onDestaques, getContexto }: Props) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Novidade pedindo demonstração: a pergunta chega pronta e vai direto.
+  useEffect(() => {
+    if (pergunta) void ask(pergunta.texto);
+  }, [pergunta?.key]);
 
   async function ask(pergunta: string) {
     if (!pergunta.trim() || loading) return;
@@ -75,14 +109,23 @@ export function ChatPanel({ onDestaques, getContexto }: Props) {
             <p className="text-xs text-muted-foreground">
               Pergunte sobre os dados do Censo 2022 — a resposta pinta o mapa.
             </p>
-            {SUGESTOES.map((s) => (
+            {CHIPS.map((c) => (
               <button
-                key={s}
+                key={c.rotulo}
                 type="button"
-                onClick={() => void ask(s)}
-                className="rounded-lg border border-dashed border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={() => void ask(c.pergunta)}
+                className={
+                  c.novo
+                    ? "flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-left text-xs text-foreground transition-colors hover:bg-primary/10"
+                    : "rounded-lg border border-dashed border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                }
               >
-                {s}
+                {c.novo && (
+                  <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary-foreground">
+                    Novo
+                  </span>
+                )}
+                <span>{c.rotulo}</span>
               </button>
             ))}
           </div>

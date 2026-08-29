@@ -36,13 +36,14 @@ export const cliente: ConfiguracaoCliente = {
     ],
   },
 
-  // Recorte imobiliário: o que informa decisão de preço e de público, mais as
-  // vias, que informam acesso. Sem distrito, antenas e ferrovias.
+  // Recorte imobiliário: a escada administrativa inteira até o setor, que é onde
+  // a decisão de preço e de público acontece. Sem rodovias, antenas e ferrovias.
+  // Nenhuma nasce ligada — quem usa escolhe o nível ao entrar.
   camadas: [
     CATALOGO.uf,
-    com(CATALOGO.municipio, { visivelPorPadrao: true }),
+    CATALOGO.municipio,
+    CATALOGO.distrito,
     CATALOGO.bairro,
     com(CATALOGO.setor, { cor: "#1f6f8b" }),
-    CATALOGO.rodovias,
   ],
 };

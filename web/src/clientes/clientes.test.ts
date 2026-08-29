@@ -32,12 +32,20 @@ describe("os dois clientes", () => {
   });
 
   it("tirar camada de um cliente não tira do outro", () => {
-    // O recorte do EB Prime não tem distrito, antenas nem ferrovias; as três
+    // O recorte do EB Prime não tem rodovias, antenas nem ferrovias; as três
     // continuam no cliente 1. É esta linha que prova que o recorte é por
     // cliente, e não uma edição na lista global.
-    for (const ausente of ["distrito", "antenas", "ferrovias"]) {
+    for (const ausente of ["rodovias", "antenas", "ferrovias"]) {
       expect(ids(ebPrime)).not.toContain(ausente);
       expect(ids(geoAnalytics)).toContain(ausente);
+    }
+  });
+
+  it("nenhuma camada do EB Prime nasce ligada", () => {
+    // Pedido do Gui em 2026-08-29: quem usa escolhe o nível ao entrar, em vez de
+    // achar o mapa já com município desenhado por cima.
+    for (const c of ebPrime.camadas) {
+      expect(c.visivelPorPadrao, `camada ${c.id}`).toBe(false);
     }
   });
 

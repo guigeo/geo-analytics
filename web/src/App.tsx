@@ -6,21 +6,20 @@ import type { SearchHit } from "@/search";
 import { LayerPanel } from "@/panels/LayerPanel";
 import { AttributePanel } from "@/panels/AttributePanel";
 import { ChatPanel, type PerguntaExterna } from "@/chat/ChatPanel";
-import { LAYERS } from "@/map/layers";
+import { camadas } from "@/configuracao";
 import type { Destaques } from "@/map/highlight";
 import type { ContextoMapa } from "@/chat/api";
 import { useTheme } from "@/hooks/use-theme";
 
-const initialVisibility = Object.fromEntries(LAYERS.map((l) => [l.id, l.defaultVisible])) as Record<
-  string,
-  boolean
->;
+const visibilidadeInicial = Object.fromEntries(
+  camadas.map((c) => [c.id, c.visivelPorPadrao]),
+) as Record<string, boolean>;
 
 export function App() {
   const { theme, toggle } = useTheme();
   const [satellite, setSatellite] = useState(false);
   const [satelliteOverlay, setSatelliteOverlay] = useState(true);
-  const [visible, setVisible] = useState<Record<string, boolean>>(initialVisibility);
+  const [visible, setVisible] = useState<Record<string, boolean>>(visibilidadeInicial);
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [destaques, setDestaques] = useState<Destaques | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
@@ -45,7 +44,7 @@ export function App() {
 
   const getContexto = (): ContextoMapa | null => {
     const v = viewportRef.current;
-    const camadas_ativas = LAYERS.filter((l) => visibleRef.current[l.id]).map((l) => l.id);
+    const camadas_ativas = camadas.filter((c) => visibleRef.current[c.id]).map((c) => c.id);
     if (!v) return { camadas_ativas };
     return { bbox: v.bbox, zoom: v.zoom, centro: v.centro, camadas_ativas };
   };

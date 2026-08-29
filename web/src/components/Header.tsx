@@ -5,6 +5,7 @@ import { Novidades } from "@/components/Novidades";
 import { SearchBox } from "@/components/SearchBox";
 import type { SearchHit } from "@/search";
 import type { Theme } from "@/hooks/use-theme";
+import { identidade } from "@/configuracao";
 
 interface Props {
   theme: Theme;
@@ -35,8 +36,8 @@ export function Header({
           <Globe2 className="size-5" />
         </span>
         <div className="leading-tight">
-          <p className="text-sm font-semibold tracking-tight">Geo Intelligence</p>
-          <p className="text-[11px] text-muted-foreground">Mapa interativo · Brasil</p>
+          <p className="text-sm font-semibold tracking-tight">{identidade.nome}</p>
+          <p className="text-[11px] text-muted-foreground">{identidade.subtitulo}</p>
         </div>
       </div>
 

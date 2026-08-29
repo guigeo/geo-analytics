@@ -14,13 +14,8 @@ import {
   spriteUrl,
   type BasemapTheme,
 } from "./basemap";
-import {
-  dataLayers,
-  dataSources,
-  INTERACTIVE_LAYER_IDS,
-  LAYERS,
-  SUBLAYER_SUFFIXES,
-} from "./layers";
+import { camadasDoMapa, fontesDeDados, IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
+import { camadas, configuracaoMapa } from "@/configuracao";
 import {
   EMPTY_SELECTION,
   selectionLayers,
@@ -65,8 +60,6 @@ interface Props {
   onViewportChange?: (viewport: Viewport) => void;
 }
 
-const BRAZIL_CENTER: [number, number] = [-52.5, -14.5];
-
 function buildStyle(
   theme: BasemapTheme,
   satellite: boolean,
@@ -79,14 +72,14 @@ function buildStyle(
     sources: {
       [BASEMAP_SOURCE_ID]: basemapSource,
       [SATELLITE_SOURCE_ID]: satelliteSource,
-      ...dataSources(),
+      ...fontesDeDados(),
       [SELECTION_SOURCE_ID]: selectionSource,
     },
     layers: [
       ...(satellite
         ? [satelliteLayer(), ...(satelliteOverlay ? basemapOverlayLayers(theme) : [])]
         : basemapLayers(theme)),
-      ...dataLayers(),
+      ...camadasDoMapa(),
       ...highlightLayers(),
       ...selectionLayers,
     ],
@@ -127,8 +120,8 @@ export function MapView({
         initialSatelliteRef.current,
         initialSatelliteOverlayRef.current,
       ),
-      center: BRAZIL_CENTER,
-      zoom: 3.5,
+      center: configuracaoMapa.centro,
+      zoom: configuracaoMapa.zoomInicial,
     });
     map.addControl(new maplibregl.NavigationControl({}), "top-left");
     mapRef.current = map;
@@ -148,7 +141,7 @@ export function MapView({
       if (img) ensureIcon(map, e.id, img);
     });
 
-    const activeLayers = () => INTERACTIVE_LAYER_IDS.filter((id) => visibleRef.current[id]);
+    const activeLayers = () => IDS_CLICAVEIS.filter((id) => visibleRef.current[id]);
 
     const selection = () =>
       map.getSource(SELECTION_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
@@ -242,10 +235,10 @@ export function MapView({
 }
 
 function applyVisibility(map: maplibregl.Map, visible: Record<string, boolean>) {
-  for (const l of LAYERS) {
-    const value = visible[l.id] ? "visible" : "none";
-    for (const suffix of SUBLAYER_SUFFIXES) {
-      const id = l.id + suffix;
+  for (const c of camadas) {
+    const value = visible[c.id] ? "visible" : "none";
+    for (const suffix of SUFIXOS_SUBCAMADA) {
+      const id = c.id + suffix;
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", value);
     }
   }

@@ -4,19 +4,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LayerPanel } from "./LayerPanel";
-import { LAYERS } from "@/map/layers";
+import { camadas } from "@/configuracao";
 
 describe("LayerPanel", () => {
   it("mostra uma linha por camada configurada", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} />);
-    for (const l of LAYERS) {
-      expect(screen.getByText(l.label), `camada ${l.id}`).toBeInTheDocument();
+    for (const c of camadas) {
+      expect(screen.getByText(c.rotulo), `camada ${c.id}`).toBeInTheDocument();
     }
-    expect(screen.getAllByRole("switch")).toHaveLength(LAYERS.length);
+    expect(screen.getAllByRole("switch")).toHaveLength(camadas.length);
   });
 
   it("reflete no interruptor a visibilidade recebida", () => {
-    const visiveis = Object.fromEntries(LAYERS.map((l, i) => [l.id, i === 0]));
+    const visiveis = Object.fromEntries(camadas.map((c, i) => [c.id, i === 0]));
     render(<LayerPanel visible={visiveis} onToggle={vi.fn()} />);
     const interruptores = screen.getAllByRole("switch");
     expect(interruptores[0]).toBeChecked();

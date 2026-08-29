@@ -1,6 +1,6 @@
 import { MousePointerSquareDashed } from "lucide-react";
 import type { SelectedFeature } from "@/map/MapView";
-import { LAYERS } from "@/map/layers";
+import { camadas } from "@/configuracao";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function AttributePanel({ selected }: Props) {
-  const layer = selected ? LAYERS.find((l) => l.id === selected.layerId) : undefined;
+  const camada = selected ? camadas.find((c) => c.id === selected.layerId) : undefined;
 
   return (
     <aside className="flex h-full min-h-0 flex-col bg-background">
@@ -20,7 +20,7 @@ export function AttributePanel({ selected }: Props) {
       </div>
 
       <ScrollArea className="min-h-0 flex-1 px-4">
-        {!selected || !layer ? (
+        {!selected || !camada ? (
           <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-8 text-center">
             <MousePointerSquareDashed className="size-5 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Clique em uma feição no mapa.</p>
@@ -28,17 +28,17 @@ export function AttributePanel({ selected }: Props) {
         ) : (
           <Card className="gap-0 overflow-hidden p-0">
             <div className="border-b border-border bg-muted/40 px-4 py-2.5">
-              <p className="text-sm font-semibold">{layer.label}</p>
+              <p className="text-sm font-semibold">{camada.rotulo}</p>
             </div>
             <dl className="divide-y divide-border">
-              {layer.attributes.map((field) => (
+              {camada.atributos.map((atributo) => (
                 <div
-                  key={field.key}
+                  key={atributo.chave}
                   className="flex items-baseline justify-between gap-4 px-4 py-2.5"
                 >
-                  <dt className="text-xs text-muted-foreground">{field.label}</dt>
+                  <dt className="text-xs text-muted-foreground">{atributo.rotulo}</dt>
                   <dd className="text-right text-sm font-medium tabular-nums">
-                    {formatValue(selected.properties[field.key])}
+                    {formatValue(selected.properties[atributo.chave])}
                   </dd>
                 </div>
               ))}

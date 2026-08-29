@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Destaques } from "@/map/highlight";
 import { sendChat, type ContextoMapa } from "./api";
 import { NOVIDADES } from "@/lib/novidades";
+import { configuracaoChat } from "@/configuracao";
 
 interface Msg {
   role: "user" | "assistant";
@@ -29,11 +30,9 @@ interface Props {
   pergunta?: PerguntaExterna | null;
 }
 
-const SUGESTOES = [
-  "Top 10 municípios do Brasil por população",
-  "Quais métricas você consegue consultar?",
-  "Qual a população de Curitiba?",
-];
+// As sugestões são do cliente, não do produto: cada aplicação derivada pergunta
+// coisas do negócio dela. Vêm da configuração (fase 1 do plano de derivação).
+const SUGESTOES = configuracaoChat.sugestoes;
 
 interface Chip {
   rotulo: string;

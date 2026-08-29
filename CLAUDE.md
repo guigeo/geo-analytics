@@ -84,7 +84,13 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
     Acrescentar variável é uma linha lá, não um dict aqui. Era a pendência 3 do
     `webgis/docs/HERANCA.md`, e ela fecha por não existir mais o segundo dono.
   - venv fica em `/opt/venv` no container (fora do bind mount) — ver `Dockerfile`.
-- **`web/`** — React/Vite/TS. `map/layers.ts` define as camadas; `map/basemap.ts` monta o
+- **`web/`** — React/Vite/TS. **`configuracao/` é a fronteira de cliente**: o esquema Zod
+  (`configuracao/esquema.ts`) valida no boot o que difere entre aplicações derivadas —
+  identidade, mapa, camadas e chat — e `clientes/<id>.ts` guarda os valores de cada uma.
+  Quem precisa de camada importa de `@/configuracao`, não conhece cliente pelo nome.
+  `map/layers.ts` **não define mais as camadas**: ele só traduz camada configurada para
+  especificação do MapLibre, e o snapshot em `map/layers.test.ts` congela essa saída.
+  `map/basemap.ts` monta o `map/basemap.ts`
   basemap vetorial (Protomaps) e o satélite (raster XYZ Esri World Imagery, sem API key) —
   toggle no header; `basemapOverlayLayers()` filtra só `line`/`symbol` do basemap (vias,
   limites, rótulos, POIs) pra manter por cima do raster em modo híbrido (segundo toggle,
@@ -153,10 +159,16 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
 ## Convenções
 
 - **Python: sempre `uv`** (nunca pip/venv global). Type hints obrigatórios. Ruff + pytest.
+- **Frontend tem portão desde 2026-08-29**: `npm run format:check`, `lint`, `typecheck`,
+  `test` e `build` — o mesmo que o CI roda, em Node 20 (a imagem do build de produção).
+  Rodar o portão antes de dizer que terminou.
 - **`data/` é gitignored** (fontes grandes/reproduzíveis) — só `data/README.md` é versionado.
 - **Dados crus nunca lidos em runtime** — convertidos uma vez para GeoParquet.
 - Camada pesada (setor ~473k) → tuning no `tippecanoe`; tilagem é o gargalo, não a conversão.
-- Idioma: prosa/respostas em **português-BR**; código e nomes de API em inglês.
+- **Idioma: português em tudo** — prosa, commits e também **código**. Decidido em
+  2026-08-29 (`webgis/docs/HERANCA.md`, §7, pendência 2): fronteira de idioma dentro do
+  código cobra pedágio de atenção em toda mudança. Sobrou inglês de antes desta decisão;
+  ele se traduz quando o arquivo for tocado, não numa varredura só.
 
 ## KBs locais (`.claude/kb/`)
 

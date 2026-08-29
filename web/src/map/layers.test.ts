@@ -1,41 +1,43 @@
 // Rede de segurança das camadas.
 //
 // Estes testes existem por um motivo datado: o passo 5 do ADR-0001 do `webgis`
-// tira a lista de camadas daqui e a move para a configuração de cada cliente. A
-// tradução de camada para especificação do MapLibre — `dataLayers` e
-// `dataSources` — não pode mudar nesse caminho, e é o snapshot no fim deste
-// arquivo que prova isso: se a saída mudar, o refactor deixou de ser refactor.
+// tirou a lista de camadas de `layers.ts` e a moveu para a configuração de cada
+// cliente, na fase 1 do plano de derivação. A tradução de camada para
+// especificação do MapLibre — `camadasDoMapa` e `fontesDeDados` — não podia
+// mudar nesse caminho, e é o snapshot no fim deste arquivo que provou isso: ele
+// foi escrito ANTES da mudança e passou sem ser reescrito depois.
 import { describe, expect, it } from "vitest";
-import { dataLayers, dataSources, INTERACTIVE_LAYER_IDS, LAYERS } from "./layers";
+import { camadasDoMapa, fontesDeDados, IDS_CLICAVEIS } from "./layers";
+import { camadas } from "@/configuracao";
 
 describe("contrato das camadas", () => {
   it("não repete id", () => {
-    const ids = LAYERS.map((l) => l.id);
+    const ids = camadas.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("declara sourceLayer e rótulo em todas", () => {
-    for (const l of LAYERS) {
-      expect(l.sourceLayer, `camada ${l.id}`).toBeTruthy();
-      expect(l.label, `camada ${l.id}`).toBeTruthy();
+    for (const c of camadas) {
+      expect(c.camadaFonte, `camada ${c.id}`).toBeTruthy();
+      expect(c.rotulo, `camada ${c.id}`).toBeTruthy();
     }
   });
 
   it("usa só geometrias conhecidas", () => {
-    for (const l of LAYERS) {
-      expect(["polygon", "line", "point"]).toContain(l.geometry);
+    for (const c of camadas) {
+      expect(["poligono", "linha", "ponto"]).toContain(c.geometria);
     }
   });
 
   it("expõe todos os ids base como clicáveis", () => {
-    expect(INTERACTIVE_LAYER_IDS).toEqual(LAYERS.map((l) => l.id));
+    expect(IDS_CLICAVEIS).toEqual(camadas.map((c) => c.id));
   });
 });
 
 describe("fontes", () => {
   it("gera uma fonte vetorial por camada", () => {
-    const fontes = dataSources();
-    expect(Object.keys(fontes).sort()).toEqual(LAYERS.map((l) => l.id).sort());
+    const fontes = fontesDeDados();
+    expect(Object.keys(fontes).sort()).toEqual(camadas.map((c) => c.id).sort());
     for (const [id, fonte] of Object.entries(fontes)) {
       expect(fonte.type, `fonte ${id}`).toBe("vector");
       expect((fonte as { url: string }).url, `fonte ${id}`).toMatch(/^pmtiles:\/\/.+\.pmtiles$/);
@@ -45,32 +47,32 @@ describe("fontes", () => {
 
 describe("camadas do mapa", () => {
   it("só referencia fonte declarada", () => {
-    const fontes = new Set(Object.keys(dataSources()));
-    for (const spec of dataLayers()) {
+    const fontes = new Set(Object.keys(fontesDeDados()));
+    for (const spec of camadasDoMapa()) {
       expect(fontes, `camada ${spec.id}`).toContain((spec as { source: string }).source);
     }
   });
 
   it("respeita a convenção de sufixo das sub-camadas", () => {
-    const base = new Set(LAYERS.map((l) => l.id));
-    for (const spec of dataLayers()) {
+    const base = new Set(camadas.map((c) => c.id));
+    for (const spec of camadasDoMapa()) {
       const raiz = spec.id.replace(/__(outline|label)$/, "");
       expect(base, `camada ${spec.id}`).toContain(raiz);
     }
   });
 
   it("põe os rótulos depois dos preenchimentos", () => {
-    const especificacoes = dataLayers();
+    const especificacoes = camadasDoMapa();
     const primeiroRotulo = especificacoes.findIndex((s) => s.id.endsWith("__label"));
     const ultimoNaoRotulo = especificacoes.map((s) => s.id.endsWith("__label")).lastIndexOf(false);
     expect(primeiroRotulo).toBeGreaterThan(ultimoNaoRotulo);
   });
 
   it("nasce com a visibilidade que a camada declara", () => {
-    const porId = new Map(dataLayers().map((s) => [s.id, s]));
-    for (const l of LAYERS) {
-      const esperada = l.defaultVisible ? "visible" : "none";
-      expect(porId.get(l.id)?.layout?.visibility, `camada ${l.id}`).toBe(esperada);
+    const porId = new Map(camadasDoMapa().map((s) => [s.id, s]));
+    for (const c of camadas) {
+      const esperada = c.visivelPorPadrao ? "visible" : "none";
+      expect(porId.get(c.id)?.layout?.visibility, `camada ${c.id}`).toBe(esperada);
     }
   });
 });
@@ -79,10 +81,10 @@ describe("camadas do mapa", () => {
 // intencional e estiver explicada no commit.
 describe("saída congelada", () => {
   it("mantém as fontes", () => {
-    expect(dataSources()).toMatchSnapshot();
+    expect(fontesDeDados()).toMatchSnapshot();
   });
 
   it("mantém as camadas", () => {
-    expect(dataLayers()).toMatchSnapshot();
+    expect(camadasDoMapa()).toMatchSnapshot();
   });
 });

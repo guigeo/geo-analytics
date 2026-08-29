@@ -3,7 +3,7 @@
 
 VPS_HOST ?= hetzner-gramos
 
-.PHONY: help dev build preview ship ship-app ship-ia tiles down agent dev-ia
+.PHONY: help dev dev-cliente dev-lado-a-lado build preview ship ship-app ship-ia tiles down agent dev-ia
 
 help:            ## mostra os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -12,6 +12,22 @@ help:            ## mostra os alvos disponíveis
 # ── Desenvolve ────────────────────────────────────────────────────────────
 dev:             ## dev server (Vite + HMR) em http://localhost:5173
 	docker compose up web
+
+# Uma aplicacao por cliente, do mesmo codigo: a escolha e no build (VITE_CLIENTE),
+# nao em runtime. Nomes de projeto distintos para os dois nao brigarem por
+# container. Ver web/src/clientes/.
+dev-cliente:     ## dev server de outro cliente: make dev-cliente CLIENTE=eb-prime [PORTA=5174]
+	@test -n "$(CLIENTE)" || { echo "uso: make dev-cliente CLIENTE=<id> [PORTA=5174]"; exit 1; }
+	@test -f web/src/clientes/$(CLIENTE).ts \
+	  || { echo "cliente '$(CLIENTE)' nao existe em web/src/clientes/"; exit 1; }
+	VITE_CLIENTE=$(CLIENTE) PORTA_WEB=$(or $(PORTA),5174) \
+	  docker compose -p geo-$(CLIENTE) up web
+
+dev-lado-a-lado: ## sobe cliente 1 (:5173) e EB Prime (:5174) juntos, em background
+	docker compose up -d web
+	VITE_CLIENTE=eb-prime PORTA_WEB=5174 docker compose -p geo-eb-prime up -d web
+	@echo "→ Geo Intelligence  http://localhost:5173"
+	@echo "→ EB Prime          http://localhost:5174"
 
 # ── IA (Fase 2 — chat local) ─────────────────────────────────────────────
 agent:           ## backend do agente (uv, nativo) em :8000 — requer agent/.env com a chave

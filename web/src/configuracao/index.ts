@@ -10,11 +10,11 @@
  * deliberado — configuração errada que só aparece quando alguém liga uma camada
  * custa mais caro do que aplicação que não sobe.
  *
- * **Fase 2 mexe aqui.** Hoje existe um cliente só e a escolha é estática. Com o
- * segundo, este arquivo passa a resolver o cliente por `VITE_CLIENTE`, mantendo
- * o `geo-analytics` como padrão para quem não passa nada.
+ * Qual cliente é este build vem de `VITE_CLIENTE`, resolvido pelo alias
+ * `cliente-ativo` no `vite.config.ts`. O padrão é `geo-analytics`, então quem
+ * não passa nada continua com o comportamento de sempre.
  */
-import { clienteGeoAnalytics } from "@/clientes/geo-analytics";
+import { cliente } from "cliente-ativo";
 import { EsquemaCliente, type ConfiguracaoCliente } from "./esquema";
 
 function validar(bruta: unknown): ConfiguracaoCliente {
@@ -28,7 +28,7 @@ function validar(bruta: unknown): ConfiguracaoCliente {
   return resultado.data;
 }
 
-export const configuracao = validar(clienteGeoAnalytics);
+export const configuracao = validar(cliente);
 
 export const identidade = configuracao.identidade;
 export const configuracaoMapa = configuracao.mapa;

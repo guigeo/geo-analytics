@@ -36,9 +36,16 @@ services:
   web:
     image: node:20-slim
     working_dir: /repo/web
-    command: sh -c "npm install && npm run dev -- --host"
+    command: sh -c "npm install && npm run dev -- --host --port $${PORTA_WEB:-5173}"
+    environment:
+      # Qual cliente este dev server serve. Resolvido no build pelo vite.config.ts;
+      # sem a variável, o geo-analytics, que é o comportamento de sempre.
+      - VITE_CLIENTE=${VITE_CLIENTE:-geo-analytics}
+      # A porta precisa entrar no container também: o `--port` do Vite roda lá
+      # dentro, e a publicação aqui embaixo tem de casar com ela.
+      - PORTA_WEB=${PORTA_WEB:-5173}
     ports:
-      - "5173:5173"
+      - "${PORTA_WEB:-5173}:${PORTA_WEB:-5173}"
     volumes:
       - .:/repo
       - web_node_modules:/repo/web/node_modules

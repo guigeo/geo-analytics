@@ -2,19 +2,24 @@
 // precisa REJEITAR: configuração que o TypeScript aceita e o mapa ignoraria em
 // silêncio é justamente o que se quer pegar no boot, e não em produção.
 import { describe, expect, it } from "vitest";
-import { clienteGeoAnalytics } from "@/clientes/geo-analytics";
+import { cliente as geoAnalytics } from "@/clientes/geo-analytics";
+import { cliente as ebPrime } from "@/clientes/eb-prime";
 import { EsquemaCliente } from "./esquema";
 
 /** Clona e deixa mexer sem contaminar os outros testes. */
-function comCliente(ajuste: (c: typeof clienteGeoAnalytics) => void) {
-  const copia = structuredClone(clienteGeoAnalytics);
+function comCliente(ajuste: (c: typeof geoAnalytics) => void) {
+  const copia = structuredClone(geoAnalytics);
   ajuste(copia);
   return EsquemaCliente.safeParse(copia);
 }
 
 describe("esquema de cliente", () => {
-  it("aceita a configuração do cliente 1 como ela está", () => {
-    expect(EsquemaCliente.safeParse(clienteGeoAnalytics).success).toBe(true);
+  it.each([
+    ["geo-analytics", geoAnalytics],
+    ["eb-prime", ebPrime],
+  ])("aceita a configuração de %s como ela está", (_nome, config) => {
+    const r = EsquemaCliente.safeParse(config);
+    expect(r.success, JSON.stringify(r.error?.issues)).toBe(true);
   });
 
   it("recusa cor que não é hexadecimal de 6 dígitos", () => {

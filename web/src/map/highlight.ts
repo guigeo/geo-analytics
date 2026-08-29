@@ -1,4 +1,5 @@
 import type { FilterSpecification, LayerSpecification, Map } from "maplibre-gl";
+import type { DefinicaoCamada } from "@/configuracao";
 
 // Destaques do agente (Fase 2): pinta municipios/distritos/bairros/setores POR CODIGO via filtro nas
 // proprias fontes PMTiles. Diferente do selection.ts (clique), nao depende de
@@ -22,25 +23,37 @@ function codeFilter(field: string, codigos: string[]): FilterSpecification {
   return ["in", ["get", field], ["literal", codigos]] as FilterSpecification;
 }
 
-export function highlightLayers(): LayerSpecification[] {
-  return Object.entries(CODE_FIELDS).flatMap(([id, field]) => [
-    {
-      id: `${id}__highlight-fill`,
-      type: "fill",
-      source: id,
-      "source-layer": id,
-      filter: codeFilter(field, []),
-      paint: { "fill-color": HIGHLIGHT, "fill-opacity": 0.25 },
-    } satisfies LayerSpecification,
-    {
-      id: `${id}__highlight-line`,
-      type: "line",
-      source: id,
-      "source-layer": id,
-      filter: codeFilter(field, []),
-      paint: { "line-color": HIGHLIGHT, "line-width": 2.5 },
-    } satisfies LayerSpecification,
-  ]);
+/**
+ * Destaques só para as camadas que ESTE cliente enxerga.
+ *
+ * O filtro por `camadas` não é detalhe: um style que referencia fonte
+ * inexistente é recusado inteiro pelo MapLibre, e o mapa não sobe — não é uma
+ * camada que some, é o mapa todo. Foi o que aconteceu com o primeiro cliente
+ * derivado, que não tem `distrito`: a lista aqui era fixa, e a tela ficou vazia
+ * sem nenhum pedido de tile (2026-08-29).
+ */
+export function highlightLayers(camadas: DefinicaoCamada[]): LayerSpecification[] {
+  const disponiveis = new Set(camadas.map((c) => c.id));
+  return Object.entries(CODE_FIELDS)
+    .filter(([id]) => disponiveis.has(id))
+    .flatMap(([id, field]) => [
+      {
+        id: `${id}__highlight-fill`,
+        type: "fill",
+        source: id,
+        "source-layer": id,
+        filter: codeFilter(field, []),
+        paint: { "fill-color": HIGHLIGHT, "fill-opacity": 0.25 },
+      } satisfies LayerSpecification,
+      {
+        id: `${id}__highlight-line`,
+        type: "line",
+        source: id,
+        "source-layer": id,
+        filter: codeFilter(field, []),
+        paint: { "line-color": HIGHLIGHT, "line-width": 2.5 },
+      } satisfies LayerSpecification,
+    ]);
 }
 
 export function applyHighlights(map: Map, destaques: Destaques | null) {

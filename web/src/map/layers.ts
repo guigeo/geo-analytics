@@ -23,9 +23,11 @@ export const IDS_CLICAVEIS = camadas.map((c) => c.id);
 /** O MapLibre nomeia âncora em inglês; a configuração, em português. */
 const ANCORA_MAPLIBRE = { centro: "center", base: "bottom" } as const;
 
-export function fontesDeDados(): Record<string, SourceSpecification> {
+export function fontesDeDados(
+  lista: DefinicaoCamada[] = camadas,
+): Record<string, SourceSpecification> {
   const fontes: Record<string, SourceSpecification> = {};
-  for (const c of camadas) {
+  for (const c of lista) {
     fontes[c.id] = { type: "vector", url: tileUrl(c.id) };
   }
   return fontes;
@@ -136,10 +138,10 @@ function camadaRotulo(
 }
 
 /** Ordem: preenchimentos e contornos primeiro, rótulos por último (ficam por cima). */
-export function camadasDoMapa(): LayerSpecification[] {
+export function camadasDoMapa(lista: DefinicaoCamada[] = camadas): LayerSpecification[] {
   const base: LayerSpecification[] = [];
   const rotulos: LayerSpecification[] = [];
-  for (const c of camadas) {
+  for (const c of lista) {
     const visibility = c.visivelPorPadrao ? "visible" : "none";
     base.push(camadaBase(c, visibility));
     const contorno = camadaContorno(c, visibility);

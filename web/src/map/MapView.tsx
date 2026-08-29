@@ -1,28 +1,12 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
-import type { StyleSpecification } from "maplibre-gl";
 import { registerPMTiles } from "../lib/pmtiles";
-import {
-  basemapLayers,
-  basemapOverlayLayers,
-  basemapSource,
-  BASEMAP_SOURCE_ID,
-  GLYPHS_URL,
-  satelliteLayer,
-  satelliteSource,
-  SATELLITE_SOURCE_ID,
-  spriteUrl,
-  type BasemapTheme,
-} from "./basemap";
-import { camadasDoMapa, fontesDeDados, IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
+import type { BasemapTheme } from "./basemap";
+import { IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
+import { montarEstilo } from "./estilo";
 import { camadas, configuracaoMapa } from "@/configuracao";
-import {
-  EMPTY_SELECTION,
-  selectionLayers,
-  selectionSource,
-  SELECTION_SOURCE_ID,
-} from "./selection";
-import { applyHighlights, highlightLayers, type Destaques } from "./highlight";
+import { EMPTY_SELECTION, SELECTION_SOURCE_ID } from "./selection";
+import { applyHighlights, type Destaques } from "./highlight";
 import { ensureIcon, loadIcons } from "./icons";
 
 export interface SelectedFeature {
@@ -60,32 +44,6 @@ interface Props {
   onViewportChange?: (viewport: Viewport) => void;
 }
 
-function buildStyle(
-  theme: BasemapTheme,
-  satellite: boolean,
-  satelliteOverlay: boolean,
-): StyleSpecification {
-  return {
-    version: 8,
-    glyphs: GLYPHS_URL,
-    sprite: spriteUrl(theme),
-    sources: {
-      [BASEMAP_SOURCE_ID]: basemapSource,
-      [SATELLITE_SOURCE_ID]: satelliteSource,
-      ...fontesDeDados(),
-      [SELECTION_SOURCE_ID]: selectionSource,
-    },
-    layers: [
-      ...(satellite
-        ? [satelliteLayer(), ...(satelliteOverlay ? basemapOverlayLayers(theme) : [])]
-        : basemapLayers(theme)),
-      ...camadasDoMapa(),
-      ...highlightLayers(),
-      ...selectionLayers,
-    ],
-  };
-}
-
 export function MapView({
   visible,
   theme,
@@ -115,11 +73,12 @@ export function MapView({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: buildStyle(
-        initialThemeRef.current,
-        initialSatelliteRef.current,
-        initialSatelliteOverlayRef.current,
-      ),
+      style: montarEstilo({
+        camadas,
+        tema: initialThemeRef.current,
+        satelite: initialSatelliteRef.current,
+        sobreporVias: initialSatelliteOverlayRef.current,
+      }),
       center: configuracaoMapa.centro,
       zoom: configuracaoMapa.zoomInicial,
     });
@@ -224,7 +183,9 @@ export function MapView({
     }
     const map = mapRef.current;
     if (!map) return;
-    map.setStyle(buildStyle(theme, satellite, satelliteOverlay));
+    map.setStyle(
+      montarEstilo({ camadas, tema: theme, satelite: satellite, sobreporVias: satelliteOverlay }),
+    );
     map.once("idle", () => {
       applyVisibility(map, visibleRef.current);
       applyHighlights(map, highlightsRef.current);

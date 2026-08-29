@@ -37,7 +37,7 @@ class OutputConfig(BaseModel):
         if not destino:
             raise ValueError(
                 "defina GEO_TILES_DIR com o diretorio do host de tiles compartilhado "
-                "(ex.: ~/dados-webgis/tiles). Ver ../webgis/docs/LOCAL.md"
+                "(ex.: ~/dados/webgis/tiles). Ver ../webgis/docs/LOCAL.md"
             )
         return _resolve(destino)
 

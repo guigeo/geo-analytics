@@ -10,10 +10,7 @@ interface GeocodeHit {
   bbox: [number, number, number, number];
 }
 
-export async function geocodificar(
-  query: string,
-  signal?: AbortSignal,
-): Promise<SearchHit[]> {
+export async function geocodificar(query: string, signal?: AbortSignal): Promise<SearchHit[]> {
   const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`, { signal });
   if (!res.ok) throw new Error(`geocoding indisponível (HTTP ${res.status})`);
   const hits = (await res.json()) as GeocodeHit[];

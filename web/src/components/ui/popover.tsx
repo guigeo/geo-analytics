@@ -1,20 +1,16 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Popover as PopoverPrimitive } from "radix-ui"
+import * as React from "react";
+import { Popover as PopoverPrimitive } from "radix-ui";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-function Popover({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
-function PopoverTrigger({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
 function PopoverContent({
@@ -31,12 +27,12 @@ function PopoverContent({
         sideOffset={sideOffset}
         className={cn(
           "z-50 w-80 origin-(--radix-popover-content-transform-origin) animate-in rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-lg outline-hidden fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-          className
+          className,
         )}
         {...props}
       />
     </PopoverPrimitive.Portal>
-  )
+  );
 }
 
-export { Popover, PopoverTrigger, PopoverContent }
+export { Popover, PopoverTrigger, PopoverContent };

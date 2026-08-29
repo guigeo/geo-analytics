@@ -1,10 +1,6 @@
 import { Globe2, Moon, Route, Satellite, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Novidades } from "@/components/Novidades";
 import { SearchBox } from "@/components/SearchBox";
 import type { SearchHit } from "@/search";
@@ -40,9 +36,7 @@ export function Header({
         </span>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight">Geo Intelligence</p>
-          <p className="text-[11px] text-muted-foreground">
-            Mapa interativo · Brasil
-          </p>
+          <p className="text-[11px] text-muted-foreground">Mapa interativo · Brasil</p>
         </div>
       </div>
 
@@ -62,9 +56,7 @@ export function Header({
               <Satellite className="size-5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            {satellite ? "Voltar ao mapa" : "Imagem de satélite"}
-          </TooltipContent>
+          <TooltipContent>{satellite ? "Voltar ao mapa" : "Imagem de satélite"}</TooltipContent>
         </Tooltip>
 
         {satellite && (
@@ -79,30 +71,17 @@ export function Header({
                 <Route className="size-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              {satelliteOverlay ? "Só imagem" : "Mostrar vias"}
-            </TooltipContent>
+            <TooltipContent>{satelliteOverlay ? "Só imagem" : "Mostrar vias"}</TooltipContent>
           </Tooltip>
         )}
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleTheme}
-              aria-label="Alternar tema"
-            >
-              {theme === "dark" ? (
-                <Sun className="size-5" />
-              ) : (
-                <Moon className="size-5" />
-              )}
+            <Button variant="ghost" size="icon" onClick={onToggleTheme} aria-label="Alternar tema">
+              {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            {theme === "dark" ? "Tema claro" : "Tema escuro"}
-          </TooltipContent>
+          <TooltipContent>{theme === "dark" ? "Tema claro" : "Tema escuro"}</TooltipContent>
         </Tooltip>
       </div>
     </header>

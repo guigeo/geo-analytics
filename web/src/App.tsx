@@ -1,12 +1,7 @@
 import { useRef, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
-import {
-  MapView,
-  type MapFocus,
-  type SelectedFeature,
-  type Viewport,
-} from "@/map/MapView";
+import { MapView, type MapFocus, type SelectedFeature, type Viewport } from "@/map/MapView";
 import type { SearchHit } from "@/search";
 import { LayerPanel } from "@/panels/LayerPanel";
 import { AttributePanel } from "@/panels/AttributePanel";
@@ -16,9 +11,10 @@ import type { Destaques } from "@/map/highlight";
 import type { ContextoMapa } from "@/chat/api";
 import { useTheme } from "@/hooks/use-theme";
 
-const initialVisibility = Object.fromEntries(
-  LAYERS.map((l) => [l.id, l.defaultVisible]),
-) as Record<string, boolean>;
+const initialVisibility = Object.fromEntries(LAYERS.map((l) => [l.id, l.defaultVisible])) as Record<
+  string,
+  boolean
+>;
 
 export function App() {
   const { theme, toggle } = useTheme();
@@ -37,8 +33,7 @@ export function App() {
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
 
-  const toggleLayer = (id: string) =>
-    setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
   // Busca do header: voa até o alvo; município também ganha o destaque azul
   // (mesma linguagem visual do chat — um "slot" só de destaque por vez).
@@ -90,11 +85,7 @@ export function App() {
               <AttributePanel selected={selected} />
             </div>
             <div className="min-h-0 flex-[1.4]">
-              <ChatPanel
-                onDestaques={setDestaques}
-                getContexto={getContexto}
-                pergunta={pergunta}
-              />
+              <ChatPanel onDestaques={setDestaques} getContexto={getContexto} pergunta={pergunta} />
             </div>
           </div>
         </div>

@@ -9,9 +9,7 @@ interface Props {
 }
 
 export function AttributePanel({ selected }: Props) {
-  const layer = selected
-    ? LAYERS.find((l) => l.id === selected.layerId)
-    : undefined;
+  const layer = selected ? LAYERS.find((l) => l.id === selected.layerId) : undefined;
 
   return (
     <aside className="flex h-full min-h-0 flex-col bg-background">
@@ -25,9 +23,7 @@ export function AttributePanel({ selected }: Props) {
         {!selected || !layer ? (
           <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-8 text-center">
             <MousePointerSquareDashed className="size-5 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Clique em uma feição no mapa.
-            </p>
+            <p className="text-sm text-muted-foreground">Clique em uma feição no mapa.</p>
           </div>
         ) : (
           <Card className="gap-0 overflow-hidden p-0">

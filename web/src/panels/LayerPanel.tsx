@@ -1,8 +1,4 @@
-import {
-  MousePointerClick,
-  RadioTower,
-  type LucideIcon,
-} from "lucide-react";
+import { MousePointerClick, RadioTower, type LucideIcon } from "lucide-react";
 import { LAYERS, type DataLayer } from "@/map/layers";
 import { ANTENNA_ICON } from "@/map/icons";
 import { Switch } from "@/components/ui/switch";
@@ -73,10 +69,7 @@ function Swatch({ layer }: { layer: DataLayer }) {
   }
   if (layer.geometry === "line") {
     return (
-      <span
-        className="h-[3px] w-4 shrink-0 rounded-full"
-        style={{ background: layer.color }}
-      />
+      <span className="h-[3px] w-4 shrink-0 rounded-full" style={{ background: layer.color }} />
     );
   }
   if (layer.fillOpacity === 0 && layer.outline) {

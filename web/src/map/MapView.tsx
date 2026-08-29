@@ -148,17 +148,14 @@ export function MapView({
       if (img) ensureIcon(map, e.id, img);
     });
 
-    const activeLayers = () =>
-      INTERACTIVE_LAYER_IDS.filter((id) => visibleRef.current[id]);
+    const activeLayers = () => INTERACTIVE_LAYER_IDS.filter((id) => visibleRef.current[id]);
 
     const selection = () =>
       map.getSource(SELECTION_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
 
     map.on("click", (e) => {
       const active = activeLayers();
-      const hits = active.length
-        ? map.queryRenderedFeatures(e.point, { layers: active })
-        : [];
+      const hits = active.length ? map.queryRenderedFeatures(e.point, { layers: active }) : [];
       if (hits.length) {
         const f = hits[0];
         selection()?.setData({ type: "Feature", geometry: f.geometry, properties: {} });
@@ -171,9 +168,7 @@ export function MapView({
 
     map.on("mousemove", (e) => {
       const active = activeLayers();
-      const hits = active.length
-        ? map.queryRenderedFeatures(e.point, { layers: active })
-        : [];
+      const hits = active.length ? map.queryRenderedFeatures(e.point, { layers: active }) : [];
       map.getCanvas().style.cursor = hits.length ? "pointer" : "";
     });
 

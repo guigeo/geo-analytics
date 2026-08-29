@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   NOVIDADES,
   deveAbrirSozinho,
@@ -100,9 +92,7 @@ export function Novidades({ onPerguntar }: Props) {
                   {dia(n.data)}
                 </span>
               </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {n.texto}
-              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">{n.texto}</p>
               {n.pergunta && (
                 <Button
                   variant="secondary"

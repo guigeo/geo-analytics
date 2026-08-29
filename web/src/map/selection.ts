@@ -1,7 +1,4 @@
-import type {
-  GeoJSONSourceSpecification,
-  LayerSpecification,
-} from "maplibre-gl";
+import type { GeoJSONSourceSpecification, LayerSpecification } from "maplibre-gl";
 
 // Fonte e camadas de realce da feição clicada (Abordagem A: GeoJSON de seleção).
 // A geometria vem do queryRenderedFeatures; nenhum tile de dados é alterado.

@@ -1,7 +1,4 @@
-import type {
-  LayerSpecification,
-  SourceSpecification,
-} from "maplibre-gl";
+import type { LayerSpecification, SourceSpecification } from "maplibre-gl";
 import { ANTENNA_ICON } from "./icons";
 import { tileUrl } from "./tileHost";
 

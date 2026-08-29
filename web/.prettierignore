@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+package-lock.json
+
+# Dado, não código: 356 KB numa linha só. Formatar explodiria o arquivo em
+# milhares de linhas e tornaria ilegível todo diff que o tocasse.
+src/search/municipios.json

@@ -1,8 +1,16 @@
-"""Tools contra o GeoQuery real (geodata em PostGIS, como query/tests)."""
+"""Tools contra o GeoQuery real (geodata em PostGIS, como query/tests).
+
+Os que tocam o banco exigem GEODATA_DSN e sao pulados sem ela, com a instrucao,
+em vez de falharem com erro de conexao — o mesmo contrato de query/tests. A
+guarda fica na fixture `gq`, e nao no modulo, para que os testes offline (que
+sao a maioria do valor em CI) continuem rodando. Antes dela a suite quebrava com
+42 erros em qualquer ambiente sem o banco de pe, o CI incluso.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 from geo_query import GeoQuery
@@ -14,6 +22,8 @@ SETOR_FORTALEZA = "230440005130001"
 
 @pytest.fixture(scope="module")
 def gq() -> GeoQuery:
+    if not os.getenv("GEODATA_DSN"):
+        pytest.skip("defina GEODATA_DSN para rodar contra o geodata (ver query/geo_query/db.py)")
     q = GeoQuery()
     yield q
     q.close()

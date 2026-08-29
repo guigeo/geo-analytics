@@ -1,5 +1,7 @@
 import path from "path";
-import { defineConfig } from "vite";
+// `vitest/config` no lugar de `vite`: é o mesmo defineConfig, com o bloco `test`
+// tipado. Sem isso o TypeScript recusa a configuração dos testes.
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -24,4 +26,10 @@ export default defineConfig({
   // quem serve /tiles é o Caddy, alimentado por rsync próprio. Ver deploy/ e
   // ../webgis/docs/LOCAL.md.
   build: { copyPublicDir: false },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./testes/preparo.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    css: false,
+  },
 });

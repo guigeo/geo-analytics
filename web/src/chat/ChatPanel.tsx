@@ -47,9 +47,7 @@ interface Chip {
 // o que desperta a curiosidade, não o nome da feature.
 const CHIPS: Chip[] = [
   ...NOVIDADES.flatMap((n) =>
-    n.chip && n.pergunta
-      ? [{ rotulo: n.chip, pergunta: n.pergunta, novo: true }]
-      : [],
+    n.chip && n.pergunta ? [{ rotulo: n.chip, pergunta: n.pergunta, novo: true }] : [],
   ),
   ...SUGESTOES.map((s) => ({ rotulo: s, pergunta: s })),
 ];
@@ -67,8 +65,14 @@ export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
   }, [messages, loading]);
 
   // Novidade pedindo demonstração: a pergunta chega pronta e vai direto.
+  //
+  // A lista de dependências é curta de propósito e não deve ser "corrigida": `ask`
+  // é recriada a cada render, então incluí-la reexecutaria o efeito sem parar —
+  // uma pergunta nova ao agente por render. O gatilho certo é a chave da novidade,
+  // que muda uma vez por pedido.
   useEffect(() => {
     if (pergunta) void ask(pergunta.texto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pergunta?.key]);
 
   async function ask(pergunta: string) {
@@ -132,10 +136,7 @@ export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
         ) : (
           <ul className="flex flex-col gap-2 pb-3">
             {messages.map((m, i) => (
-              <li
-                key={i}
-                className={m.role === "user" ? "flex justify-end" : "flex justify-start"}
-              >
+              <li key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
                 <div
                   className={
                     m.role === "user"

@@ -1,8 +1,14 @@
-"""Loop de tool-calling com client OpenAI fake (offline): grounding, autocorrecao, teto."""
+"""Loop de tool-calling com client OpenAI fake (offline): grounding, autocorrecao, teto.
+
+O client da OpenAI e falso, mas as tools consultam o geodata de verdade: os testes
+que pedem a fixture `gq` sao pulados sem GEODATA_DSN. Os de rate limit nao tocam
+banco nenhum e rodam sempre.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 from types import SimpleNamespace
 from typing import Any
 
@@ -48,6 +54,8 @@ class FakeClient:
 
 @pytest.fixture(scope="module")
 def gq() -> GeoQuery:
+    if not os.getenv("GEODATA_DSN"):
+        pytest.skip("defina GEODATA_DSN para rodar contra o geodata (ver query/geo_query/db.py)")
     q = GeoQuery()
     yield q
     q.close()

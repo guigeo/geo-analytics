@@ -1,12 +1,47 @@
 # Preview de PRODUÇÃO local (docker compose --profile preview up preview → :8080).
 # Reproduz o COMPORTAMENTO do bloco de produção (deploy/Caddyfile, VPS): Range nos
-# tiles, compressão só fora de /tiles, sem cache (sempre vê o build fresco).
+# tiles, compressão só fora de /tiles, sem cache (sempre vê o build fresco), /api
+# entregue ao agente — e, desde a fase 5, o portão de acesso na frente de tudo.
 #
 # Diferença estrutural: aqui app e tiles vêm de volumes separados (/srv/app e
 # /srv/tiles), então roteamos com handle_path. Na VPS, tiles é subpasta do root.
 # ⚠️ Mantenha o comportamento em sync com deploy/Caddyfile.
 
 :80 {
+	# ── Portão ────────────────────────────────────────────────────────────────
+	# A aplicação inteira pede credencial, e por isso o /api também: é o portão
+	# que a emenda de 2026-08-29 da §8 do ADR-0001 do `webgis` decidiu, e ele
+	# nasce aqui, na fase 5, porque a fase 6 dá endereço próprio ao agente — se o
+	# portão não vier junto, o endereço novo nasce aberto.
+	#
+	# **O motivo é custo, não sigilo:** os tiles são dado público do IBGE, mas
+	# cada pergunta ao /api/chat chama um modelo e gasta dinheiro. Uma credencial
+	# por APLICAÇÃO, não por pessoa — quem é quem continua fora de escopo.
+	#
+	# A senha local é `previa-local` (usuário `previa`), e está escrita aqui de
+	# propósito: este arquivo só serve ao preview da própria máquina, e o que ele
+	# exercita é o mecanismo. A credencial de verdade nasce na fase 6, uma por
+	# cliente, e a senha em claro não entra no repositório — só o hash.
+	#
+	# ⚠️ Para a fase 6: o Caddy DAQUI é 2.11.4 e o da VPS é **2.6.2** (medido em
+	# 2026-08-30), onde esta diretiva ainda se chama `basicauth`. Copiar o bloco
+	# como está faz o Caddy da VPS recusar a config inteira — que é compartilhada
+	# com outro site. Ou traduzir a diretiva, ou subir o Caddy de lá.
+	#
+	# Medido: no 401 o `-Server` abaixo não se aplica — o portão responde antes do
+	# bloco de headers, então o desafio anuncia "Server: Caddy". Só o desafio; a
+	# resposta autenticada sai sem o header, como antes.
+	basic_auth {
+		previa $2a$14$jCujSTVRPwIpG4/ck5ecXushGlr6wTBv9hIgRHEy5YfeaLO.Or986
+	}
+
+	# Chat: o agente roda NATIVO no host (make agente), não em container. Espelha
+	# o que a VPS faz — lá o Caddy entrega /api ao systemd geo-agent em :8000 —, e
+	# a porta vem do ambiente porque agora existe um agente por cliente.
+	handle /api/* {
+		reverse_proxy host.docker.internal:{$PORTA_AGENTE:8000}
+	}
+
 	# Comprime tudo MENOS os tiles (PMTiles usa Range requests — comprimir quebra).
 	@notiles not path /tiles/*
 	encode @notiles gzip zstd
@@ -34,11 +69,11 @@
 		Permissions-Policy "camera=(), geolocation=(), microphone=()"
 		Cross-Origin-Opener-Policy "same-origin"
 		Cross-Origin-Resource-Policy "same-origin"
-		# ⚠️ REPORT-ONLY de propósito: a CSP é o único header aqui capaz de apagar
-		# o mapa, e provar que ela não apaga exige um navegador. Em Report-Only o
-		# browser NÃO bloqueia nada e denuncia no console o que bloquearia. Vira
-		# `Content-Security-Policy` (sem o sufixo) depois de uma passagem pelo
-		# preview local com o console limpo — ver HERANCA §7, pendência 1.
+		# ENFORCING (o nome do header não tem sufixo). Entrou em Report-Only em
+		# 2026-08-22 — é o único header aqui capaz de apagar o mapa — e virou
+		# bloqueio de verdade no mesmo dia, depois de uma navegação real com o
+		# console limpo. O comentário antigo ainda dizia Report-Only e foi
+		# corrigido em 2026-08-30. Ver HERANCA §7, pendência 1.
 		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' http://localhost:8081 https://tiles.averisen.com https://protomaps.github.io"
 	}
 

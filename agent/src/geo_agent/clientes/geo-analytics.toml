@@ -1,0 +1,16 @@
+# Cliente 1 — o `geo-analytics`, publicado como Geo Intelligence.
+#
+# Irmão de `web/src/clientes/geo-analytics.ts`: lá mora a cara e o recorte de
+# camadas, aqui mora quem o agente é quando responde. Os valores abaixo são os
+# que estavam cravados em `prompts.py` e `geocode.py` até 2026-08-30 — nenhum
+# ajuste "de passagem", pela mesma razão da fase 1.
+
+id = "geo-analytics"
+nome = "Geo Intelligence"
+
+# Completa a frase "Você é o assistente do <nome>, <descricao>."
+descricao = "um mapa interativo do Brasil"
+
+# Como a aplicação se identifica para o Nominatim (a política deles exige um
+# User-Agent que diga quem está chamando). É o domínio em produção.
+dominio = "geo-intelligence.averisen.com"

@@ -3,11 +3,11 @@
 
 VPS_HOST ?= hetzner-gramos
 
-.PHONY: help dev dev-cliente dev-lado-a-lado build preview ship ship-app ship-ia tiles down agent dev-ia
+.PHONY: help dev dev-cliente dev-lado-a-lado build preview ship ship-app ship-ia tiles down agente dev-ia
 
 help:            ## mostra os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 # ── Desenvolve ────────────────────────────────────────────────────────────
 dev:             ## dev server (Vite + HMR) em http://localhost:5173
@@ -16,26 +16,36 @@ dev:             ## dev server (Vite + HMR) em http://localhost:5173
 # Uma aplicacao por cliente, do mesmo codigo: a escolha e no build (VITE_CLIENTE),
 # nao em runtime. Nomes de projeto distintos para os dois nao brigarem por
 # container. Ver web/src/clientes/.
-dev-cliente:     ## dev server de outro cliente: make dev-cliente CLIENTE=eb-prime [PORTA=5174]
-	@test -n "$(CLIENTE)" || { echo "uso: make dev-cliente CLIENTE=<id> [PORTA=5174]"; exit 1; }
+dev-cliente:     ## dev server de outro cliente: make dev-cliente CLIENTE=eb-prime [PORTA=5174] [PORTA_IA=8001]
+	@test -n "$(CLIENTE)" || { echo "uso: make dev-cliente CLIENTE=<id> [PORTA=5174] [PORTA_IA=8001]"; exit 1; }
 	@test -f web/src/clientes/$(CLIENTE).ts \
 	  || { echo "cliente '$(CLIENTE)' nao existe em web/src/clientes/"; exit 1; }
-	VITE_CLIENTE=$(CLIENTE) PORTA_WEB=$(or $(PORTA),5174) \
+	VITE_CLIENTE=$(CLIENTE) PORTA_WEB=$(or $(PORTA),5174) PORTA_AGENTE=$(PORTA_IA) \
 	  docker compose -p geo-$(CLIENTE) up web
 
 dev-lado-a-lado: ## sobe cliente 1 (:5173) e EB Prime (:5174) juntos, em background
 	docker compose up -d web
-	VITE_CLIENTE=eb-prime PORTA_WEB=5174 docker compose -p geo-eb-prime up -d web
-	@echo "→ Geo Intelligence  http://localhost:5173"
-	@echo "→ EB Prime          http://localhost:5174"
+	VITE_CLIENTE=eb-prime PORTA_WEB=5174 PORTA_AGENTE=8001 docker compose -p geo-eb-prime up -d web
+	@echo "→ Geo Intelligence  http://localhost:5173   chat: make agente"
+	@echo "→ EB Prime          http://localhost:5174   chat: make agente CLIENTE=eb-prime PORTA_IA=8001"
+	@echo "  (os agentes rodam nativos, um por terminal — cada web faz proxy para o do seu cliente)"
 
 # ── IA (Fase 2 — chat local) ─────────────────────────────────────────────
-agent:           ## backend do agente (uv, nativo) em :8000 — requer agent/.env com a chave
-	cd agent && uv run uvicorn geo_agent.main:app --reload --port 8000
+# Um agente por cliente, mesmo codigo: CLIENTE escolhe a persona (agent/src/
+# geo_agent/clientes/<id>.toml) e PORTA_IA evita que os dois briguem pela mesma.
+# Sem argumento nenhum, e o cliente 1 em :8000 — o comportamento de sempre.
+CLIENTE_AGENTE = $(or $(CLIENTE),geo-analytics)
+PORTA_IA      ?= 8000
 
-dev-ia:          ## front (:5173, background) + agente (:8000) — Ctrl+C derruba o agente
+agente:          ## agente (uv, nativo): make agente [CLIENTE=eb-prime] [PORTA_IA=8001]
+	@test -f agent/src/geo_agent/clientes/$(CLIENTE_AGENTE).toml \
+	  || { echo "cliente '$(CLIENTE_AGENTE)' nao existe em agent/src/geo_agent/clientes/"; exit 1; }
+	cd agent && CLIENTE=$(CLIENTE_AGENTE) \
+	  uv run uvicorn geo_agent.main:app --reload --port $(PORTA_IA)
+
+dev-ia:          ## front (:5173, background) + agente do cliente 1 (:8000)
 	docker compose up -d web
-	cd agent && uv run uvicorn geo_agent.main:app --reload --port 8000
+	$(MAKE) agente
 
 # ── Valida ────────────────────────────────────────────────────────────────
 build:           ## gera o build de produção em web/dist

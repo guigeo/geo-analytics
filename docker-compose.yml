@@ -44,6 +44,9 @@ services:
       # A porta precisa entrar no container também: o `--port` do Vite roda lá
       # dentro, e a publicação aqui embaixo tem de casar com ela.
       - PORTA_WEB=${PORTA_WEB:-5173}
+      # A quem o proxy /api entrega: cada cliente tem o seu agente, em porta
+      # própria (make agente CLIENTE=… PORTA_IA=…).
+      - PORTA_AGENTE=${PORTA_AGENTE:-8000}
     ports:
       - "${PORTA_WEB:-5173}:${PORTA_WEB:-5173}"
     volumes:
@@ -61,6 +64,13 @@ services:
     profiles: ["preview"]
     ports:
       - "8080:80"
+    environment:
+      # O preview passou a fazer proxy de /api, como a VPS faz: sem isto ele
+      # serviria o app sem o chat, que é metade do caminho de produção.
+      - PORTA_AGENTE=${PORTA_AGENTE:-8000}
+    # O agente roda NATIVO no host; de dentro do container ele não é localhost.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./web/dist:/srv/app:ro
       - ${TILES_DIR:?defina TILES_DIR no .env (ver ../webgis/docs/LOCAL.md)}:/srv/tiles:ro

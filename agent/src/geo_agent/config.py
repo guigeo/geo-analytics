@@ -8,6 +8,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    # Qual cliente esta instancia serve: nome do arquivo em `geo_agent/clientes/`.
+    # E a UNICA mencao a um id de cliente em codigo Python, e ela existe para o
+    # agente da VPS continuar subindo sem CLIENTE no .env de la (o deploy
+    # parametrizado e a fase 6). Ver `cliente.py`.
+    cliente: str = "geo-analytics"
     # Vazio por default para testes offline; main.py exige no startup.
     openai_api_key: str = ""
     # Conexao do geodata. Vazio cai no ambiente (GEODATA_DSN); a fachada e quem

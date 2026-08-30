@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from geo_query import GeoQuery
 
 from .agent import RateLimiter, SessionStore, run_turn
+from .cliente import cliente_ativo
 from .config import settings
 from .geocode import GeocodeIndisponivel
 from .geocode import buscar as geocode_buscar
@@ -43,7 +44,7 @@ async def lifespan(app: FastAPI):
         max_requests=settings.geocode_rate_limit_max,
         window_s=settings.geocode_rate_limit_window_s,
     )
-    log.info("agente pronto: model=%s", settings.openai_model)
+    log.info("agente pronto: cliente=%s model=%s", cliente_ativo.id, settings.openai_model)
     yield
     state["gq"].close()
 
@@ -72,6 +73,10 @@ def health(response: Response) -> dict[str, str]:
 
     return {
         "status": "ok" if banco == "ok" else "degradado",
+        # Qual cliente este processo serve. Com um agente por cliente, "esta de pe"
+        # deixa de ser resposta suficiente: o erro possivel passa a ser o processo
+        # certo na porta errada, e so o health diz de quem ele e.
+        "cliente": cliente_ativo.id,
         "model": settings.openai_model,
         "geodata": banco,
     }

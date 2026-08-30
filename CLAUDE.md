@@ -21,8 +21,9 @@ no chat) e o proxy de geocoding (20/60s no `/api/geocode`).
 
 ```bash
 make dev        # desenvolve: Vite + HMR em :5173
-make dev-ia     # dev + chat: front (:5173) + agente (:8000) — requer agent/.env
-make agent      # só o backend do agente (uv nativo, :8000)
+make dev-ia     # dev + chat: front (:5173) + agente do cliente 1 (:8000)
+make agente     # só o agente (uv nativo); CLIENTE=eb-prime PORTA_IA=8001 sobe o do cliente 2
+make dev-lado-a-lado  # as duas aplicações juntas (:5173 e :5174), cada uma no seu agente
 make preview    # valida: build + Caddy local em :8080 (IGUAL à VPS)
 make ship       # manda pra VPS: app + tiles (build incluso)
 make ship-app   # só o frontend (redeploy rápido)   |  make ship-tiles (~2 GB)
@@ -31,7 +32,10 @@ make help       # lista todos os alvos
 ```
 
 `dev` é rápido mas difere da produção; **antes de `ship`, valide com `preview`** (mesmo
-Caddy, mesma config de Range/compressão dos tiles). `ship*` usam `deploy/deploy.sh`
+Caddy, mesma config de Range/compressão dos tiles). **O preview pede credencial desde
+2026-08-30** — usuário `previa`, senha `previa-local`, no `deploy/Caddyfile.local` — e
+passou a entregar `/api` ao agente nativo, como a VPS faz: é o portão da fase 5 sendo
+exercitado antes de existir em produção (§8 do ADR-0001 do `webgis`, emenda de 29/08). `ship*` usam `deploy/deploy.sh`
 (rsync via atalho `hetzner-gramos` do `~/.ssh/config`).
 
 **Os tiles não moram mais neste repositório.** Vivem num host compartilhado, servido
@@ -67,6 +71,7 @@ cd query && uv sync --group dev && uv run pytest && uv run ruff check .
 
 # Agente de IA (Fase 2 — nativo com uv; testes rodam OFFLINE, benchmark chama a OpenAI)
 cd agent && uv sync --group dev && uv run pytest && uv run ruff check .
+CLIENTE=eb-prime uv run uvicorn geo_agent.main:app --port 8001   # o agente do cliente 2
 cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env; ~17 chamadas)
 ```
 
@@ -137,6 +142,14 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   memória (TTL 1 h). **Grounding:** `destaques`/`dados` da resposta saem das rows das tools
   (determinístico), o LLM só escreve o texto. Config via `agent/.env`
   (`OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5-mini`). Benchmark de 30 casos em `benchmark.yaml`.
+  **`cliente.py` é a fronteira de cliente do backend** (fase 5, 2026-08-30), irmã do
+  `web/src/configuracao/`: a **persona** — nome, descrição e para quem responde — mora em
+  `geo_agent/clientes/<id>.toml`, validada por Pydantic no boot, e `CLIENTE` escolhe qual
+  (padrão `geo-analytics`). **TOML e não `.py` de propósito:** persona é texto do cliente, e
+  o critério de saída da fase é literal — nenhum `.py` cita cliente, e `test_cliente.py`
+  guarda isso. Um processo serve um cliente só; `/api/health` diz qual, porque com dois
+  agentes de pé "está vivo" deixa de bastar. O `geocode.py` também se identifica ao
+  Nominatim com o domínio do cliente, e não mais com o do cliente 1 em qualquer caso.
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
@@ -152,6 +165,10 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   **junto da linha** — que é a regra 8 do ADR-0001 (o que muda o sentido do número é dado,
   não instrução de prompt). O aviso da tool só existe hoje na cascata `info_local`, porque
   é lá que o canal de `avisos` existe; nas outras `info_*` a marca viaja só pelo rótulo.
+  As **regras são da casca, a persona é do cliente**: dois clientes com regras diferentes
+  sobre o mesmo número seriam dois produtos, não duas aplicações da mesma casca. Com
+  `publico` vazio o prompt montado é caractere por caractere o que estava cravado no
+  `prompts.py` até 2026-08-30 — é assim que se sabe que o cliente 1 não mudou.
   `tools.py` também guarda `METRIC_LABELS` (coluna → rótulo PT-BR das colunas curadas do
   Censo) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna
   na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve

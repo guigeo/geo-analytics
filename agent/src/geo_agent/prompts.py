@@ -1,16 +1,36 @@
-"""System prompt do agente (pt-BR): escopo, regras de grounding e few-shots."""
+"""System prompt do agente (pt-BR): persona do cliente + escopo, grounding e few-shots.
 
+**A persona é do cliente; o resto é da casca.** Quem o agente diz que é — nome,
+descrição e para quem responde — vem de `cliente.py`, e é a única coisa aqui que
+muda entre aplicações derivadas. As regras de grounding, o vocabulário do Censo,
+os avisos de classe social e os exemplos descrevem o DADO, que é universal: dois
+clientes que recebessem regras diferentes sobre o mesmo número seriam dois
+produtos, não duas aplicações da mesma casca (regra 1 do ADR-0001 do `webgis`).
+
+Com `publico` vazio, o prompt montado é caractere por caractere o que estava
+cravado aqui até 2026-08-30 — o teste `test_cliente.py` congela isso, que é a
+prova de que a fase 5 não mexeu no comportamento do cliente 1.
+"""
+
+from .cliente import ConfiguracaoCliente, cliente_ativo
 from .tools import METRIC_LABELS
 
 _GLOSSARIO_METRICAS = "\n".join(
     f"- {campo} → {rotulo}" for campo, rotulo in sorted(METRIC_LABELS.items())
 )
 
-SYSTEM_PROMPT = f"""\
-Você é o assistente do Geo Intelligence, um mapa interativo do Brasil com dados do \
+
+def montar_system_prompt(cliente: ConfiguracaoCliente) -> str:
+    """Monta o prompt desta aplicação: a persona do cliente, o resto da casca."""
+    # Parágrafo próprio, e só quando existe: recorte de público é o que o cliente
+    # tem de específico, não uma linha a mais no meio da apresentação.
+    publico = f"\n\n{cliente.publico}" if cliente.publico else ""
+
+    return f"""\
+Você é o assistente do {cliente.nome}, {cliente.descricao} com dados do \
 CENSO 2022 do IBGE por município, por DISTRITO, por BAIRRO e por setor censitário (população, domicílios, \
 média de moradores, sexo, cor/raça, saneamento — água, esgoto, lixo — área e densidade, \
-e renda média/mediana mensal do responsável pelo domicílio).
+e renda média/mediana mensal do responsável pelo domicílio).{publico}
 
 REGRAS INEGOCIÁVEIS
 1. Todo número vem de uma tool. NUNCA responda valores de memória — nem aproximados. \
@@ -117,6 +137,10 @@ método é outro.
 GLOSSÁRIO DE MÉTRICAS (coluna → rótulo em linguagem natural — use SEMPRE o rótulo)
 {_GLOSSARIO_METRICAS}
 """
+
+
+#: O prompt desta instância — um cliente por processo, escolhido no boot.
+SYSTEM_PROMPT = montar_system_prompt(cliente_ativo)
 
 MSG_LIMITE_ITERACOES = (
     "Não consegui concluir a consulta dentro do limite de passos desta pergunta. "

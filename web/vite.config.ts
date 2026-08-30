@@ -14,6 +14,8 @@ import tailwindcss from "@tailwindcss/vite";
 //   npm run dev                          → geo-analytics (padrão)
 //   VITE_CLIENTE=eb-prime npm run dev    → EB Prime
 const CLIENTE = process.env.VITE_CLIENTE ?? "geo-analytics";
+// Porta do agente deste cliente (make agente [PORTA_IA=…]); só vale em dev.
+const PORTA_AGENTE = process.env.PORTA_AGENTE ?? "8000";
 const ARQUIVO_DO_CLIENTE = path.resolve(__dirname, `./src/clientes/${CLIENTE}.ts`);
 
 if (!fs.existsSync(ARQUIVO_DO_CLIENTE)) {
@@ -42,9 +44,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // Chat (Fase 2): o web roda em container, o agente roda nativo no host
-      // (make agent). Same-origin via proxy — sem CORS. No trabalho (sem Docker),
-      // troque o target por http://localhost:8000.
-      "/api": { target: "http://host.docker.internal:8000", changeOrigin: true },
+      // (make agente). Same-origin via proxy — sem CORS. No trabalho (sem Docker),
+      // troque o host por localhost.
+      //
+      // A PORTA vem do ambiente porque agora existe um agente por cliente: com as
+      // duas aplicações de pé, o :5174 tem de falar com o agente do EB Prime e não
+      // com o do cliente 1 — senão o chat do segundo responde com a persona do
+      // primeiro, que é exatamente o que a fase 5 veio consertar.
+      "/api": { target: `http://host.docker.internal:${PORTA_AGENTE}`, changeOrigin: true },
     },
   },
   // Tiles não são build desta app: vivem no host de tiles compartilhado (fora do

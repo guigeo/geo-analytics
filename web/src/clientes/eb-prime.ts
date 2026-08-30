@@ -6,7 +6,7 @@
  * a fase 2 do plano de derivação prova que a base produz duas aplicações
  * diferentes, e a fase 4 é que define a cara de verdade, com ele olhando.
  *
- * O que este arquivo demonstra: o recorte de camadas é dele. Distrito, antenas e
+ * O que este arquivo demonstra: o recorte de camadas é dele. Antenas, rodovias e
  * ferrovias não aparecem — decisão que não tem efeito nenhum sobre o cliente 1.
  */
 import { CATALOGO, com } from "@/configuracao/catalogo";

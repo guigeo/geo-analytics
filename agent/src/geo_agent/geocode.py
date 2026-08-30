@@ -13,10 +13,15 @@ import logging
 
 import httpx
 
+from .cliente import cliente_ativo
+
 # API publica, sem chave. Nao manda CORS, entao o front passa pelo proxy daqui.
 # Uso pessoal/baixo trafego so (a politica do Nominatim nao cobre volume alto).
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-NOMINATIM_HEADERS = {"User-Agent": "geo-intelligence.averisen.com"}
+# A politica do Nominatim exige um User-Agent que identifique QUEM esta chamando,
+# e ate 2026-08-30 quem chamava se dizia o cliente 1 mesmo quando nao era ele.
+# Cada aplicacao derivada se identifica com o proprio dominio (fase 5).
+NOMINATIM_HEADERS = {"User-Agent": cliente_ativo.dominio}
 TIMEOUT_S = 5.0
 
 log = logging.getLogger(__name__)

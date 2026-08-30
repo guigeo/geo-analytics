@@ -7,6 +7,7 @@ import type { SearchHit } from "@/search";
 import type { Theme } from "@/hooks/use-theme";
 import { identidade, tema } from "@/configuracao";
 import { Simbolo } from "@/components/Simbolo";
+import { cn } from "@/lib/utils";
 
 interface Props {
   theme: Theme;
@@ -33,7 +34,12 @@ export function Header({
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4">
       <div className="flex items-center gap-2.5">
-        <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+        <span
+          className={cn(
+            "grid size-8 place-items-center bg-primary text-primary-foreground shadow-sm",
+            tema.forma === "circulo" ? "rounded-full" : "rounded-lg",
+          )}
+        >
           {tema.simbolo ? (
             <Simbolo simbolo={tema.simbolo} className="size-5" />
           ) : (
@@ -41,7 +47,7 @@ export function Header({
           )}
         </span>
         <div className="leading-tight">
-          <p className="text-sm font-semibold tracking-tight">{identidade.nome}</p>
+          <p className="fonte-titulo text-sm font-semibold tracking-tight">{identidade.nome}</p>
           <p className="text-[11px] text-muted-foreground">{identidade.subtitulo}</p>
         </div>
       </div>

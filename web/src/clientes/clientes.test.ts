@@ -49,6 +49,23 @@ describe("os dois clientes", () => {
     expect(geoAnalytics.tema.simbolo).toBeUndefined();
   });
 
+  it("as duas aplicações têm cara diferente, e não só cor diferente", () => {
+    // O critério que interessa: tipografia, forma do selo e neutros. Sem isto,
+    // derivar cliente novo é repintar a mesma tela.
+    expect(ebPrime.tema.fontes).not.toEqual(geoAnalytics.tema.fontes);
+    expect(ebPrime.tema.forma).not.toBe(geoAnalytics.tema.forma);
+    expect(ebPrime.tema.claros).toBeDefined();
+    expect(ebPrime.tema.escuros).toBeDefined();
+  });
+
+  it("o cliente 1 não redefine neutro nenhum", () => {
+    // É o que garante que ele continua com a aparência do `styles.css`, que é a
+    // que está em produção. Neutro definido aqui seria mudança silenciosa.
+    expect(geoAnalytics.tema.claros).toBeUndefined();
+    expect(geoAnalytics.tema.escuros).toBeUndefined();
+    expect(geoAnalytics.tema.raio).toBeUndefined();
+  });
+
   it("o cliente 1 mantém a cor que tinha antes da fase 4", () => {
     // A migração do cliente 1 para o mecanismo novo não podia mexer num pixel:
     // estes dois valores são os tokens `--primary` que o styles.css já usava.

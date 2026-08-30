@@ -26,6 +26,10 @@ export const cliente: ConfiguracaoCliente = {
   tema: {
     marca: "oklch(0.55 0.2 257)",
     marcaEscura: "oklch(0.72 0.15 230)",
+    forma: "quadrado",
+    fontes: { titulo: "sistema", texto: "sistema" },
+    // Sem `raio`, `claros` nem `escuros`: fica com os neutros do `styles.css`,
+    // que é a aparência que este cliente tem em produção desde sempre.
   },
 
   mapa: {

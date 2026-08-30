@@ -27,6 +27,11 @@
   --border: oklch(0.92 0.005 247.86);
   --input: oklch(0.92 0.005 247.86);
   --ring: oklch(0.55 0.2 257);
+
+  /* Tipografia. O padrão é o que a aplicação sempre usou; o cliente troca pelo
+     `tema.fontes`, que é injetado depois desta folha. */
+  --fonte-titulo: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fonte-texto: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 .dark {
@@ -88,12 +93,18 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family:
-      system-ui,
-      -apple-system,
-      "Segoe UI",
-      Roboto,
-      sans-serif;
+    font-family: var(--fonte-texto);
+  }
+  /* Títulos, rótulos e números — onde a fonte de título aparece. */
+  h1,
+  h2,
+  h3,
+  h4,
+  th,
+  button,
+  label,
+  .fonte-titulo {
+    font-family: var(--fonte-titulo);
   }
 }
 

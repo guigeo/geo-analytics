@@ -46,6 +46,36 @@ export const cliente: ConfiguracaoCliente = {
       ],
       apara: { cx: 159.26, cy: 159.26, r: 159.26 },
     },
+    // Selo redondo: a marca dele é circular — o logo e os doze ícones de ficha
+    // de imóvel são todos anel fino. Selo quadrado brigaria com ela.
+    forma: "circulo",
+    // As duas fontes do template que o cliente mandou (TEJ, ThemeForest): o
+    // código de lá não serve — Vue 2 e Bootstrap 3 —, mas a direção serve, e é
+    // ela que faz esta aplicação parecer irmã do site dele.
+    fontes: { titulo: "montserrat", texto: "raleway" },
+    // Canto mais duro que o da casca (0.625rem). O template dele é anguloso, e
+    // canto duro lê como corporativo — que é o registro de uma imobiliária.
+    raio: "0.375rem",
+    // Neutros do template: preto, branco e cinza puros, sem viés de matiz. O
+    // acento menta de lá (#00d1b2) ficou de fora — briga com o navy da marca.
+    claros: {
+      fundo: "#F2F2F2",
+      cartao: "#FFFFFF",
+      texto: "#2B2B2B",
+      textoFraco: "#888888",
+      borda: "#DDDDDD",
+      superficie: "#EDEDED",
+    },
+    // No escuro entra o segundo azul do material dele, o `#001F33` dos ícones:
+    // escuro demais para ser acento, exato como chão.
+    escuros: {
+      fundo: "#001F33",
+      cartao: "#06293F",
+      texto: "#E4ECF2",
+      textoFraco: "#93A7B5",
+      borda: "#103A56",
+      superficie: "#0B3149",
+    },
   },
 
   mapa: {

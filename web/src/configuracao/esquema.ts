@@ -15,6 +15,7 @@
  * quando alguém liga a camada é pior do que aplicação que não sobe.
  */
 import { z } from "zod";
+import { IDS_DE_FONTE } from "./fontes";
 
 const Cor = z
   .string()
@@ -165,6 +166,25 @@ export const EsquemaSimbolo = z
   });
 
 /**
+ * Os neutros — o que sobra da tela quando se tira a marca.
+ *
+ * A cor primária dá o sotaque; estes dão o clima. Fundo, cartão, texto, borda e
+ * o raio dos cantos decidem se a aplicação parece fria ou quente, densa ou
+ * arejada, dura ou macia — e é aí que duas aplicações deixam de parecer a mesma
+ * com outra cor.
+ *
+ * Tudo opcional: quem não diz nada fica com os tokens do `styles.css`.
+ */
+export const EsquemaNeutros = z.object({
+  fundo: CorTema.optional(),
+  cartao: CorTema.optional(),
+  texto: CorTema.optional(),
+  textoFraco: CorTema.optional(),
+  borda: CorTema.optional(),
+  superficie: CorTema.optional(),
+});
+
+/**
  * A cara do cliente.
  *
  * Duas cores e um desenho. As cores viram os tokens `--primary` e `--ring` do
@@ -176,6 +196,24 @@ export const EsquemaTema = z.object({
   marcaEscura: CorTema,
   /** Sem símbolo, o cabeçalho usa o globo padrão da casca. */
   simbolo: EsquemaSimbolo.optional(),
+  /**
+   * Forma do selo que abriga o símbolo no cabeçalho. Não é enfeite: a marca do
+   * EB Prime é circular — logo e os doze ícones dele — e um selo quadrado
+   * brigaria com ela.
+   */
+  forma: z.enum(["quadrado", "circulo"]),
+  /** Tipografia, escolhida do catálogo da casca. */
+  fontes: z.object({
+    titulo: z.enum(IDS_DE_FONTE),
+    texto: z.enum(IDS_DE_FONTE),
+  }),
+  /** Raio dos cantos, em CSS (`0.25rem`, `2px`). Canto duro lê como corporativo. */
+  raio: z
+    .string()
+    .regex(/^\d*\.?\d+(rem|px)$/, "raio é um comprimento em rem ou px, como 0.375rem")
+    .optional(),
+  claros: EsquemaNeutros.optional(),
+  escuros: EsquemaNeutros.optional(),
 });
 
 export const EsquemaMapa = z
@@ -236,6 +274,7 @@ export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
 export type Simbolo = z.infer<typeof EsquemaSimbolo>;
+export type Neutros = z.infer<typeof EsquemaNeutros>;
 export type ConfiguracaoTema = z.infer<typeof EsquemaTema>;
 export type ConfiguracaoMapa = z.infer<typeof EsquemaMapa>;
 export type ConfiguracaoChat = z.infer<typeof EsquemaChat>;

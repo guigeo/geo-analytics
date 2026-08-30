@@ -1,0 +1,31 @@
+# MODELO do unit do agente — um por cliente, renderizado por deploy/renderizar.sh
+# e instalado por deploy/setup-agente-vps.sh (sudo) em
+# /etc/systemd/system/{{SERVICO}}.service na VPS.
+#
+#   ./deploy/renderizar.sh deploy/agente.service.modelo eb-prime
+#
+# Layout na VPS (espelha o repo; os dados vêm do geodata por GEODATA_DSN no .env):
+#   ~/{{CAMINHO_AGENTE}}/query/   ~/{{CAMINHO_AGENTE}}/agent/ (.env com a chave)
+# O venv é criado no deploy (`uv sync`); o serviço usa o binário direto do venv
+# (sem uv em runtime). Só escuta em 127.0.0.1 — quem expõe é o Caddy (/api).
+#
+# `gramos` é fato desta VPS, não do cliente: é o dono do ssh e da home onde os
+# dois clientes moram lado a lado. Ver deploy/README.md.
+
+[Unit]
+Description=Agente de IA ({{CLIENTE}}) - FastAPI
+After=network.target
+
+[Service]
+User=gramos
+WorkingDirectory=/home/gramos/{{CAMINHO_AGENTE}}/agent
+# CLIENTE escolhe a persona (agent/src/geo_agent/clientes/<id>.toml). Sem ela o
+# processo sobe como cliente 1 — o que, num serviço de outro cliente, seria um
+# agente respondendo com o nome errado sem nenhum erro no log.
+Environment=CLIENTE={{CLIENTE}}
+ExecStart=/home/gramos/{{CAMINHO_AGENTE}}/agent/.venv/bin/uvicorn geo_agent.main:app --host 127.0.0.1 --port {{PORTA_AGENTE}}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

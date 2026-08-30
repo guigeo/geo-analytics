@@ -1,37 +1,49 @@
 #!/usr/bin/env bash
-# Deploy do Geo Intelligence para a VPS (build estático + tiles via rsync).
+# Deploy de UMA aplicação derivada para a VPS (build estático + agente).
 #
 # Uso:
-#   ./deploy/deploy.sh            # app + tiles (site estático)
-#   ./deploy/deploy.sh app        # só o frontend (rápido)
+#   ./deploy/deploy.sh                      # app do cliente 1
+#   CLIENTE=eb-prime ./deploy/deploy.sh     # app do cliente 2
+#   ./deploy/deploy.sh app                  # só o frontend (rápido)
+#   ./deploy/deploy.sh ia                   # código do agente (query/ + agent/ + .env) + uv sync
+#                                           # (systemd/Caddy na 1ª vez: setup-agente-vps.sh)
+#   ENSAIO=1 ./deploy/deploy.sh app         # ENSAIO: não toca a VPS (ver abaixo)
 #
 # Não há alvo `tiles`: publicar tile é `make ship-tiles` no repositório webgis, que
 # é o dono do host compartilhado. Enquanto o comando morasse aqui, era esta
 # aplicação a dona de fato do dado universal.
-#   ./deploy/deploy.sh ia         # código do agente (query/ + agent/ + .env) + uv sync
-#                                 # (systemd/Caddy na 1ª vez: setup-agent-vps.sh)
 #
 # Não há mais alvo `data`: o agente lê o geodata (PostGIS) por GEODATA_DSN, não
 # parquets copiados para a VPS. Ver ../webgis/docs/adr, passo 3 do roteiro.
 #
+# QUAL CLIENTE (fase 6 do passo 5 do ADR-0001): `CLIENTE` escolhe, e os caminhos,
+# o domínio, o unit do systemd, a porta e o portão saem de deploy/clientes/<id>.env
+# — não mais de constantes cravadas aqui. O padrão é o cliente 1, então quem não
+# passa nada continua com o comportamento de sempre.
+#
+# ENSAIO: com ENSAIO=1 nada sai da máquina. O rsync escreve num diretório local
+# (ENSAIO_DIR, padrão /tmp/ensaio-deploy/<cliente>) e todo comando que iria por ssh
+# é impresso em vez de executado. É assim que a fase 6 se prova sem publicar.
+#
 # Variáveis:
+#   CLIENTE   (opcional)  qual aplicação; padrão geo-analytics
 #   VPS_HOST  (opcional)  atalho ssh ou usuario@IP; padrão hetzner-gramos
-#   VPS_PATH  (opcional)  destino do site na VPS; padrão /var/www/geo
-#   GEO_PATH  (opcional)  destino do agente; padrão projects/geo (relativo à home ssh)
+#   ENSAIO    (opcional)  1 = não toca a VPS
 #   VITE_TILES_BASE_URL   de onde o site publicado lê os tiles (default: produção)
 set -euo pipefail
 
-# Atalho do ~/.ssh/config (rsync/ssh resolvem usuário, IP e chave por ele).
 VPS_HOST="${VPS_HOST:-hetzner-gramos}"
-VPS_PATH="${VPS_PATH:-/var/www/geo}"
-GEO_PATH="${GEO_PATH:-projects/geo}"
+CLIENTE="${CLIENTE:-geo-analytics}"
+ENSAIO="${ENSAIO:-}"
 WHAT="${1:-all}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Os .pmtiles nao moram mais aqui: vivem no host de tiles compartilhado, fora de
-# qualquer repositorio de aplicacao (ver ../webgis/docs/LOCAL.md).
+# Quem é este cliente: domínio, caminhos, unit, porta e portão.
+# shellcheck source=deploy/carregar-cliente.sh
+. "$REPO_ROOT/deploy/carregar-cliente.sh"
+
 if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
 
 # De onde o site PUBLICADO le os tiles. Fica aqui, e nao num .env, porque e verdade
@@ -41,59 +53,107 @@ if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
 # de quem tem o host local de pe, que e o pior jeito de errar.
 TILES_BASE_URL="${VITE_TILES_BASE_URL:-https://tiles.averisen.com/tiles}"
 
+ENSAIO_DIR="${ENSAIO_DIR:-/tmp/ensaio-deploy/$CLIENTE}"
+if [[ -n "$ENSAIO" ]]; then
+  echo "▶ ENSAIO — nada sai desta máquina. Destino: $ENSAIO_DIR"
+  mkdir -p "$ENSAIO_DIR"
+fi
+
+# Destino de um rsync: a VPS, ou uma pasta local quando em ensaio.
+destino() {
+  if [[ -n "$ENSAIO" ]]; then
+    mkdir -p "$ENSAIO_DIR/$1"
+    echo "$ENSAIO_DIR/$1"
+  else
+    echo "$VPS_HOST:$1"
+  fi
+}
+
+# Comando que roda NA VPS. Em ensaio, é impresso e não executado — inclusive o
+# `uv sync` e o crontab, que são os que mais doem se rodarem no cliente errado.
+no_servidor() {
+  if [[ -n "$ENSAIO" ]]; then
+    # Uma linha por comando, sem o ruido da indentacao do heredoc: o que importa
+    # no ensaio e conferir COM QUE ARGUMENTOS ele iria rodar.
+    printf '  [ensaio] ssh %s:\n' "$VPS_HOST"
+    printf '%s\n' "$1" | sed '/^[[:space:]]*$/d; s/^[[:space:]]*/      /'
+  else
+    ssh "$VPS_HOST" "$1"
+  fi
+}
+
+echo "▶ Cliente: $CLIENTE  ($DOMINIO)"
+
 build_app() {
-  echo "▶ Build do frontend (no container) — tiles de ${TILES_BASE_URL}…"
-  docker compose run --rm -e VITE_TILES_BASE_URL="$TILES_BASE_URL" web \
+  echo "▶ Build do frontend de $CLIENTE (no container) — tiles de ${TILES_BASE_URL}…"
+  docker compose run --rm \
+    -e VITE_TILES_BASE_URL="$TILES_BASE_URL" -e VITE_CLIENTE="$CLIENTE" web \
     sh -c "npm install && npm run build"
   # O bundle e minificado e a URL entra nele literalmente: se nao estiver la, o
   # build pegou outra fonte de configuracao e o deploy nao pode seguir.
   grep -rqF "$TILES_BASE_URL" web/dist/assets/ \
     || { echo "✗ o bundle nao contem ${TILES_BASE_URL} — build pegou outra config" >&2; exit 1; }
-  echo "  ✓ bundle aponta para ${TILES_BASE_URL}"
+  # Mesma paranoia para o cliente: um bundle do cliente errado publicado no
+  # dominio certo e o pior erro possivel desta fase, e ele e silencioso — o site
+  # sobe, funciona, e mostra a marca de outra empresa.
+  toml_do_cliente="agent/src/geo_agent/clientes/$CLIENTE.toml"
+  [[ -f "$toml_do_cliente" ]] \
+    || { echo "✗ falta $toml_do_cliente — cliente declarado pela metade" >&2; exit 1; }
+  nome_esperado="$(sed -n 's/^nome *= *"\(.*\)"/\1/p' "$toml_do_cliente")"
+  # Nome vazio faria o grep abaixo casar com QUALQUER bundle: a checagem passaria
+  # sempre, que e pior do que nao existir.
+  [[ -n "$nome_esperado" ]] \
+    || { echo "✗ $toml_do_cliente nao declara 'nome' — sem isso a checagem e cega" >&2; exit 1; }
+  grep -rqF "$nome_esperado" web/dist/assets/ \
+    || { echo "✗ o bundle nao contem \"$nome_esperado\" — build de outro cliente?" >&2; exit 1; }
+  echo "  ✓ bundle aponta para ${TILES_BASE_URL} e é do $nome_esperado"
 }
 
 push_app() {
-  echo "▶ Enviando frontend → $VPS_HOST:$VPS_PATH/ (exceto tiles)…"
+  echo "▶ Enviando frontend → $(destino "$CAMINHO_APP")/ (exceto tiles)…"
   rsync -avz --delete --exclude 'tiles' \
-    web/dist/ "$VPS_HOST:$VPS_PATH/"
+    web/dist/ "$(destino "$CAMINHO_APP")/"
 }
 
 push_agent() {
-  echo "▶ Enviando query/ + agent/ + deploy/ → $VPS_HOST:$GEO_PATH/…"
-  ssh "$VPS_HOST" "mkdir -p $GEO_PATH"
+  echo "▶ Enviando query/ + agent/ + deploy/ → $(destino "$CAMINHO_AGENTE")/…"
+  no_servidor "mkdir -p $CAMINHO_AGENTE"
   rsync -avz --delete \
     --exclude '.venv' --exclude '__pycache__' --exclude '.pytest_cache' \
     --exclude '.ruff_cache' --exclude '.env' \
-    query agent deploy "$VPS_HOST:$GEO_PATH/"
+    query agent deploy "$(destino "$CAMINHO_AGENTE")/"
   if [[ -f agent/.env ]]; then
     # O agente nao sobe sem GEODATA_DSN desde que a fachada passou a ler PostGIS.
     # Melhor parar aqui do que descobrir pelo systemd em restart loop na VPS.
     grep -q '^GEODATA_DSN=' agent/.env \
       || { echo "✗ agent/.env sem GEODATA_DSN — o serviço não sobe. Ver agent/.env.example" >&2; exit 1; }
     echo "▶ Enviando agent/.env (chave OpenAI + GEODATA_DSN)…"
-    rsync -avz agent/.env "$VPS_HOST:$GEO_PATH/agent/.env"
+    rsync -avz agent/.env "$(destino "$CAMINHO_AGENTE")/agent/.env"
   else
     echo "⚠ agent/.env não existe local — o serviço não sobe sem a chave e o DSN."
   fi
   echo "▶ uv sync no servidor (instala uv se preciso; python gerenciado 3.12)…"
-  ssh "$VPS_HOST" "
+  no_servidor "
     set -e
     command -v \$HOME/.local/bin/uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
-    cd $GEO_PATH/agent && \$HOME/.local/bin/uv sync --no-dev --python 3.12
+    cd $CAMINHO_AGENTE/agent && \$HOME/.local/bin/uv sync --no-dev --python 3.12
   "
   # O vigia roda de cron na VPS: o agente reinicia sozinho se morrer, mas ninguem
   # avisa quando ele sobe SEM banco — e nesse estado o mapa segue no ar e so o chat
   # morre, em silencio. Idempotente: reinstala a linha a cada deploy.
-  echo "▶ Instalando o cron do vigia (a cada 10 min)…"
-  ssh "$VPS_HOST" "
-    linha='*/10 * * * * \$HOME/$GEO_PATH/deploy/vigia-app.sh >> \$HOME/$GEO_PATH/vigia.log 2>&1'
-    ( crontab -l 2>/dev/null | grep -v 'vigia-app.sh' ; echo \"\$linha\" ) | crontab -
+  #
+  # O filtro do crontab e pelo CAMINHO do cliente, nao por 'vigia-app.sh': com dois
+  # clientes, o filtro antigo apagaria o vigia do outro a cada deploy.
+  echo "▶ Instalando o cron do vigia de $CLIENTE (a cada 10 min)…"
+  no_servidor "
+    linha='*/10 * * * * CLIENTE=$CLIENTE \$HOME/$CAMINHO_AGENTE/deploy/vigia-app.sh >> \$HOME/$CAMINHO_AGENTE/vigia.log 2>&1'
+    ( crontab -l 2>/dev/null | grep -v '$CAMINHO_AGENTE/deploy/vigia-app.sh' ; echo \"\$linha\" ) | crontab -
   "
 
-  echo "ℹ Primeira vez? Falta o passo ROOT (systemd + Caddy /api) — rode na SUA máquina:"
-  echo "    ssh -t $VPS_HOST 'sudo bash ~/$GEO_PATH/deploy/setup-agent-vps.sh'"
+  echo "ℹ Primeira vez? Falta o passo ROOT (systemd + bloco do Caddy) — rode na SUA máquina:"
+  echo "    ssh -t $VPS_HOST 'sudo bash ~/$CAMINHO_AGENTE/deploy/setup-agente-vps.sh $CLIENTE'"
   echo "  Nas demais vezes, só reinicie o serviço:"
-  echo "    ssh -t $VPS_HOST 'sudo systemctl restart geo-agent'"
+  echo "    ssh -t $VPS_HOST 'sudo systemctl restart $SERVICO'"
 }
 
 case "$WHAT" in
@@ -103,4 +163,4 @@ case "$WHAT" in
   *) echo "alvo inválido: $WHAT (use: app | agent | ia | all)"; exit 1 ;;
 esac
 
-echo "✔ Concluído."
+echo "✔ Concluído${ENSAIO:+ (ensaio — a VPS não foi tocada)}."

@@ -1,7 +1,22 @@
-# Deploy — Geo Intelligence na VPS
+# Deploy — as aplicações derivadas na VPS
 
-Site **estático** (app MapLibre + tiles PMTiles), servido pelo **Caddy** (HTTPS
-automático). Os tiles (~2 GB) sobem por **rsync** — não vão pelo git.
+Site **estático** (app MapLibre) mais o agente de IA, servidos pelo **Caddy**
+(HTTPS automático).
+
+> **Desde 2026-08-30 o deploy é por cliente** (fase 6 do passo 5 do ADR-0001 do
+> `webgis`). Tudo que era do cliente 1 — domínio, caminhos, unit do systemd,
+> porta e portão — mora em `deploy/clientes/<id>.env`, e `CLIENTE` escolhe:
+>
+> ```bash
+> make ensaio                      # ENSAIA o deploy sem tocar a VPS
+> make ensaio CLIENTE=eb-prime
+> make ship                        # cliente 1 (o de sempre)
+> make ship CLIENTE=eb-prime       # cliente 2
+> ```
+>
+> O texto histórico abaixo descreve a primeira subida do cliente 1, em junho de
+> 2026. Onde ele diz `/var/www/geo`, `geo-intelligence.averisen.com` ou
+> `geo-agent`, leia "o valor do `deploy/clientes/<id>.env` daquele cliente".
 
 ```text
 navegador ──HTTPS──> Caddy (VPS Hetzner) ──> /var/www/geo  (app)
@@ -61,8 +76,9 @@ exit
 ## Fase 4 — Enviar app + tiles  (eu rodo, na sua máquina)
 
 ```bash
-VPS_HOST=hetzner-gramos ./deploy/deploy.sh        # build + app + tiles
-# alvos: ./deploy/deploy.sh app  |  tiles  |  all
+VPS_HOST=hetzner-gramos ./deploy/deploy.sh        # build + app do cliente 1
+CLIENTE=eb-prime ./deploy/deploy.sh               # o mesmo, para o cliente 2
+# alvos: app | ia | all   (tiles não: são do `webgis`, `make ship-tiles` de lá)
 ```
 O `rsync` usa o atalho `hetzner-gramos` do seu `~/.ssh/config` (chave, sem senha).
 A 1ª remessa dos tiles (~2 GB) depende do seu **upload**; o rsync é incremental e retoma se cair.
@@ -73,21 +89,20 @@ A 1ª remessa dos tiles (~2 GB) depende do seu **upload**; o rsync é incrementa
 
 ## Fase 5 — Acrescentar o site ao Caddy  (você roda — tem `sudo`)
 
+Desde a fase 6 isto não é mais colar à mão: o bloco é **renderizado** do modelo
+versionado, e o `setup-agente-vps.sh` acrescenta, valida e recarrega — guardando
+um `.bak` e revertendo sozinho se a config não validar. Ele **não mexe** num bloco
+que já existe; atualizar é outra operação, e ela mora em `webgis/docs/VPS.md`.
+
 ```bash
-# 1) (segurança) backup do Caddyfile atual
-sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak.$(date +%Y%m%d%H%M%S)
+# na sua máquina, depois de `CLIENTE=<id> ./deploy/deploy.sh ia`
+ssh -t hetzner-gramos 'sudo bash ~/projects/eb-prime/deploy/setup-agente-vps.sh eb-prime'
 
-# 2) acrescente o bloco do deploy/Caddyfile ao FINAL do arquivo
-sudo nano /etc/caddy/Caddyfile
-#   → cole o conteúdo de deploy/Caddyfile (bloco geo-intelligence.averisen.com)
-#     ABAIXO do bloco existente. Não remova o invest-certo-dash.
+# para ver o que ele vai escrever, antes:
+./deploy/renderizar.sh deploy/Caddyfile.modelo eb-prime
 
-# 3) valide a sintaxe e recarregue sem derrubar o site atual
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-
-# 4) acompanhe a emissão do certificado
-journalctl -u caddy -f
+# acompanhe a emissão do certificado
+ssh hetzner-gramos 'journalctl -u caddy -f'
 ```
 ✅ **Pronto quando** o log mostra o certificado de `geo-intelligence.averisen.com` emitido, sem erro.
 
@@ -118,11 +133,18 @@ make ship-app  # manda só o frontend  (ou: make ship / make ship-tiles)
 
 > **Sempre rode `make preview` antes de `ship`** — é a única forma de ver, localmente,
 > exatamente o que o Caddy da VPS vai servir (Range nos tiles, compressão só fora de
-> `/tiles`). O `deploy/Caddyfile.local` espelha o comportamento de `deploy/Caddyfile`.
+> `/tiles`) — e, desde a fase 5, o **portão**: o preview pede credencial
+> (`previa` / `previa-local`). O `deploy/Caddyfile.local` espelha o
+> comportamento do `deploy/Caddyfile.modelo`.
 
 ## Redeploys futuros
-- **Só código:** `make ship-app`  (= `./deploy/deploy.sh app`)
-- **Re-gerou tiles:** `make ship-tiles`  (= `./deploy/deploy.sh tiles`)
+- **Só código:** `make ship-app [CLIENTE=<id>]`  (= `CLIENTE=<id> ./deploy/deploy.sh app`)
+- **Só o agente:** `make ship-ia [CLIENTE=<id>]`, e depois o `restart` do unit daquele
+  cliente (pede senha do sudo — passo do Guilherme, num terminal de verdade).
+- **Re-gerou tiles:** `make ship-tiles` **no repositório `webgis`** — o host de tiles é
+  compartilhado e não pertence a nenhuma aplicação.
+- **Antes de qualquer um deles:** `make ensaio [CLIENTE=<id>]`, que faz o caminho
+  inteiro contra um diretório local, sem tocar a VPS.
 
 ## Otimizações opcionais (Fase 7)
 - **Encolher o basemap** (z13→z12): ~1.4 GB → ~400 MB. `pipeline/datasets.yaml` (`basemap.maxzoom`)

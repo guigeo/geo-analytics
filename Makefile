@@ -3,7 +3,11 @@
 
 VPS_HOST ?= hetzner-gramos
 
-.PHONY: help dev dev-cliente dev-lado-a-lado build preview ship ship-app ship-ia tiles down agente dev-ia
+# Qual aplicacao derivada os alvos operam. Padrao: o cliente 1, que e o
+# comportamento de sempre para quem nao passa nada.
+CLIENTE_ALVO = $(or $(CLIENTE),geo-analytics)
+
+.PHONY: help dev dev-cliente dev-lado-a-lado build preview ship ship-app ship-ia ensaio tiles down agente dev-ia
 
 help:            ## mostra os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -34,13 +38,12 @@ dev-lado-a-lado: ## sobe cliente 1 (:5173) e EB Prime (:5174) juntos, em backgro
 # Um agente por cliente, mesmo codigo: CLIENTE escolhe a persona (agent/src/
 # geo_agent/clientes/<id>.toml) e PORTA_IA evita que os dois briguem pela mesma.
 # Sem argumento nenhum, e o cliente 1 em :8000 — o comportamento de sempre.
-CLIENTE_AGENTE = $(or $(CLIENTE),geo-analytics)
 PORTA_IA      ?= 8000
 
 agente:          ## agente (uv, nativo): make agente [CLIENTE=eb-prime] [PORTA_IA=8001]
-	@test -f agent/src/geo_agent/clientes/$(CLIENTE_AGENTE).toml \
-	  || { echo "cliente '$(CLIENTE_AGENTE)' nao existe em agent/src/geo_agent/clientes/"; exit 1; }
-	cd agent && CLIENTE=$(CLIENTE_AGENTE) \
+	@test -f agent/src/geo_agent/clientes/$(CLIENTE_ALVO).toml \
+	  || { echo "cliente '$(CLIENTE_ALVO)' nao existe em agent/src/geo_agent/clientes/"; exit 1; }
+	cd agent && CLIENTE=$(CLIENTE_ALVO) \
 	  uv run uvicorn geo_agent.main:app --reload --port $(PORTA_IA)
 
 dev-ia:          ## front (:5173, background) + agente do cliente 1 (:8000)
@@ -56,14 +59,19 @@ preview: build   ## valida o build em http://localhost:8080 (Caddy, IGUAL à VPS
 	docker compose --profile preview up preview
 
 # ── Manda pra VPS ─────────────────────────────────────────────────────────
-ship:            ## envia o app para a VPS (build incluso)
-	./deploy/deploy.sh all
+# TUDO aqui aceita CLIENTE=<id>; sem ele, e o cliente 1. O que cada cliente tem
+# de proprio (dominio, caminhos, unit, porta, portao) mora em deploy/clientes/.
+ensaio:          ## ENSAIA o deploy sem tocar a VPS: make ensaio [CLIENTE=eb-prime]
+	CLIENTE=$(CLIENTE_ALVO) ENSAIO=1 ./deploy/deploy.sh all
+
+ship:            ## envia o app para a VPS (build incluso): make ship [CLIENTE=eb-prime]
+	CLIENTE=$(CLIENTE_ALVO) ./deploy/deploy.sh all
 
 ship-app:        ## envia só o frontend (redeploy rápido de código)
-	./deploy/deploy.sh app
+	CLIENTE=$(CLIENTE_ALVO) ./deploy/deploy.sh app
 
 ship-ia:         ## envia o agente pra VPS (1ª vez exige setup sudo — ver deploy/)
-	./deploy/deploy.sh ia
+	CLIENTE=$(CLIENTE_ALVO) ./deploy/deploy.sh ia
 
 # ── ETL ───────────────────────────────────────────────────────────────────
 tiles:           ## (re)gera tiles + basemap (ETL no container)

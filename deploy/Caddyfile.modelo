@@ -1,23 +1,49 @@
-# Bloco de site do Geo Intelligence — APÊNDICE ao /etc/caddy/Caddyfile da VPS.
+# MODELO do bloco de site de UM cliente — apêndice ao /etc/caddy/Caddyfile da VPS.
 # A VPS já roda Caddy servindo outros sites; NÃO substitua o arquivo, apenas
-# acrescente este bloco. Ver deploy/README.md.
+# acrescente o bloco renderizado. Ver deploy/README.md e ../webgis/docs/VPS.md.
+#
+# Renderize antes de usar (o arquivo com {{…}} não é config válida):
+#   ./deploy/renderizar.sh deploy/Caddyfile.modelo eb-prime
 #
 # Este arquivo é a FONTE do que está em produção. Em 2026-08-20 ele ficou para
 # trás: os tiles saíram daqui para tiles.averisen.com, o bloco foi corrigido à mão
 # na VPS e ninguém trouxe a correção de volta. Descoberto em 2026-08-22 por um diff
 # contra o servidor. Editar aqui, mandar para lá — nunca o contrário.
 #
-# Layout na VPS:
-#   /var/www/geo/       -> build do frontend (index.html, assets/…)
-#   /home/gramos/projects/geo/ -> agente de IA (lê o geodata por GEODATA_DSN)
+# Até 2026-08-30 este era o `deploy/Caddyfile`, com o cliente 1 cravado. Virou
+# modelo na fase 6 do passo 5 do ADR-0001; o render do cliente 1 reproduz aquele
+# arquivo diretiva por diretiva, e é isso que garante que a VPS não mudou.
+#
+# Layout na VPS (por cliente, vindo de deploy/clientes/<id>.env):
+#   {{CAMINHO_APP}}  -> build do frontend (index.html, assets/…)
+#   ~/{{CAMINHO_AGENTE}}  -> agente de IA (lê o geodata por GEODATA_DSN)
 #   os tiles NÃO moram aqui: host compartilhado, ver ../../webgis/docs/VPS.md
 
-geo-intelligence.averisen.com {
-	# Chat IA: agente FastAPI local (systemd geo-agent, :8000).
-	@api path /api/*
-	reverse_proxy @api 127.0.0.1:8000
+{{DOMINIO}} {
+{{#SE PORTAO_USUARIO}}
+	# ── Portão ────────────────────────────────────────────────────────────────
+	# Credencial por APLICAÇÃO (não por pessoa), decidida na emenda de 2026-08-29
+	# da §8 do ADR-0001 do `webgis`. O motivo é custo, não sigilo: cada pergunta
+	# ao /api/chat chama um modelo. Site aberto é ausência de PORTAO_USUARIO no
+	# deploy/clientes/<id>.env — o cliente 1 é assim hoje, e ligar o portão nele
+	# fecharia um site que está público: decisão de produto, não de deploy.
+	#
+	# ⚠️ `basicauth` e NÃO `basic_auth`: o Caddy da VPS é 2.6.2 (medido em
+	# 2026-08-30), onde o nome novo não existe e o `validate` recusa o arquivo
+	# INTEIRO — que é compartilhado com os outros sites da máquina. Quando o
+	# Caddy de lá subir para 2.8+, isto vira `basic_auth`. Ver webgis/docs/VPS.md.
+	#
+	# Só o hash mora no repositório; a senha em claro, em lugar nenhum.
+	basicauth {
+		{{PORTAO_USUARIO}} {{PORTAO_HASH}}
+	}
 
-	root * /var/www/geo
+{{/SE}}
+	# Chat IA: agente FastAPI local (systemd {{SERVICO}}, :{{PORTA_AGENTE}}).
+	@api path /api/*
+	reverse_proxy @api 127.0.0.1:{{PORTA_AGENTE}}
+
+	root * {{CAMINHO_APP}}
 	file_server
 
 	# Os tiles não são mais servidos daqui: vivem em tiles.averisen.com, o host

@@ -25,9 +25,11 @@ make dev-ia     # dev + chat: front (:5173) + agente do cliente 1 (:8000)
 make agente     # só o agente (uv nativo); CLIENTE=eb-prime PORTA_IA=8001 sobe o do cliente 2
 make dev-lado-a-lado  # as duas aplicações juntas (:5173 e :5174), cada uma no seu agente
 make preview    # valida: build + Caddy local em :8080 (IGUAL à VPS)
-make ship       # manda pra VPS: app + tiles (build incluso)
-make ship-app   # só o frontend (redeploy rápido)   |  make ship-tiles (~2 GB)
-make ship-ia    # dados + agente pra VPS (1ª vez: setup sudo — deploy/setup-agent-vps.sh)
+make ensaio     # ENSAIA o deploy sem tocar a VPS (rsync para /tmp, ssh só impresso)
+make ship       # manda pra VPS: build + app
+make ship-app   # só o frontend (redeploy rápido)   |  tiles: `make ship-tiles` no webgis
+make ship-ia    # agente pra VPS (1ª vez: setup sudo — deploy/setup-agente-vps.sh)
+#  todos aceitam CLIENTE=<id>; sem ele, o cliente 1
 make help       # lista todos os alvos
 ```
 
@@ -37,6 +39,13 @@ Caddy, mesma config de Range/compressão dos tiles). **O preview pede credencial
 passou a entregar `/api` ao agente nativo, como a VPS faz: é o portão da fase 5 sendo
 exercitado antes de existir em produção (§8 do ADR-0001 do `webgis`, emenda de 29/08). `ship*` usam `deploy/deploy.sh`
 (rsync via atalho `hetzner-gramos` do `~/.ssh/config`).
+
+**O deploy é por cliente desde 2026-08-30** (fase 6): domínio, caminhos, unit do
+systemd, porta e portão saem de `deploy/clientes/<id>.env`, e `deploy/renderizar.sh`
+gera o bloco do Caddy e o unit a partir de modelos versionados. O render do cliente 1
+reproduz o que está em produção diretiva por diretiva — é o que garante que a fase não
+mexeu no ar. **`make ensaio` faz o caminho inteiro contra `/tmp`**: nada sai da máquina,
+e todo comando que iria por ssh é impresso. Publicar continua sendo passo do Guilherme.
 
 **Os tiles não moram mais neste repositório.** Vivem num host compartilhado, servido
 para todas as aplicações derivadas do `webgis` — uma cópia só, em vez de uma por app
@@ -202,9 +211,9 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
 Fase 2 shipada (benchmark 16/16), fase 2.1 no ar (agente + busca de município/UF/endereço)
 e o tema **renda do responsável pelo domicílio** em produção (2026-08-08, commit
 `95b6358`) — primeiro dado econômico do app, puxado direto do IBGE fora do release
-padrão de setores censitários. Redeploy do agente: `make ship-ia` + `ssh -t
-hetzner-gramos 'sudo systemctl restart geo-agent'` (o restart pede senha — só roda
-num terminal de verdade, não pelo Claude Code). **Atenção ao redeploy do agente:** o
+padrão de setores censitários. Redeploy do agente: `make ship-ia [CLIENTE=<id>]` + `ssh -t
+hetzner-gramos 'sudo systemctl restart <SERVICO do cliente>'` (o restart pede senha — só
+roda num terminal de verdade, não pelo Claude Code). **Atenção ao redeploy do agente:** o
 `.env` (chave OpenAI) às vezes é editado direto na VPS e fica mais novo que o local —
 antes de rodar `deploy.sh agent`/`ship-ia`, comparar mtimes pra não sobrescrever a
 chave certa com uma desatualizada. A instalação do agente na VPS é **editable** (aponta

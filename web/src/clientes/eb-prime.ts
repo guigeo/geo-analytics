@@ -56,8 +56,10 @@ export const cliente: ConfiguracaoCliente = {
 
   chat: {
     habilitado: true,
+    // A cidade da primeira sugestão é decisão do Gui em 2026-08-30. Ela é o que
+    // a pessoa lê antes de saber o que perguntar, então não é enfeite.
     sugestoes: [
-      "Qual a renda média por setor censitário de Curitiba?",
+      "Qual a renda média por setor censitário de São Caetano do Sul?",
       "Quais bairros têm maior renda média?",
       "Quantos domicílios tem este município?",
     ],

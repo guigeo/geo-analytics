@@ -7,15 +7,18 @@
  * o site do cliente não passa a depender de um terceiro para ter tipografia, e
  * a CSP do gateway em produção não precisa abrir origem nova.
  *
+ * Só o subconjunto latino: o pacote completo traz cirílico e vietnamita, que
+ * ninguém aqui vai ler e que o deploy carregaria em toda subida.
+ *
  * Fonte nova aqui é decisão de casca: entra o pacote, entra a entrada, e aí
  * qualquer cliente pode escolher. O cliente não nomeia arquivo de fonte.
  */
-import "@fontsource/montserrat/500.css";
-import "@fontsource/montserrat/600.css";
-import "@fontsource/montserrat/700.css";
-import "@fontsource/raleway/400.css";
-import "@fontsource/raleway/500.css";
-import "@fontsource/raleway/600.css";
+import "@fontsource/montserrat/latin-500.css";
+import "@fontsource/montserrat/latin-600.css";
+import "@fontsource/montserrat/latin-700.css";
+import "@fontsource/raleway/latin-400.css";
+import "@fontsource/raleway/latin-500.css";
+import "@fontsource/raleway/latin-600.css";
 
 const SISTEMA = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 

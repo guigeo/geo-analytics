@@ -8,7 +8,11 @@
  *
  * A ORDEM IMPORTA: o primeiro item é o mais recente, e é o `id` dele que decide
  * se existe algo não lido.
+ *
+ * Cidade de exemplo vem da configuração do cliente: cravar uma aqui seria pôr o
+ * conteúdo de um cliente dentro do código que todos compartilham.
  */
+import { configuracao } from "@/configuracao";
 export interface Novidade {
   /** Estável e único. É o que fica guardado como "já lido" — nunca reaproveitar. */
   id: string;
@@ -38,8 +42,8 @@ export const NOVIDADES: Novidade[] = [
     // 2026-08-27: sem isso o agente devolve uma pergunta de esclarecimento
     // ("absoluto ou percentual? quantos itens?") em vez do mapa — e um chip de
     // demonstração que responde com interrogatório não demonstra nada.
-    pergunta: "Top 10 bairros de Curitiba por porcentagem de domicílios na classe A",
-    chip: "Top 10 bairros de Curitiba por classe A",
+    pergunta: `Top 10 bairros de ${configuracao.cidadeExemplo} por porcentagem de domicílios na classe A`,
+    chip: `Top 10 bairros de ${configuracao.cidadeExemplo} por classe A`,
   },
 ];
 

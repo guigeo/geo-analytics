@@ -252,6 +252,15 @@ export const EsquemaCliente = z
         "id de cliente aceita minúsculas, dígitos e -, começando por letra",
       ),
     identidade: EsquemaIdentidade,
+    /**
+     * Cidade que a casca usa nos exemplos que ela mesma escreve — hoje, a
+     * pergunta de demonstração das novidades.
+     *
+     * Existe porque cidade cravada em `lib/` é conteúdo de um cliente dentro de
+     * código compartilhado, que é a regra 1 do ADR-0001 — o mesmo motivo pelo
+     * qual o changelog já era dado e não JSX.
+     */
+    cidadeExemplo: z.string().min(1),
     tema: EsquemaTema,
     mapa: EsquemaMapa,
     camadas: z.array(EsquemaCamada).min(1, "aplicação sem camada nenhuma não tem o que mostrar"),

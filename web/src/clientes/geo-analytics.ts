@@ -23,6 +23,8 @@ export const cliente: ConfiguracaoCliente = {
   // decisão para cá sem mexer num pixel: os dois valores são os tokens
   // `--primary` de hoje, copiados em oklch para não perder nada na conversão.
   // Sem símbolo — o cabeçalho segue com o globo padrão da casca.
+  cidadeExemplo: "Curitiba",
+
   tema: {
     marca: "oklch(0.55 0.2 257)",
     marcaEscura: "oklch(0.72 0.15 230)",

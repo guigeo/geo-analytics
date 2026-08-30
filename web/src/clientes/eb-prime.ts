@@ -17,8 +17,10 @@ export const cliente: ConfiguracaoCliente = {
 
   identidade: {
     nome: "EB Prime",
-    subtitulo: "Inteligência geográfica · imóveis",
+    subtitulo: "Inteligência Geográfica",
   },
+
+  cidadeExemplo: "São Caetano do Sul",
 
   tema: {
     // Medida no núcleo do traço do logo oficial, não estimada de olho. O outro

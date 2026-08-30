@@ -49,6 +49,14 @@ describe("os dois clientes", () => {
     expect(geoAnalytics.tema.simbolo).toBeUndefined();
   });
 
+  it("cada cliente traz a própria cidade de exemplo", () => {
+    // A novidade da classe social monta a pergunta de demonstração com esta
+    // cidade. Cravada em `lib/`, ela seria conteúdo de um cliente dentro do
+    // código compartilhado.
+    expect(geoAnalytics.cidadeExemplo).toBe("Curitiba");
+    expect(ebPrime.cidadeExemplo).toBe("São Caetano do Sul");
+  });
+
   it("as duas aplicações têm cara diferente, e não só cor diferente", () => {
     // O critério que interessa: tipografia, forma do selo e neutros. Sem isto,
     // derivar cliente novo é repintar a mesma tela.

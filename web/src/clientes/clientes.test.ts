@@ -32,13 +32,28 @@ describe("os dois clientes", () => {
   });
 
   it("tirar camada de um cliente não tira do outro", () => {
-    // O recorte do EB Prime não tem rodovias, antenas nem ferrovias; as três
-    // continuam no cliente 1. É esta linha que prova que o recorte é por
-    // cliente, e não uma edição na lista global.
-    for (const ausente of ["rodovias", "antenas", "ferrovias"]) {
-      expect(ids(ebPrime)).not.toContain(ausente);
-      expect(ids(geoAnalytics)).toContain(ausente);
+    // Decisão do cliente em 2026-08-30: as camadas do cliente 1 menos as
+    // antenas de telefonia. É esta linha que prova que o recorte é por cliente,
+    // e não uma edição na lista global.
+    expect(ids(ebPrime)).not.toContain("antenas");
+    expect(ids(geoAnalytics)).toContain("antenas");
+    for (const presente of ["rodovias", "ferrovias"]) {
+      expect(ids(ebPrime)).toContain(presente);
     }
+  });
+
+  it("o EB Prime traz símbolo próprio e o cliente 1 não", () => {
+    // O que a fase 4 mudou: a marca virou dado. Se um dia o cabeçalho precisar
+    // de um `if` por cliente, é aqui que a regressão aparece.
+    expect(ebPrime.tema.simbolo).toBeDefined();
+    expect(geoAnalytics.tema.simbolo).toBeUndefined();
+  });
+
+  it("o cliente 1 mantém a cor que tinha antes da fase 4", () => {
+    // A migração do cliente 1 para o mecanismo novo não podia mexer num pixel:
+    // estes dois valores são os tokens `--primary` que o styles.css já usava.
+    expect(geoAnalytics.tema.marca).toBe("oklch(0.55 0.2 257)");
+    expect(geoAnalytics.tema.marcaEscura).toBe("oklch(0.72 0.15 230)");
   });
 
   it("nenhuma camada do EB Prime nasce ligada", () => {

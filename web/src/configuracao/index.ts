@@ -31,14 +31,19 @@ function validar(bruta: unknown): ConfiguracaoCliente {
 export const configuracao = validar(cliente);
 
 export const identidade = configuracao.identidade;
+export const tema = configuracao.tema;
 export const configuracaoMapa = configuracao.mapa;
 export const camadas = configuracao.camadas;
 export const configuracaoChat = configuracao.chat;
+
+export { aplicarTema } from "./tema";
 
 export type {
   ConfiguracaoCliente,
   ConfiguracaoChat,
   ConfiguracaoMapa,
+  ConfiguracaoTema,
   DefinicaoCamada,
   Identidade,
+  Simbolo,
 } from "./esquema";

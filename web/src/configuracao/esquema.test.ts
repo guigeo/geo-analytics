@@ -91,3 +91,48 @@ describe("esquema de cliente", () => {
     expect(r.success).toBe(false);
   });
 });
+
+describe("tema do cliente", () => {
+  it("recusa cor de tema que não é hexadecimal nem oklch", () => {
+    const r = comCliente((c) => {
+      c.tema.marca = "rebeccapurple";
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("aceita hexadecimal e oklch, que é o que os dois clientes usam", () => {
+    for (const cor of ["#26405F", "oklch(0.55 0.2 257)"]) {
+      const r = comCliente((c) => {
+        c.tema.marca = cor;
+      });
+      expect(r.success, cor).toBe(true);
+    }
+  });
+
+  it("recusa símbolo com traço aparado e sem o círculo que apara", () => {
+    // Sem o círculo o recorte fica vazio e o SVG some inteiro, calado — o tipo
+    // de erro que só aparece quando alguém abre a aplicação.
+    const r = comCliente((c) => {
+      c.tema.simbolo = {
+        viewBox: "0 0 100 100",
+        espessura: 4,
+        tracos: [{ d: "M0 0H100", aparado: true }],
+      };
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("recusa símbolo sem traço nenhum", () => {
+    const r = comCliente((c) => {
+      c.tema.simbolo = { viewBox: "0 0 100 100", espessura: 4, tracos: [] };
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("aceita o símbolo do EB Prime como ele está", () => {
+    const r = comCliente((c) => {
+      c.tema.simbolo = structuredClone(ebPrime.tema.simbolo);
+    });
+    expect(r.success, JSON.stringify(r.error?.issues)).toBe(true);
+  });
+});

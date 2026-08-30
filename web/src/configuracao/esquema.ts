@@ -20,6 +20,22 @@ const Cor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "cor precisa ser hexadecimal de 6 dígitos, como #3a5a8c");
 
+/**
+ * Cor de tema. Aceita hexadecimal **ou** `oklch(L C H)`, porque os tokens do
+ * `styles.css` são oklch e o cliente 1 precisa dizer exatamente a cor que já
+ * tinha — converter para hexadecimal mudaria o pixel. A marca de um cliente
+ * costuma vir em hexadecimal, do manual dele.
+ *
+ * O padrão é fechado de propósito: estas cores vão para dentro de uma folha de
+ * estilo montada em tempo de execução, e só entra ali o que o esquema aceitou.
+ */
+const CorTema = z
+  .string()
+  .regex(
+    /^(#[0-9a-fA-F]{6}|oklch\(\d*\.?\d+ \d*\.?\d+ \d*\.?\d+\))$/,
+    "cor de tema aceita hexadecimal de 6 dígitos ou oklch(L C H)",
+  );
+
 const Longitude = z.number().min(-180).max(180);
 const Latitude = z.number().min(-90).max(90);
 
@@ -109,6 +125,59 @@ export const EsquemaIdentidade = z.object({
   subtitulo: z.string().min(1),
 });
 
+/**
+ * O símbolo do cliente, como dado.
+ *
+ * Não é um componente por cliente: é o desenho descrito em traços, que um
+ * componente só sabe pintar. Marca de cliente é linha, não código — se atender
+ * cliente novo exigisse um `.tsx` de logo, a regra 1 do ADR-0001 já teria caído.
+ *
+ * `aparado` recorta o traço pelo círculo de `apara`. No EB Prime as duas pernas
+ * externas das silhuetas são cortadas pelo próprio anel, e é isso que dá o canto
+ * chanfrado da base.
+ */
+export const EsquemaSimbolo = z
+  .object({
+    /** `minX minY largura altura`, como no atributo do SVG. */
+    viewBox: z
+      .string()
+      .regex(
+        /^-?\d*\.?\d+ -?\d*\.?\d+ \d*\.?\d+ \d*\.?\d+$/,
+        "viewBox é 'minX minY largura altura'",
+      ),
+    /** Espessura do traço, nas unidades do viewBox. */
+    espessura: z.number().positive(),
+    /** Os traços, na ordem em que são pintados. */
+    tracos: z
+      .array(z.object({ d: z.string().min(1), aparado: z.boolean().optional() }))
+      .min(1, "símbolo sem traço nenhum não desenha nada"),
+    /** Círculo que apara os traços marcados. */
+    apara: z.object({ cx: z.number(), cy: z.number(), r: z.number().positive() }).optional(),
+  })
+  .superRefine((simbolo, ctx) => {
+    if (simbolo.tracos.some((t) => t.aparado) && !simbolo.apara) {
+      // Sem o círculo o recorte vira vazio e o SVG some inteiro, sem erro.
+      ctx.addIssue({
+        code: "custom",
+        message: "símbolo com traço aparado precisa do círculo em `apara`",
+      });
+    }
+  });
+
+/**
+ * A cara do cliente.
+ *
+ * Duas cores e um desenho. As cores viram os tokens `--primary` e `--ring` do
+ * `styles.css` — claro e escuro separados porque um navy que funciona sobre
+ * branco desaparece sobre o fundo escuro, e o contrário também.
+ */
+export const EsquemaTema = z.object({
+  marca: CorTema,
+  marcaEscura: CorTema,
+  /** Sem símbolo, o cabeçalho usa o globo padrão da casca. */
+  simbolo: EsquemaSimbolo.optional(),
+});
+
 export const EsquemaMapa = z
   .object({
     centro: Coordenada,
@@ -145,6 +214,7 @@ export const EsquemaCliente = z
         "id de cliente aceita minúsculas, dígitos e -, começando por letra",
       ),
     identidade: EsquemaIdentidade,
+    tema: EsquemaTema,
     mapa: EsquemaMapa,
     camadas: z.array(EsquemaCamada).min(1, "aplicação sem camada nenhuma não tem o que mostrar"),
     chat: EsquemaChat,
@@ -165,6 +235,8 @@ export type Atributo = z.infer<typeof EsquemaAtributo>;
 export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
+export type Simbolo = z.infer<typeof EsquemaSimbolo>;
+export type ConfiguracaoTema = z.infer<typeof EsquemaTema>;
 export type ConfiguracaoMapa = z.infer<typeof EsquemaMapa>;
 export type ConfiguracaoChat = z.infer<typeof EsquemaChat>;
 export type ConfiguracaoCliente = z.infer<typeof EsquemaCliente>;

@@ -19,6 +19,15 @@ export const cliente: ConfiguracaoCliente = {
     subtitulo: "Mapa interativo · Brasil",
   },
 
+  // A cara do cliente 1 é a que sempre esteve no `styles.css`. A fase 4 move a
+  // decisão para cá sem mexer num pixel: os dois valores são os tokens
+  // `--primary` de hoje, copiados em oklch para não perder nada na conversão.
+  // Sem símbolo — o cabeçalho segue com o globo padrão da casca.
+  tema: {
+    marca: "oklch(0.55 0.2 257)",
+    marcaEscura: "oklch(0.72 0.15 230)",
+  },
+
   mapa: {
     // Centro geográfico aproximado do Brasil, com o país inteiro na tela.
     centro: [-52.5, -14.5],

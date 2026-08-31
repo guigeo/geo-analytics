@@ -1,7 +1,8 @@
 """Identificador de requisicao, log estruturado e erro publico.
 
-Adaptado de `webgis-core/backend/app/core/{request_context,logging}.py`, que o
-inventario de heranca marcava como **copiar** e cujo gatilho era "antes de
+Adaptado de `webgis-core/backend/app/core/{request_context,logging}.py` —
+repositorio apagado em 2026-08-31, e o que resta dele e o inventario da HERANCA —,
+que aquele inventario marcava como **copiar** e cujo gatilho era "antes de
 publicar o segundo cliente" (HERANCA §1). O segundo cliente subiu em 2026-08-31
 sem isto, entao o gatilho estava vencido.
 

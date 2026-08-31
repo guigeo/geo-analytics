@@ -100,8 +100,9 @@ def _client_ip(request: Request) -> str:
 
 def _limite_estourado(limiter: RateLimiter, ip: str) -> HTTPException:
     # Retry-After vem do endurecimento do gateway (HERANCA, pendencia 1): o Nginx do
-    # webgis-core mandava 1 fixo, mas quem sabe o numero certo e o limitador — e o
-    # limite mora aqui, nao no Caddy, que nao tem rate limit sem plugin.
+    # webgis-core (repositorio apagado em 2026-08-31) mandava 1 fixo, mas quem sabe o
+    # numero certo e o limitador — e o limite mora aqui, nao no Caddy, que nao tem
+    # rate limit sem plugin.
     return HTTPException(
         status_code=429,
         detail=MSG_RATE_LIMIT,

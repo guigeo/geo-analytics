@@ -7,9 +7,10 @@
  * identidade, mapa, camadas e chat. Se atender um cliente novo exigir editar
  * `.tsx`, o modelo falhou.
  *
- * Adaptado de `frontend/src/config/schema.ts` do `webgis-core`, traduzido: a
- * decisão de 2026-08-29 é português em tudo, sem fronteira de idioma dentro do
- * código (ver `webgis/docs/HERANCA.md`, §7, pendência 2).
+ * Adaptado de `frontend/src/config/schema.ts` do `webgis-core` — repositório
+ * apagado em 2026-08-31, depois de a conta dele fechar (`webgis/docs/HERANCA.md`,
+ * §1) —, e traduzido: a decisão de 2026-08-29 é português em tudo, sem fronteira
+ * de idioma dentro do código (ver `webgis/docs/HERANCA.md`, §7, pendência 2).
  *
  * A validação roda no boot e falha alto. Configuração errada que só aparece
  * quando alguém liga a camada é pior do que aplicação que não sobe.

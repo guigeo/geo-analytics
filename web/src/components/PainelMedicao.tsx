@@ -11,9 +11,10 @@ interface Props {
 /**
  * O painel flutuante da medição.
  *
- * Traduzido do `measurement-panel.tsx` do `webgis-core`, com uma mudança que não é
- * de idioma: lá as cores eram violeta cravado no JSX — a marca daquele repositório.
- * Aqui só entram tokens (`primary`, `card`, `border`), porque desde a fase 4 a cara
+ * Traduzido do `measurement-panel.tsx` do `webgis-core` (apagado em 2026-08-31; o
+ * que sobrevive dele é o inventário em `webgis/docs/HERANCA.md`), com uma mudança
+ * que não é de idioma: lá as cores eram violeta cravado no JSX — a marca daquele
+ * repositório. Aqui só entram tokens (`primary`, `card`, `border`), porque a cara
  * é configuração e cor de cliente escrita à mão em componente compartilhado é
  * exatamente o que a regra 1 do ADR-0001 proíbe.
  *

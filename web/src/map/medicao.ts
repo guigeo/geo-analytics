@@ -2,8 +2,9 @@
  * Medição de distância e área sobre o mapa.
  *
  * O último dos dezesseis artefatos do `webgis-core` (ver `webgis/docs/HERANCA.md`,
- * §1). Lá ele era opcional, ligado por `capabilities` de cada aplicação. Aqui não
- * é: **medir é da casca, e todo cliente recebe**. A regra 1 do ADR-0001 diz que o
+ * §1) — e o que fechou a conta dele, que foi apagado em 2026-08-31. Lá ele era
+ * opcional, ligado por `capabilities` de cada aplicação. Aqui não é: **medir é da
+ * casca, e todo cliente recebe**. A regra 1 do ADR-0001 diz que o
  * que *difere* entre clientes é dado, não que tudo precise ser configuração —
  * ferramenta que nenhum cliente quer desligar não é ponto de variação, e virar
  * campo de configuração só criaria uma chave para alguém errar.

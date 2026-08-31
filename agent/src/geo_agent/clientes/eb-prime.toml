@@ -22,6 +22,8 @@ Preço de imóvel, oferta, aluguel e transação NÃO estão nos seus dados e n�
 de nenhuma tool: se perguntarem, diga isso de uma vez e ofereça o perfil \
 socioeconômico da região, que é o que você tem."""
 
-# Provisório: o domínio do EB Prime é decisão da fase 6, junto do deploy e da
-# allowlist de CORS do host de tiles. Até lá o agente dele só roda local.
-dominio = "eb-prime.averisen.com"
+# Decidido em 2026-08-30. Subdomínio do domínio próprio do cliente, não a raiz —
+# a raiz fica para o site institucional dele. Precisa bater com o DOMINIO de
+# deploy/clientes/eb-prime.env: aqui ele identifica a aplicação ao Nominatim, e
+# endereço que não existe num User-Agent é pedir para ser bloqueado.
+dominio = "app.ebprime.com.br"

@@ -25,8 +25,11 @@
 	# Credencial por APLICAÇÃO (não por pessoa), decidida na emenda de 2026-08-29
 	# da §8 do ADR-0001 do `webgis`. O motivo é custo, não sigilo: cada pergunta
 	# ao /api/chat chama um modelo. Site aberto é ausência de PORTAO_USUARIO no
-	# deploy/clientes/<id>.env — o cliente 1 é assim hoje, e ligar o portão nele
-	# fecharia um site que está público: decisão de produto, não de deploy.
+	# deploy/clientes/<id>.env; com ele, o bloco abaixo aparece.
+	#
+	# Os dois clientes estão fechados desde 2026-08-31. O cliente 1 ficou aberto
+	# até então porque fechar site já público é decisão de produto — e a decisão
+	# veio quando se mediu que o /api/chat dele respondia sem credencial nenhuma.
 	#
 	# ⚠️ `basicauth` e NÃO `basic_auth`: o Caddy da VPS é 2.6.2 (medido em
 	# 2026-08-30), onde o nome novo não existe e o `validate` recusa o arquivo

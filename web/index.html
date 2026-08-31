@@ -3,12 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Geo Intelligence — mapa interativo do Brasil: UF, municípios, bairros, setores censitários e antenas de telefonia."
-    />
+    <!--
+      NEUTRO de propósito: nenhum cliente aqui. Estes três valores são
+      sobrescritos no boot por `aplicarIdentidade`, a partir da configuração do
+      cliente deste build. Até 2026-08-31 o cliente 1 morava aqui e servia de
+      padrão para todo mundo — o EB Prime subiu com "Geo Intelligence" na aba.
+      Quem editar isto está editando o fallback, não a cara de ninguém.
+    -->
+    <meta name="description" content="Mapa interativo do Brasil." />
     <meta name="theme-color" content="#0f1420" />
-    <title>Geo Intelligence</title>
+    <title>Carregando…</title>
   </head>
   <body>
     <div id="root"></div>

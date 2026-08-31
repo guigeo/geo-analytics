@@ -37,6 +37,7 @@ export const camadas = configuracao.camadas;
 export const configuracaoChat = configuracao.chat;
 
 export { aplicarTema } from "./tema";
+export { aplicarIdentidade } from "./identidade";
 
 export type {
   ConfiguracaoCliente,

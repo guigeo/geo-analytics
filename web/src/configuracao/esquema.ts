@@ -283,6 +283,7 @@ export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
 export type Simbolo = z.infer<typeof EsquemaSimbolo>;
+export type ConfiguracaoIdentidade = z.infer<typeof EsquemaIdentidade>;
 export type Neutros = z.infer<typeof EsquemaNeutros>;
 export type ConfiguracaoTema = z.infer<typeof EsquemaTema>;
 export type ConfiguracaoMapa = z.infer<typeof EsquemaMapa>;

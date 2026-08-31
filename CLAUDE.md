@@ -228,11 +228,17 @@ de endereço/rua** no header via `/api/geocode` (proxy do agente pro Nominatim, 
 manda CORS); **glossário de métricas** no agente (`METRIC_LABELS`) — o LLM parou de
 vazar nome cru de coluna (`pop_total`) na resposta.
 
-Ideia em aberto (`/brainstorm` ainda não rodado): virar "Fase 3" — mais dados de
-cidade/bairro (Atlas do Desenvolvimento Humano/IDHM por município; agregação
-setor→bairro, já que o IBGE não publica indicador por bairro; POIs via OSM/Geofabrik,
-com ANAC para aeroportos) + operações geoespaciais reais (buffer, distância) — isso
-exige gerar geometria em WKB (hoje é GEOARROW, só dá pra centroide aproximado no
-`query/`). Também: streaming se a latência do chat doer; novas tools se as perguntas
-extrapolarem as 7 atuais; eixo de ruas nacional (OSM) fica pendente de mais espaço na
-VPS (hoje ~6 GB livres via Hetzner Volume seria a rota mais barata, não upgrade de plano).
+Ideias em aberto, **revisadas em 2026-08-31** — metade da lista anterior já tinha sido
+entregue e o parágrafo seguia descrevendo o mundo de antes do passo 4 do ADR:
+
+- ~~operações geoespaciais reais (buffer, distância), que exigiriam WKB porque "hoje é
+  GEOARROW e só dá centroide aproximado"~~ — **feito**: o `query/` roda sobre PostGIS
+  desde 2026-08-20, com distância exata do polígono e `setor_que_contem` por
+  `ST_Contains`. Não há DuckDB nem GeoArrow no código.
+- ~~"novas tools se as perguntas extrapolarem as 7 atuais"~~ — são **15** hoje, com os
+  níveis bairro, distrito e a cascata `info_local`.
+- **Segue em aberto:** Atlas do Desenvolvimento Humano/IDHM por município; POIs via
+  OSM/Geofabrik com ANAC para aeroportos; streaming se a latência do chat doer.
+- **Segue barrado por espaço:** eixo de ruas nacional (OSM). A VPS tem **3,9 GB livres
+  de 38 GB (90% usado)**, medido em 2026-08-31 — não os ~6 GB que este parágrafo dizia.
+  Hetzner Volume continua sendo a rota mais barata, e não upgrade de plano.

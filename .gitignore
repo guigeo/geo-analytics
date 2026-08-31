@@ -3,6 +3,10 @@ __pycache__/
 *.pyc
 .env
 .env.local
+# Segredo por cliente (agent/.env.<id>): a credencial do portão de um cliente
+# não é a do outro, e nenhuma das duas entra no repositório. O .example fica.
+.env.*
+!.env.example
 node_modules/
 
 # Python / uv

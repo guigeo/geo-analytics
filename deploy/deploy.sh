@@ -118,17 +118,45 @@ push_app() {
 push_agent() {
   echo "▶ Enviando query/ + agent/ + deploy/ → $(destino "$CAMINHO_AGENTE")/…"
   no_servidor "mkdir -p $CAMINHO_AGENTE"
+  # O exclude e `.env*`, nao `.env`: o segredo por cliente e `.env.<id>`, e com o
+  # padrao antigo ele viajava no rsync em massa — a credencial do portao de um
+  # cliente aterrissava no diretorio do outro, que era exatamente o que o arquivo
+  # por cliente veio evitar. O `.env` de verdade vai depois, montado.
   rsync -avz --delete \
     --exclude '.venv' --exclude '__pycache__' --exclude '.pytest_cache' \
-    --exclude '.ruff_cache' --exclude '.env' \
+    --exclude '.ruff_cache' --exclude '.env*' \
     query agent deploy "$(destino "$CAMINHO_AGENTE")/"
+  # O `.env` que vai para a VPS e o comum MAIS o do cliente, quando existir.
+  #
+  # Ha segredo que e igual para todo mundo (chave da OpenAI, GEODATA_DSN) e
+  # segredo que e de um cliente so — hoje a PORTAO_CREDENCIAL, que o vigia usa
+  # para nao alertar sobre um site que esta de pe atras do portao. Antes disto
+  # havia um `.env` unico para os dois, e a credencial de um cliente aterrissava
+  # no diretorio do outro. Nenhum dos dois arquivos e versionado.
+  #
+  # O do cliente vem por ultimo de proposito: em shell, a ultima atribuicao vence,
+  # entao ele tambem serve para sobrescrever um valor comum.
+  ENV_CLIENTE="agent/.env.$CLIENTE"
   if [[ -f agent/.env ]]; then
     # O agente nao sobe sem GEODATA_DSN desde que a fachada passou a ler PostGIS.
     # Melhor parar aqui do que descobrir pelo systemd em restart loop na VPS.
-    grep -q '^GEODATA_DSN=' agent/.env \
+    grep -qh '^GEODATA_DSN=' agent/.env "$ENV_CLIENTE" 2>/dev/null \
       || { echo "✗ agent/.env sem GEODATA_DSN — o serviço não sobe. Ver agent/.env.example" >&2; exit 1; }
-    echo "▶ Enviando agent/.env (chave OpenAI + GEODATA_DSN)…"
-    rsync -avz agent/.env "$(destino "$CAMINHO_AGENTE")/agent/.env"
+    JUNTOS="$(mktemp)"
+    # O arquivo carrega segredo: nasce fechado e some na saida, inclusive por erro.
+    chmod 600 "$JUNTOS"
+    trap 'rm -f "$JUNTOS"' EXIT
+    cat agent/.env > "$JUNTOS"
+    if [[ -f "$ENV_CLIENTE" ]]; then
+      printf '\n# --- de %s, no deploy ---\n' "$ENV_CLIENTE" >> "$JUNTOS"
+      cat "$ENV_CLIENTE" >> "$JUNTOS"
+      echo "▶ Enviando agent/.env + ${ENV_CLIENTE}…"
+    else
+      echo "▶ Enviando agent/.env (chave OpenAI + GEODATA_DSN)…"
+    fi
+    # Sem `--chmod`: o rsync do macOS e o 2.6.9 da Apple e nao conhece a opcao.
+    # O `-a` preserva o modo da origem, e o temporario ja nasce 600 acima.
+    rsync -avz "$JUNTOS" "$(destino "$CAMINHO_AGENTE")/agent/.env"
   else
     echo "⚠ agent/.env não existe local — o serviço não sobe sem a chave e o DSN."
   fi

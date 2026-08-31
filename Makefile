@@ -52,7 +52,12 @@ dev-ia:          ## front (:5173, background) + agente do cliente 1 (:8000)
 
 # ── Valida ────────────────────────────────────────────────────────────────
 build:           ## gera o build de produção em web/dist
-	docker compose run --rm web sh -c "npm install && npm run build"
+# `npm ci` e nao `npm install`: o ci instala EXATAMENTE o package-lock.json e
+# falha se ele divergir do package.json. Com `install`, o build de producao
+# resolvia as dependencias por conta propria — entao o que a CI validou nao era
+# necessariamente o que subia. O dev (docker-compose.yml) continua com
+# `install`, que e onde se acrescenta dependencia de proposito.
+	docker compose run --rm web sh -c "npm ci && npm run build"
 
 preview: build   ## valida o build em http://localhost:8080 (Caddy, IGUAL à VPS)
 	@echo "→ Preview de produção em http://localhost:8080 (Ctrl+C p/ sair)"

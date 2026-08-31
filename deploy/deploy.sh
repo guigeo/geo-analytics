@@ -86,9 +86,12 @@ echo "▶ Cliente: $CLIENTE  ($DOMINIO)"
 
 build_app() {
   echo "▶ Build do frontend de $CLIENTE (no container) — tiles de ${TILES_BASE_URL}…"
+  # `npm ci` instala EXATAMENTE o package-lock.json e falha se ele divergir do
+  # package.json. Com `npm install` o build de producao resolvia as dependencias
+  # por conta propria, e o que a CI validou nao era necessariamente o que subia.
   docker compose run --rm \
     -e VITE_TILES_BASE_URL="$TILES_BASE_URL" -e VITE_CLIENTE="$CLIENTE" web \
-    sh -c "npm install && npm run build"
+    sh -c "npm ci && npm run build"
   # O bundle e minificado e a URL entra nele literalmente: se nao estiver la, o
   # build pegou outra fonte de configuracao e o deploy nao pode seguir.
   grep -rqF "$TILES_BASE_URL" web/dist/assets/ \

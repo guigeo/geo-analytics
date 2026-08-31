@@ -77,6 +77,6 @@
 		# uma navegação real no site publicado, com camadas, satélite, busca e chat,
 		# sem uma violação no console. Se algum dia faltar origem, o sintoma é mapa
 		# ou basemap sumindo, e o console diz qual diretiva barrou. Ver HERANCA §7.
-		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.averisen.com https://protomaps.github.io"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://tiles.averisen.com https://protomaps.github.io https://server.arcgisonline.com"
 	}
 }

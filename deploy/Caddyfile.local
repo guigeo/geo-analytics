@@ -74,7 +74,7 @@
 		# bloqueio de verdade no mesmo dia, depois de uma navegação real com o
 		# console limpo. O comentário antigo ainda dizia Report-Only e foi
 		# corrigido em 2026-08-30. Ver HERANCA §7, pendência 1.
-		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' http://localhost:8081 https://tiles.averisen.com https://protomaps.github.io"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://protomaps.github.io; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' http://localhost:8081 https://tiles.averisen.com https://protomaps.github.io https://server.arcgisonline.com"
 	}
 
 	# Tiles → volume próprio (strip do prefixo /tiles).

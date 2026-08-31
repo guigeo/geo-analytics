@@ -78,7 +78,8 @@ exit
 ```bash
 VPS_HOST=hetzner-gramos ./deploy/deploy.sh        # build + app do cliente 1
 CLIENTE=eb-prime ./deploy/deploy.sh               # o mesmo, para o cliente 2
-# alvos: app | ia | all   (tiles não: são do `webgis`, `make ship-tiles` de lá)
+# alvos: app (só a cara) | ia (só o agente) | all (os dois; é o padrão)
+# tiles não: são do `webgis`, `make ship-tiles` de lá
 ```
 O `rsync` usa o atalho `hetzner-gramos` do seu `~/.ssh/config` (chave, sem senha).
 A 1ª remessa dos tiles (~2 GB) depende do seu **upload**; o rsync é incremental e retoma se cair.

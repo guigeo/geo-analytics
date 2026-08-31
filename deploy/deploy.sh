@@ -2,7 +2,7 @@
 # Deploy de UMA aplicação derivada para a VPS (build estático + agente).
 #
 # Uso:
-#   ./deploy/deploy.sh                      # app do cliente 1
+#   ./deploy/deploy.sh                      # tudo do cliente 1 (frontend + agente)
 #   CLIENTE=eb-prime ./deploy/deploy.sh     # app do cliente 2
 #   ./deploy/deploy.sh app                  # só o frontend (rápido)
 #   ./deploy/deploy.sh ia                   # código do agente (query/ + agent/ + .env) + uv sync
@@ -159,7 +159,13 @@ push_agent() {
 case "$WHAT" in
   app)   build_app; push_app ;;
   agent|ia) push_agent ;;
-  all)   build_app; push_app ;;
+  # `all` manda a aplicação inteira: a cara e o agente. Ele significou "app +
+  # tiles" até 2026-08-20, quando os tiles saíram para o `webgis` (d2a529a) e
+  # sobrou um sinônimo de `app` com nome de tudo — o agente nunca esteve aqui.
+  # Isso mordia na primeira subida de um cliente: o setup-agente-vps.sh exige o
+  # código do agente já na home, e `make ship` não o mandava. Quem quer só a cara
+  # continua tendo o caminho rápido em `app` (`make ship-app`).
+  all)   build_app; push_app; push_agent ;;
   *) echo "alvo inválido: $WHAT (use: app | agent | ia | all)"; exit 1 ;;
 esac
 

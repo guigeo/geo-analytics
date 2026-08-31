@@ -25,6 +25,7 @@ import {
 import { camadasDoMapa, fontesDeDados } from "./layers";
 import { highlightLayers } from "./highlight";
 import { selectionLayers, selectionSource, SELECTION_SOURCE_ID } from "./selection";
+import { camadasMedicao, fonteMedicao, MEDICAO_SOURCE_ID } from "./medicao";
 
 export interface OpcoesDeEstilo {
   camadas: DefinicaoCamada[];
@@ -49,6 +50,7 @@ export function montarEstilo({
       [SATELLITE_SOURCE_ID]: satelliteSource,
       ...fontesDeDados(camadas),
       [SELECTION_SOURCE_ID]: selectionSource,
+      [MEDICAO_SOURCE_ID]: fonteMedicao,
     },
     layers: [
       ...(satelite
@@ -57,6 +59,9 @@ export function montarEstilo({
       ...camadasDoMapa(camadas),
       ...highlightLayers(camadas),
       ...selectionLayers,
+      // A medição fica por último: é anotação do usuário, e tem de aparecer por
+      // cima de tudo — inclusive da seleção e do satélite.
+      ...camadasMedicao,
     ],
   };
 }

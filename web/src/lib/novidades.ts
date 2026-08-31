@@ -28,6 +28,21 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "medicao-2026-08",
+    data: "2026-08-31",
+    titulo: "Medir distância e área no mapa",
+    // "Estimativa sobre o mapa" repete o que o painel diz em tela, e pelo mesmo
+    // motivo: o cálculo é esférico e fica de 0,1% a 0,5% do elipsoide. Alguém vai
+    // comparar com uma matrícula, e a ressalva precisa chegar antes.
+    texto:
+      "Os dois botões novos no topo: a régua mede distância ao longo de uma " +
+      "linha, o pentágono mede a área de um contorno. Clique no mapa para marcar " +
+      "vértices e Esc encerra. É estimativa sobre o mapa, não vale como " +
+      "levantamento.",
+    // Sem `pergunta`: é ferramenta de mapa, e o agente não a executa. Prometer
+    // demonstração no chat seria mandar a pessoa para o lugar errado.
+  },
+  {
     id: "classe-social-2026-08",
     data: "2026-08-27",
     titulo: "Classe social por bairro, distrito e setor",

@@ -44,13 +44,26 @@ describe.each(CLIENTES)("style de %s", (_nome, config) => {
     expect(new Set(ids).size, `ids repetidos em ${ids.length} camadas`).toBe(ids.length);
   });
 
-  it("declara uma fonte por camada do cliente, mais basemap, satélite e seleção", () => {
+  it("declara uma fonte por camada do cliente, mais basemap, satélite, seleção e medição", () => {
     const estilo = montarEstilo({ camadas: config.camadas, ...COMBINACOES[0] });
     for (const c of config.camadas) {
       expect(Object.keys(estilo.sources)).toContain(c.id);
     }
     expect(Object.keys(estilo.sources)).toEqual(
-      expect.arrayContaining(["basemap", "satellite", "selection"]),
+      expect.arrayContaining(["basemap", "satellite", "selection", "medicao"]),
     );
+  });
+
+  // A medição é da casca e todo cliente recebe (webgis/docs/HERANCA.md, §1): não
+  // há campo de configuração para desligá-la, e este teste é o que impede alguém
+  // de inventar um sem perceber que quebrou o outro cliente.
+  it("desenha a medição por cima de tudo, em qualquer combinação", () => {
+    for (const opcoes of COMBINACOES) {
+      const ids = montarEstilo({ camadas: config.camadas, ...opcoes }).layers.map((c) => c.id);
+      expect(ids).toEqual(
+        expect.arrayContaining(["medicao-area", "medicao-linha", "medicao-vertice"]),
+      );
+      expect(ids[ids.length - 1]).toBe("medicao-vertice");
+    }
   });
 });

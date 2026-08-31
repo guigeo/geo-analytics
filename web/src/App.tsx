@@ -10,6 +10,8 @@ import { camadas } from "@/configuracao";
 import type { Destaques } from "@/map/highlight";
 import type { ContextoMapa } from "@/chat/api";
 import { useTheme } from "@/hooks/use-theme";
+import { PainelMedicao } from "@/components/PainelMedicao";
+import { criarEstadoMedicao, type Coordenada, type ModoMedicao } from "@/map/medicao";
 
 const visibilidadeInicial = Object.fromEntries(
   camadas.map((c) => [c.id, c.visivelPorPadrao]),
@@ -27,12 +29,34 @@ export function App() {
   // existe para a MESMA pergunta poder ser pedida duas vezes — sem ela, o efeito
   // do ChatPanel não veria mudança nenhuma na segunda.
   const [pergunta, setPergunta] = useState<PerguntaExterna | null>(null);
+  // Medição: o modo e os vértices são o estado; a medida em si é derivada deles
+  // por `criarEstadoMedicao`, que é função pura. Guardar o valor calculado daria
+  // duas fontes para o mesmo número.
+  const [modoMedicao, setModoMedicao] = useState<ModoMedicao | null>(null);
+  const [verticesMedicao, setVerticesMedicao] = useState<Coordenada[]>([]);
   // Viewport em ref: muda a cada pan/zoom sem re-renderizar; lido só no envio do chat.
   const viewportRef = useRef<Viewport | null>(null);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
 
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const medicao = criarEstadoMedicao(modoMedicao, verticesMedicao);
+
+  const encerrarMedicao = () => {
+    setModoMedicao(null);
+    setVerticesMedicao([]);
+  };
+
+  // Clicar no modo já ativo desliga; trocar de modo zera os vértices, porque uma
+  // linha de dois pontos não vira área nem o contrário.
+  const alternarMedicao = (modo: ModoMedicao) => {
+    setVerticesMedicao([]);
+    setModoMedicao((atual) => (atual === modo ? null : modo));
+    // Medir e inspecionar disputam o clique: ao entrar na ferramenta, o painel de
+    // atributos larga o que estava selecionado em vez de mostrar feição antiga.
+    setSelected(null);
+  };
 
   // Busca do header: voa até o alvo; município também ganha o destaque azul
   // (mesma linguagem visual do chat — um "slot" só de destaque por vez).
@@ -61,6 +85,8 @@ export function App() {
           onToggleSatelliteOverlay={() => setSatelliteOverlay((s) => !s)}
           onSearchSelect={onSearchSelect}
           onPerguntar={(texto) => setPergunta({ texto, key: Date.now() })}
+          modoMedicao={modoMedicao}
+          onAlternarMedicao={alternarMedicao}
         />
         <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
           <LayerPanel visible={visible} onToggle={toggleLayer} />
@@ -77,6 +103,14 @@ export function App() {
               onViewportChange={(v) => {
                 viewportRef.current = v;
               }}
+              medicao={medicao}
+              onVerticeMedicao={(c) => setVerticesMedicao((prev) => [...prev, c])}
+              onEncerrarMedicao={encerrarMedicao}
+            />
+            <PainelMedicao
+              medicao={medicao}
+              onEncerrar={encerrarMedicao}
+              onRecomecar={() => setVerticesMedicao([])}
             />
           </div>
           <div className="flex min-h-0 flex-col border-l border-border bg-background">

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "path";
 // `vitest/config` no lugar de `vite`: é o mesmo defineConfig, com o bloco `test`
 // tipado. Sem isso o TypeScript recusa a configuração dos testes.
-import { defineConfig } from "vitest/config";
+import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -30,8 +30,42 @@ if (!fs.existsSync(ARQUIVO_DO_CLIENTE)) {
   throw new Error(`VITE_CLIENTE="${CLIENTE}" não existe. Disponíveis: ${disponiveis}`);
 }
 
+/**
+ * Carimbo de build: de qual commit saiu o `dist` que está publicado.
+ *
+ * Existe por um defeito real: o deploy é POR CLIENTE desde 2026-08-30, e quando o
+ * EB Prime subiu em 2026-08-31 o cliente 1 continuou servindo um build de dois
+ * dias antes. Não quebrou nada — só ficou velho, em silêncio, e só apareceu
+ * porque o Guilherme perguntou. `verificar-vps` comparava o Caddyfile, que estava
+ * certo; o que estava velho era o artefato, e ninguém olhava para ele.
+ *
+ * Vai no `index.html`, e não num JSON à parte, porque é onde se lê sem executar
+ * JavaScript e sem passar pelo portão: um `ssh … cat index.html` basta. O commit
+ * chega por `VITE_COMMIT`, que o `deploy/deploy.sh` preenche — em dev fica `dev`,
+ * que é a resposta honesta para um build que ninguém publicou.
+ */
+function carimboDeBuild(cliente: string): Plugin {
+  const commit = process.env.VITE_COMMIT ?? "dev";
+  return {
+    name: "carimbo-de-build",
+    transformIndexHtml: {
+      order: "post",
+      handler: () => [
+        {
+          tag: "meta",
+          attrs: {
+            name: "build",
+            content: `cliente=${cliente} commit=${commit} data=${new Date().toISOString()}`,
+          },
+          injectTo: "head",
+        },
+      ],
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), carimboDeBuild(CLIENTE)],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

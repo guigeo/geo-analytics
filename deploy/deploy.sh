@@ -89,8 +89,16 @@ build_app() {
   # `npm ci` instala EXATAMENTE o package-lock.json e falha se ele divergir do
   # package.json. Com `npm install` o build de producao resolvia as dependencias
   # por conta propria, e o que a CI validou nao era necessariamente o que subia.
+  # O carimbo do build (ver vite.config.ts). Arvore suja vira sufixo "-sujo": sem
+  # ele o carimbo diria um commit que NAO descreve o que foi compilado, que e pior
+  # do que nao ter carimbo — mentira com aparencia de precisao.
+  local commit
+  commit="$(git rev-parse --short HEAD)"
+  git diff --quiet HEAD 2>/dev/null || commit="${commit}-sujo"
+
   docker compose run --rm \
-    -e VITE_TILES_BASE_URL="$TILES_BASE_URL" -e VITE_CLIENTE="$CLIENTE" web \
+    -e VITE_TILES_BASE_URL="$TILES_BASE_URL" -e VITE_CLIENTE="$CLIENTE" \
+    -e VITE_COMMIT="$commit" web \
     sh -c "npm ci && npm run build"
   # O bundle e minificado e a URL entra nele literalmente: se nao estiver la, o
   # build pegou outra fonte de configuracao e o deploy nao pode seguir.
@@ -109,7 +117,11 @@ build_app() {
     || { echo "✗ $toml_do_cliente nao declara 'nome' — sem isso a checagem e cega" >&2; exit 1; }
   grep -rqF "$nome_esperado" web/dist/assets/ \
     || { echo "✗ o bundle nao contem \"$nome_esperado\" — build de outro cliente?" >&2; exit 1; }
-  echo "  ✓ bundle aponta para ${TILES_BASE_URL} e é do $nome_esperado"
+  # O carimbo tem de estar no index.html publicado, senao o verificar-vps do
+  # `webgis` fica cego justamente para a deriva que ele veio detectar.
+  grep -qF "commit=$commit" web/dist/index.html \
+    || { echo "✗ o index.html nao tem o carimbo commit=$commit" >&2; exit 1; }
+  echo "  ✓ bundle aponta para ${TILES_BASE_URL}, é do $nome_esperado e carimbado $commit"
 }
 
 push_app() {

@@ -192,7 +192,9 @@ class RankingBairrosArgs(BaseModel):
     """
 
     metrica: str = Field(description="Métrica numérica; em dúvida, use listar_metricas antes")
-    cd_mun: str | None = Field(None, min_length=7, max_length=7, description="Código IBGE do município")
+    cd_mun: str | None = Field(
+        None, min_length=7, max_length=7, description="Código IBGE do município"
+    )
     uf: str | None = Field(None, description="UF por nome ou sigla (ex.: 'Paraná' ou 'PR')")
     n: int = Field(10, ge=1, le=100)
     ordem: Literal["asc", "desc"] = "desc"
@@ -226,7 +228,9 @@ class RankingDistritosArgs(BaseModel):
     """
 
     metrica: str = Field(description="Métrica numérica; em dúvida, use listar_metricas antes")
-    cd_mun: str | None = Field(None, min_length=7, max_length=7, description="Código IBGE do município")
+    cd_mun: str | None = Field(
+        None, min_length=7, max_length=7, description="Código IBGE do município"
+    )
     uf: str | None = Field(None, description="UF por nome ou sigla (ex.: 'Paraná' ou 'PR')")
     n: int = Field(10, ge=1, le=100)
     ordem: Literal["asc", "desc"] = "desc"
@@ -330,9 +334,7 @@ def _setor_que_contem(gq: GeoQuery, a: SetorQueContemArgs) -> ToolResult:
         return ToolResult(
             payload={"erro": f"nenhum setor contém o ponto ({a.lon}, {a.lat})"}, error=True
         )
-    return ToolResult(
-        payload=row, camada="setor", codigos=[str(row["cd_setor"])], rows=[row]
-    )
+    return ToolResult(payload=row, camada="setor", codigos=[str(row["cd_setor"])], rows=[row])
 
 
 def _info_bairro(gq: GeoQuery, a: InfoBairroArgs) -> ToolResult:
@@ -359,9 +361,7 @@ def _bairro_que_contem(gq: GeoQuery, a: BairroQueContemArgs) -> ToolResult:
             },
             error=True,
         )
-    return ToolResult(
-        payload=row, camada="bairro", codigos=[str(row["cd_bairro"])], rows=[row]
-    )
+    return ToolResult(payload=row, camada="bairro", codigos=[str(row["cd_bairro"])], rows=[row])
 
 
 def _info_distrito(gq: GeoQuery, a: InfoDistritoArgs) -> ToolResult:
@@ -387,9 +387,7 @@ def _distrito_que_contem(gq: GeoQuery, a: DistritoQueContemArgs) -> ToolResult:
             payload={"erro": f"nenhum distrito contém o ponto ({a.lon}, {a.lat})"},
             error=True,
         )
-    return ToolResult(
-        payload=row, camada="distrito", codigos=[str(row["cd_distrito"])], rows=[row]
-    )
+    return ToolResult(payload=row, camada="distrito", codigos=[str(row["cd_distrito"])], rows=[row])
 
 
 # Acima disto, o distrito ocupa quase todo o municipio e responder por ele e responder
@@ -459,9 +457,7 @@ def _avisos_classe_social(row: dict[str, Any]) -> list[str]:
     return avisos
 
 
-def _resultado_nivel(
-    nivel: str, row: dict[str, Any], avisos: list[str]
-) -> ToolResult:
+def _resultado_nivel(nivel: str, row: dict[str, Any], avisos: list[str]) -> ToolResult:
     """Empacota um achado da cascata: o payload que o LLM le e o codigo que o mapa pinta."""
     chave = "cd_bairro" if nivel == "bairro" else "cd_distrito"
     return ToolResult(
@@ -522,9 +518,7 @@ def _avisos_distrito(pedido: str, row: dict[str, Any]) -> list[str]:
     return avisos
 
 
-def _info_local_por_localizacao(
-    gq: GeoQuery, a: InfoLocalArgs, uf: str | None
-) -> ToolResult:
+def _info_local_por_localizacao(gq: GeoQuery, a: InfoLocalArgs, uf: str | None) -> ToolResult:
     """Resolve o nome em coordenada e devolve o recorte do IBGE que a contem.
 
     O geocoding e CONFINADO ao municipio informado, e isso nao e refinamento: sem

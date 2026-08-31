@@ -19,10 +19,14 @@ from .cliente import cliente_ativo
 from .config import settings
 from .geocode import GeocodeIndisponivel
 from .geocode import buscar as geocode_buscar
+from .observabilidade import ContextoDaRequisicao, configurar_log
 from .prompts import MSG_ERRO_OPENAI, MSG_RATE_LIMIT
 from .schemas import ChatRequest, ChatResponse, GeocodeHit
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+# JSON, e nao `basicConfig`, porque dois agentes escrevem no journal da mesma VPS:
+# sem `cliente` em cada linha nao da para saber de quem foi o erro. Ver
+# observabilidade.py.
+configurar_log(cliente_ativo.id)
 log = logging.getLogger(__name__)
 
 state: dict[str, Any] = {}
@@ -50,6 +54,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="geo-agent", lifespan=lifespan)
+# Middleware roda de fora para dentro: este e o primeiro a ver a requisicao e o
+# ultimo a tocar a resposta, que e onde o `X-Request-ID` e a duracao precisam ser
+# escritos para valerem tambem quando algo estoura la dentro.
+app.add_middleware(ContextoDaRequisicao)
 
 
 @app.get("/api/health")

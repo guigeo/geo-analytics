@@ -120,9 +120,7 @@ def test_segunda_falha_encerra_com_mensagem_amigavel(gq: GeoQuery) -> None:
 
 
 def test_teto_de_iteracoes(gq: GeoQuery) -> None:
-    client = FakeClient(
-        [tool_call("listar_metricas", {}) for _ in range(settings.max_tool_iters)]
-    )
+    client = FakeClient([tool_call("listar_metricas", {}) for _ in range(settings.max_tool_iters)])
     out = run_turn(gq, client, SessionStore(), req("loop"))
     assert out.resposta == MSG_LIMITE_ITERACOES
     assert len(client.requests) == settings.max_tool_iters

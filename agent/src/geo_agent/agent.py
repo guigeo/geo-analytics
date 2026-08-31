@@ -134,7 +134,9 @@ def run_turn(
 ) -> ChatResponse:
     """Executa um turno da conversa; `trace` (opcional) grava as tool calls do turno."""
     session = store.get(req.session_id)
-    session.messages.append({"role": "user", "content": _user_content(req.pergunta, req.contexto_mapa)})
+    session.messages.append(
+        {"role": "user", "content": _user_content(req.pergunta, req.contexto_mapa)}
+    )
 
     destaques: Destaques | None = None
     dados: list[dict[str, Any]] | None = None

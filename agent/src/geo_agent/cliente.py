@@ -93,8 +93,7 @@ def carregar(identificador: str) -> ConfiguracaoCliente:
         cliente = ConfiguracaoCliente(**dados)
     except ValidationError as exc:
         problemas = "\n".join(
-            f"  {'.'.join(str(p) for p in e['loc']) or '(raiz)'}: {e['msg']}"
-            for e in exc.errors()
+            f"  {'.'.join(str(p) for p in e['loc']) or '(raiz)'}: {e['msg']}" for e in exc.errors()
         )
         raise ClienteInvalido(f"configuração de cliente inválida em {arquivo.name}:\n{problemas}")
 

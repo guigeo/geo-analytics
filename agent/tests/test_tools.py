@@ -195,9 +195,7 @@ def test_listar_metricas_aceita_distrito(gq: GeoQuery) -> None:
 def test_info_local_pinta_a_camada_distrito(gq: GeoQuery) -> None:
     """Mesma regra do bairro: sem camada e codigos juntos, a resposta vem certa e o
     mapa nao acende (ADR-0001, §6.7)."""
-    r = execute_tool(
-        gq, "info_local", json.dumps({"nome": "Sé", "municipio": "São Paulo"})
-    )
+    r = execute_tool(gq, "info_local", json.dumps({"nome": "Sé", "municipio": "São Paulo"}))
     assert not r.error
     assert r.camada == "distrito"
     assert r.codigos == [DIST_SE_SP]
@@ -252,12 +250,13 @@ def test_info_local_bairro_direto_nao_avisa_nada_de_nivel(gq: GeoQuery) -> None:
     quebrou quando a classe social passou a avisar que é estimativa (2026-08-27) —
     um aviso legítimo, que não tem nada a ver com o que este teste protege.
     """
-    r = execute_tool(gq, "info_local", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"}))
+    r = execute_tool(
+        gq, "info_local", json.dumps({"nome": "Copacabana", "municipio": "Rio de Janeiro"})
+    )
     assert not r.error
     assert r.payload["nivel"] == "bairro"
     assert not any(
-        "não existe como bairro" in a or "município inteiro" in a
-        for a in r.payload["avisos"]
+        "não existe como bairro" in a or "município inteiro" in a for a in r.payload["avisos"]
     )
     assert r.camada == "bairro"
 
@@ -270,7 +269,9 @@ def test_info_local_avisa_que_classe_social_e_estimativa(gq: GeoQuery) -> None:
     ressalva por conta de uma instrução num prompt longo é deixá-la cair no dia em
     que o contexto encher.
     """
-    r = execute_tool(gq, "info_local", json.dumps({"nome": "Leblon", "municipio": "Rio de Janeiro"}))
+    r = execute_tool(
+        gq, "info_local", json.dumps({"nome": "Leblon", "municipio": "Rio de Janeiro"})
+    )
     assert not r.error
     assert r.payload["dados"]["classe_social_score"] is not None
     assert any("ESTIMATIVA NOSSA" in a and "IBGE" in a for a in r.payload["avisos"])
@@ -306,7 +307,9 @@ def test_info_local_nome_exato_ganha_de_substring_de_outro_nivel(gq: GeoQuery) -
 
 
 def test_info_local_nome_inexistente_nao_inventa(gq: GeoQuery) -> None:
-    r = execute_tool(gq, "info_local", json.dumps({"nome": "Bairro do Xyzabc", "municipio": "Curitiba"}))
+    r = execute_tool(
+        gq, "info_local", json.dumps({"nome": "Bairro do Xyzabc", "municipio": "Curitiba"})
+    )
     assert r.error
     assert "não encontrei" in r.payload["erro"]
 
@@ -323,7 +326,9 @@ def test_info_local_recusa_ponto_fora_do_municipio_pedido(gq: GeoQuery, monkeypa
     from geo_agent import tools
 
     monkeypatch.setattr(tools, "geocode_pontos", lambda termo, limite=5: [(-47.8327, -23.0503)])
-    r = execute_tool(gq, "info_local", json.dumps({"nome": "Vila Nova Conceição", "municipio": "São Paulo"}))
+    r = execute_tool(
+        gq, "info_local", json.dumps({"nome": "Vila Nova Conceição", "municipio": "São Paulo"})
+    )
     assert r.error
     assert "dentro de São Paulo" in r.payload["erro"]
 
@@ -334,7 +339,9 @@ def test_info_local_aceita_ponto_dentro_do_municipio(gq: GeoQuery, monkeypatch) 
     from geo_agent import tools
 
     monkeypatch.setattr(tools, "geocode_pontos", lambda termo, limite=5: [(-46.6900, -23.5460)])
-    r = execute_tool(gq, "info_local", json.dumps({"nome": "Vila Madalena", "municipio": "São Paulo"}))
+    r = execute_tool(
+        gq, "info_local", json.dumps({"nome": "Vila Madalena", "municipio": "São Paulo"})
+    )
     assert not r.error
     assert r.payload["dados"]["nm_mun"] == "São Paulo"
     assert any("não é um recorte oficial do IBGE" in a for a in r.payload["avisos"])

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -33,6 +35,62 @@ class ChatResponse(BaseModel):
     resposta: str
     destaques: Destaques | None = None
     dados: list[dict[str, Any]] | None = None
+
+
+class DesenhoNovo(BaseModel):
+    """O que o front manda para criar um desenho.
+
+    A geometria chega como GeoJSON porque e o que o MapLibre produz e consome; o
+    servidor a valida e a converte. `origem` NAO entra aqui de proposito: quem cria
+    pela API e sempre o usuario desenhando, e a carga administrativa de KML escreve
+    pelo banco, nao por esta rota.
+    """
+
+    tipo: Literal["ponto", "poligono", "buffer"]
+    nome: str = Field(min_length=1, max_length=200)
+    geometria: dict[str, Any]
+    categoria: str | None = Field(None, max_length=100)
+    cor: str = Field("#2563eb", pattern=r"^#[0-9a-fA-F]{6}$")
+    observacao: str | None = Field(None, max_length=2000)
+
+
+class DesenhoEdicao(BaseModel):
+    """Edicao de ATRIBUTOS. A geometria nao esta aqui, e a ausencia e a regra.
+
+    Redesenhar tracado salvo ficou fora do MVP (DEFINE): para mudar a forma, apaga e
+    desenha de novo. Se um dia entrar, este e o lugar onde a decisao se ve.
+    """
+
+    nome: str | None = Field(None, min_length=1, max_length=200)
+    categoria: str | None = Field(None, max_length=100)
+    cor: str | None = Field(None, pattern=r"^#[0-9a-fA-F]{6}$")
+    observacao: str | None = Field(None, max_length=2000)
+
+
+class Desenho(BaseModel):
+    """Um desenho como o front o recebe."""
+
+    id: UUID
+    tipo: str
+    nome: str
+    categoria: str | None = None
+    cor: str
+    observacao: str | None = None
+    origem: str
+    geometria: dict[str, Any]
+    area_m2: float | None = None
+    raio_m: float | None = None
+    criado_em: datetime
+    atualizado_em: datetime
+
+
+class PaginaDeDesenhos(BaseModel):
+    """Uma pagina da lista. Paginada desde o inicio porque o volume-alvo e de centenas."""
+
+    itens: list[Desenho]
+    total: int
+    pagina: int
+    tamanho: int
 
 
 class GeocodeHit(BaseModel):

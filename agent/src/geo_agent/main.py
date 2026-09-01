@@ -14,6 +14,8 @@ import openai
 from fastapi import FastAPI, HTTPException, Request, Response
 from geo_query import GeoQuery
 
+from . import rotas_desenhos
+from .acervo import Acervo, AcervoIndisponivel, nome_do_schema
 from .agent import RateLimiter, SessionStore, run_turn
 from .cliente import cliente_ativo
 from .config import settings
@@ -48,9 +50,27 @@ async def lifespan(app: FastAPI):
         max_requests=settings.geocode_rate_limit_max,
         window_s=settings.geocode_rate_limit_window_s,
     )
+    # O acervo e OPCIONAL no boot, e o geodata nao. Sem ele o chat continua inteiro e
+    # so os desenhos somem, com a UI dizendo isso — derrubar o processo por causa da
+    # feature mais nova violaria a §9 do ADR, que promete que a queda degrada e nao
+    # derruba. O schema sai do id do cliente, com a mesma regra do app_clientes.sh;
+    # quem impede um cliente de ler o outro e o PAPEL, nao esta linha.
+    if settings.acervo_dsn:
+        try:
+            state["acervo"] = Acervo(
+                dsn=settings.acervo_dsn, schema=nome_do_schema(cliente_ativo.id)
+            )
+            rotas_desenhos.estado["acervo"] = state["acervo"]
+        except AcervoIndisponivel:
+            log.exception("acervo indisponivel no boot; o chat sobe sem ele")
+    else:
+        log.warning("ACERVO_DSN ausente: os desenhos ficam indisponiveis nesta instancia")
+
     log.info("agente pronto: cliente=%s model=%s", cliente_ativo.id, settings.openai_model)
     yield
     state["gq"].close()
+    if acervo := state.get("acervo"):
+        acervo.con.close()
 
 
 app = FastAPI(title="geo-agent", lifespan=lifespan)
@@ -58,6 +78,7 @@ app = FastAPI(title="geo-agent", lifespan=lifespan)
 # ultimo a tocar a resposta, que e onde o `X-Request-ID` e a duracao precisam ser
 # escritos para valerem tambem quando algo estoura la dentro.
 app.add_middleware(ContextoDaRequisicao)
+app.include_router(rotas_desenhos.router)
 
 
 @app.get("/api/health")
@@ -79,6 +100,19 @@ def health(response: Response) -> dict[str, str]:
         banco = f"erro: {type(exc).__name__}"
         response.status_code = 503
 
+    # Com DOIS bancos, "vivo" passou a ter duas respostas, e o health que olha so um
+    # mente sobre a outra metade. O acervo fora do ar NAO e 503: o produto continua
+    # servindo mapa e chat, e reportar doente um agente que responde tudo menos
+    # desenho faria um monitor externo acordar alguem por degradacao prevista.
+    if state.get("acervo") is None:
+        acervo = "ausente" if not settings.acervo_dsn else "erro: nao conectou no boot"
+    else:
+        try:
+            state["acervo"].ping()
+            acervo = "ok"
+        except Exception as exc:  # noqa: BLE001 - o motivo vai no corpo, nao no log
+            acervo = f"erro: {type(exc).__name__}"
+
     return {
         "status": "ok" if banco == "ok" else "degradado",
         # Qual cliente este processo serve. Com um agente por cliente, "esta de pe"
@@ -87,6 +121,7 @@ def health(response: Response) -> dict[str, str]:
         "cliente": cliente_ativo.id,
         "model": settings.openai_model,
         "geodata": banco,
+        "acervo": acervo,
     }
 
 

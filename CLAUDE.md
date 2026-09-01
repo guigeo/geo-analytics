@@ -1,5 +1,21 @@
 # CLAUDE.md
 
+> **É AQUI que se starta a sessão.** Regra única, decidida em 2026-08-31: todo
+> trabalho começa neste repositório, seja ele feature, correção ou dúvida. É onde
+> mora o código, o framework SDD e os comandos `/brainstorm`, `/define`, `/design`,
+> `/build` e `/ship` — que **não existem** nos outros dois repositórios. Os outros
+> são alcançáveis daqui pelo disco (`../webgis`, `../servidor-dados-gis`).
+
+**Primeiro passo de toda sessão, antes de propor qualquer coisa:** se a tarefa toca
+decisão, arquitetura, infraestrutura, deploy ou produção, **leia `../webgis/CLAUDE.md`
+e o ADR-0001 de lá**. Este arquivo descreve o código; o `webgis` é a sede das decisões,
+e nenhuma sessão iniciada aqui carrega o conteúdo de lá automaticamente. Não decidir
+arquitetura sem ter lido — foi assim que o recorte do Censo ficou quatro dias errado.
+
+**Decisão que muda o que outro repositório faz não se resolve na sessão da feature.**
+Anote no artefato do SDD que existe decisão pendente e trate dela como emenda no
+ADR-0001 do `webgis` — lendo antes o `CLAUDE.md` de lá. Ver a memória `arquitetura-webgis`.
+
 Guia prático do código para o Claude Code. Para contexto de produto e workflow SDD,
 ver [`.claude/CLAUDE.md`](.claude/CLAUDE.md) e [`.claude/sdd/archive/`](.claude/sdd/archive/).
 

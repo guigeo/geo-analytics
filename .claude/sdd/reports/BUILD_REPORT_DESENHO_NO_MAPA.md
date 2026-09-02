@@ -1,0 +1,156 @@
+# BUILD REPORT: DESENHO_NO_MAPA — Fase 1
+
+> Desenho de ponto e área sobre o mapa, guardados no acervo do cliente, com isolamento
+> garantido pelo Postgres e não pela aplicação.
+
+## Metadados
+
+| Atributo | Valor |
+|----------|-------|
+| **Feature** | DESENHO_NO_MAPA |
+| **Fase** | 1 de 4 — alicerce, ponto e área |
+| **Data** | 2026-09-01 |
+| **DEFINE** | [DEFINE_DESENHO_NO_MAPA.md](../features/DEFINE_DESENHO_NO_MAPA.md) |
+| **DESIGN** | [DESIGN_DESENHO_NO_MAPA.md](../features/DESIGN_DESENHO_NO_MAPA.md) |
+| **ADR** | ADR-0001 do `webgis`, emendas de 2026-08-31 (`8f6ef9c`) |
+| **Commits** | `507b1ed` (backend), `ccc2189` (frontend), `91857f2`/`943a31b` (`servidor-dados-gis`) |
+| **Status** | Fase 1 completa. Não publicado — ver *Antes de ir para a VPS* |
+
+---
+
+## Resumo
+
+| Métrica | Valor |
+|---------|-------|
+| **Itens do manifesto** | 20 de 21 como escritos; 1 com desvio declarado (item 21) |
+| **Arquivos criados** | 14 (10 em `web/src/desenho/`, 3 no `agent/`, 1 no `servidor-dados-gis`) |
+| **Arquivos modificados** | 7 (`agent/` ×4, `web/src/map/` ×4 incluindo testes, `App.tsx`) |
+| **Linhas novas** | ~2.550 |
+| **Testes do agente** | 98 (35 offline + 63 contra o `app_clientes`, que pulam sem `ACERVO_DSN`) |
+| **Testes do front** | 131, incluindo 27 novos dos módulos puros e 6 do gesto de desenhar |
+| **Portão do front** | `format:check`, `lint`, `typecheck`, `test`, `build` — verde, nos dois clientes |
+
+---
+
+## Execução
+
+| # | Item | Status | Notas |
+|---|------|--------|-------|
+| 1 | `cargas/app_clientes.sh` | ✅ | Virou `.sh` e não `.sql`: schema, papel e senha são parâmetros, e SQL puro não parametriza identificador |
+| 2 | `agent/…/acervo.py` | ✅ | Leitura com retomada, escrita **sem** — a assimetria é o ponto da classe |
+| 3 | `agent/tests/test_acervo.py` | ✅ | 14 testes; AT-004 falha se vier lista vazia em vez de erro |
+| 4 | `agent/…/schemas.py` | ✅ | `DesenhoNovo`, `DesenhoEdicao`, `Desenho`, `PaginaDeDesenhos` |
+| 5 | `agent/…/config.py` | ✅ | `acervo_dsn`, vazio por padrão |
+| 6 | `agent/…/rotas_desenhos.py` | ✅ | CRUD + `/geometrias` + `/categorias`; 503 e 422 são traduzidos num decorador |
+| 7 | `agent/tests/test_rotas_desenhos.py` | ✅ | 10 testes, montando o router num app mínimo |
+| 8 | `agent/…/main.py` | ✅ | `/api/health` reporta o acervo e **não** devolve 503 quando ele cai |
+| 9–12 | `desenho/geometria.ts` + `estado.ts` + testes | ✅ | 27 testes; área reaproveitada de `map/medicao.ts` |
+| 13 | `desenho/fonte.ts` | ✅ | Duas fontes; cor por `["get","cor"]`, não uma camada por desenho |
+| 14 | `desenho/api.ts` | ✅ | `ErroDoAcervo` separa 503 de 422 |
+| 15 | `desenho/BarraFerramentas.tsx` | ⚠️ | **Dois** modos, não três — ver desvio 1 |
+| 16 | `desenho/FormularioDesenho.tsx` | ✅ | Categoria por `datalist`; paleta fechada de seis cores |
+| 17 | `desenho/PainelDesenhos.tsx` | ✅ | Busca, filtro, página e o estado de acervo fora do ar |
+| 18 | `map/MapView.tsx` | ✅ | Traçado e acervo em fontes separadas; ambos restaurados após `setStyle` |
+| 19 | `map/estilo.ts` + teste | ✅ | Camadas em todo cliente; 3 testes novos, um deles de ordem |
+| 20 | `App.tsx` | ✅ | Composição; desenhar e medir se excluem |
+| 21 | `deploy/clientes/*.env` | ⚠️ | **Não feito como escrito** — ver desvio 4 |
+| — | `desenho/useAcervo.ts` | ➕ | Arquivo fora do manifesto — ver desvio 3 |
+
+---
+
+## Desvios do DESIGN
+
+**1. A barra traz dois modos, não três.** O manifesto pede "os três modos" no item 15 e,
+duas linhas abaixo, põe "modos polígono e buffer" na fase 3 (item 23). O buffer depende
+do círculo geodésico (item 24) e do `ST_Buffer` no servidor (item 25), ambos declarados
+fase 3. Um terceiro botão prometeria em tela o que o backend recusaria. **AT-003 fica
+pendente** e é a única do MVP que esta fase não cobre.
+
+**2. O mapa consome a `FeatureCollection` que o servidor monta.** O `fonte.ts` chegou a
+ter `colecaoDeDesenhos(Desenho[])`, e ela saiu: `/api/desenhos/geometrias` já devolve a
+coleção pronta, com `cor` em `properties` — que é justamente o que `["get","cor"]` lê.
+Duas montagens da mesma coleção é onde essa propriedade se perde.
+
+**3. `useAcervo.ts` não estava no manifesto.** São ~150 linhas de duas cargas com ritmos
+diferentes (o mapa quer tudo, a lista quer a página filtrada), debounce e descarte de
+resposta vencida. No `App` isso ficaria no meio do estado do mapa, do chat e da medição —
+e a primeira coisa a se perder ali seria a distinção que o AT-012 cobra: **acervo fora do
+ar não é lista vazia**.
+
+**4. O `ACERVO_DSN` não foi para `deploy/clientes/*.env`.** Aquele arquivo é versionado, e
+o DSN carrega senha. O padrão real do projeto guarda DSN no `agent/.env` da VPS, que não
+vai ao Git. Documentado em `agent/.env.example`, com o registro de que a ausência dele
+**não impede o boot** — é o que faz a §9 do ADR valer na prática.
+
+---
+
+## O que a implementação encontrou
+
+**O `crs` pendurado no GeoJSON.** `ST_AsGeoJSON` injeta `{"crs":{"name":"EPSG:4674"}}`
+sozinho quando o SRID não é 4326 — e o RFC 7946 removeu esse campo, então o MapLibre o
+ignora **em silêncio**, que é o pior modo de falhar. Na entrada havia o espelho do mesmo
+erro: coordenadas WGS84 sendo *rotuladas* 4674 em vez de convertidas. Os dois lados agora
+usam `ST_Transform`; o erro de ida e volta mediu **0 m**. `test_geojson_sai_em_wgs84_e_sem_crs`
+é a regressão.
+
+**O `REVOKE` que derrubou o PostGIS.** `REVOKE ALL ON SCHEMA public` tirou o `USAGE`, e o
+PostGIS instala suas funções ali: oito testes quebraram em
+`function st_geomfromgeojson(unknown) does not exist`, que não fala de permissão nenhuma.
+O correto é revogar `CREATE` e conceder `USAGE`. Está escrito no script para o caminho não
+ser refeito.
+
+**O duplo clique dependia da ordem dos efeitos.** Cada ferramenta desligava o zoom de
+duplo clique no seu próprio `useEffect`; com o desenho ligado, o efeito da medição
+reabilitava o zoom um instante antes de o do desenho desligá-lo. O teste pegou, e a
+correção não foi no teste: ter uma ferramenta ativa virou uma pergunta só, num efeito só.
+
+**`test_nenhum_py_cita_cliente` pegou uma docstring.** O critério de saída da fase 5 é
+literal — nenhum `.py` cita cliente, nem em exemplo. O teste do acervo passou a derivar o
+vizinho de `clientes_disponiveis()`, então sobrevive a um terceiro cliente.
+
+### Achado de segurança — reportado, não mexido
+
+O PostgreSQL concede `CONNECT` e `TEMPORARY` ao `PUBLIC` em todo banco novo. No
+`app_clientes` isso foi fechado. **No `geodata` continua aberto** — qualquer papel do
+cluster conecta nele. Endurecer um banco central em produção não é coisa de se fazer de
+passagem dentro de uma feature; fica como decisão do Guilherme, com o caminho já
+conhecido (`REVOKE CONNECT, TEMPORARY ON DATABASE geodata FROM PUBLIC`).
+
+---
+
+## Testes de aceitação
+
+| AT | Cobertura | Onde |
+|----|-----------|------|
+| AT-001 | ✅ ponta a ponta, contra agente vivo | manual + `test_rotas_desenhos.py` |
+| AT-002 | ✅ área salva com a área calculada | `geometria.test.ts`, `test_acervo.py` |
+| AT-003 | ⛔ **fase 3** | buffer não existe ainda |
+| AT-004 | ✅ recusa com `InsufficientPrivilege`, não lista vazia | `test_acervo.py` |
+| AT-009 / AT-010 | ✅ auto-interseção e degenerado recusados antes de sair | `geometria.test.ts` |
+| AT-012 | ✅ 503 vira estado de tela, e o mapa segue de pé | `test_rotas_desenhos.py`, `PainelDesenhos.tsx` |
+| AT-013 | ✅ paginação e filtro; ⏳ o tempo com 500 itens ainda não foi medido | `useAcervo.ts` |
+| AT-014 | ✅ categoria nasce do uso, via `/categorias` | `test_acervo.py` |
+| AT-015 | ✅ confirmação na própria linha | `PainelDesenhos.tsx` |
+| AT-016 | ✅ `origem` `desenho` e `carga` convivem | `test_acervo.py` |
+| AT-017 | ✅ zero clientes citados em `.py` e `.tsx` | `test_cliente.py` |
+| AT-005 a AT-008, AT-011 | ⛔ **fase 4** | dependem do cruzamento com o `geodata` |
+
+---
+
+## Antes de ir para a VPS
+
+1. **Backup do `app_clientes` precisa existir** (Q-001 / A-006 do DEFINE). É o primeiro
+   dado do sistema em que "refaço do zero" deixou de ser rede de segurança, e publicar
+   antes do backup inverte a ordem exata em que isso importa.
+2. **Rodar `cargas/app_clientes.sh` na VPS** para cada cliente, e pôr o `ACERVO_DSN` no
+   `agent/.env` de lá — comparando mtimes antes, para não sobrescrever a chave da OpenAI.
+3. `make ship-ia` + `sudo systemctl restart` — o restart pede senha e só roda em terminal
+   de verdade.
+4. **A-001 segue em aberto:** os tempos do DESIGN foram medidos neste Mac, não na VPS.
+   Remedir antes da fase 4, que é quando eles passam a decidir alguma coisa.
+
+## Próximo passo
+
+Fase 2 e 3 (encerramento do traçado e buffer) ou fase 4 (o agente enxerga a área
+desenhada). A fase 4 é a que dá sentido à feature — desenhar sem perguntar sobre o
+desenhado entrega meia promessa —, e não depende do buffer.

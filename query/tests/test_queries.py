@@ -410,3 +410,176 @@ def test_municipio_no_ponto(gq: GeoQuery) -> None:
     resultado pobre."""
     assert gq.municipio_no_ponto(-46.67, -23.59)["nm_mun"] == "São Paulo"
     assert gq.municipio_no_ponto(-47.83, -23.05)["nm_mun"] == "Laranjal Paulista"
+
+
+# --- cruzamento sob geometria arbitraria (DESENHO_NO_MAPA, fase 4) ------------
+
+
+@pytest.fixture(scope="module")
+def wkb_de_sp(gq: GeoQuery) -> bytes:
+    """O contorno do municipio de Sao Paulo, servindo de desenho.
+
+    E o pior caso realista de um KML — 21.308 vertices, 333 kB — e ao mesmo tempo o
+    unico gabarito possivel: e a unica geometria de que se sabe, por outro caminho,
+    quanta gente mora dentro.
+    """
+    return gq._rows(
+        "select ST_AsBinary(geom) as wkb from ibge.municipio where cod_municipio = %s",
+        ["3550308"],
+    )[0]["wkb"]
+
+
+def test_gabarito_o_municipio_como_desenho(gq: GeoQuery, wkb_de_sp: bytes) -> None:
+    """AT-005. O rateio areal conferido contra o numero que ja existia.
+
+    Sem isto, o cruzamento so poderia ser conferido contra ele mesmo: qualquer erro
+    sistematico no rateio — fracao invertida, geografia projetada errada, setor
+    contado duas vezes — daria um numero plausivel e ninguem saberia.
+    """
+    oficial = float(gq.municipio("3550308")["pop_total"])
+    r = gq.cruzamento_por_geometria(wkb_de_sp, ["pop_total"])
+
+    assert abs(float(r["pop_total"]) - oficial) / oficial <= 0.005  # <= 0,5%
+    assert r["setores"] > 20_000
+    assert r["parciais"] > 0  # a borda do municipio corta setores dos vizinhos
+
+
+def test_rateio_reconstitui_o_setor(gq: GeoQuery) -> None:
+    """AT-006. Duas metades complementares de um setor somam o setor inteiro.
+
+    E o teste que prova que a fracao e area, e nao contagem: se um setor cortado ao
+    meio entrasse inteiro nos dois lados, a soma daria o dobro; se entrasse em nenhum,
+    daria zero. Ambos passariam despercebidos no teste do municipio, onde a borda e
+    0,03% do total.
+    """
+    alvo = gq._rows(
+        """
+        select s.cod_setor, ST_XMin(s.geom) x0, ST_XMax(s.geom) x1,
+               ST_YMin(s.geom) y0, ST_YMax(s.geom) y1, r.pop_total
+        from ibge.setor_censitario s join ibge_tabular.setor_resumo r using (cod_setor)
+        where r.pop_total > 500 order by s.cod_setor limit 1
+        """,
+        [],
+    )[0]
+    meio = (alvo["x0"] + alvo["x1"]) / 2
+    folga = 0.001  # a caixa passa da borda do setor; o que limita e o corte no meio
+
+    def metade(x0: float, x1: float) -> float:
+        wkb = gq._rows(
+            "select ST_AsBinary(ST_MakeEnvelope(%s, %s, %s, %s, 4674)) as w",
+            [x0, alvo["y0"] - folga, x1, alvo["y1"] + folga],
+        )[0]["w"]
+        # A caixa alcanca setores vizinhos; o que se soma e a fatia DESTE setor.
+        return float(
+            gq._rows(
+                """
+                with area as (select ST_GeomFromWKB(%s, 4674) as g)
+                select sum(r.pop_total *
+                           case when ST_Within(s.geom, a.g) then 1.0
+                                else ST_Area(ST_Intersection(s.geom, a.g)::geography)
+                                     / nullif(ST_Area(s.geom::geography), 0) end) as pop
+                from ibge.setor_censitario s
+                join ibge_tabular.setor_resumo r using (cod_setor)
+                cross join area a
+                where ST_Intersects(s.geom, a.g) and s.cod_setor = %s
+                """,
+                [wkb, alvo["cod_setor"]],
+            )[0]["pop"]
+            or 0
+        )
+
+    total = float(alvo["pop_total"])
+    soma = metade(alvo["x0"] - folga, meio) + metade(meio, alvo["x1"] + folga)
+    assert abs(soma - total) / total <= 0.01  # <= 1%
+
+
+def test_a_borda_domina_em_area_pequena(gq: GeoQuery, wkb_de_sp: bytes) -> None:
+    """O que torna o rateio obrigatorio, e nao preferivel.
+
+    Num buffer de 500 m a maioria dos setores esta CORTADA — contar setor inteiro
+    ali erraria para cima em quase todos. Num municipio inteiro os parciais somem no
+    ruido, e e por isso que medir so o caso grande esconderia o problema.
+    """
+    wkb = gq._rows(
+        """
+        select ST_AsBinary(
+            ST_Buffer(ST_SetSRID(ST_MakePoint(-46.6333, -23.5505), 4674)::geography, 500)::geometry
+        ) as w
+        """,
+        [],
+    )[0]["w"]
+    pequena = gq.cruzamento_por_geometria(wkb)
+    assert pequena["parciais"] / pequena["setores"] > 0.5
+
+    grande = gq.cruzamento_por_geometria(wkb_de_sp)
+    assert grande["parciais"] / grande["setores"] < 0.1
+
+
+def test_metricas_do_formato_longo_entram_no_cruzamento(gq: GeoQuery) -> None:
+    """As 34 metricas que so existem no formato longo — faixa etaria, cor, tipo de
+    domicilio — sao todas contagens, e sao metade da graca de perguntar sobre uma area."""
+    wkb = gq._rows(
+        """
+        select ST_AsBinary(
+            ST_Buffer(ST_SetSRID(ST_MakePoint(-46.6333, -23.5505), 4674)::geography, 2000)::geometry
+        ) as w
+        """,
+        [],
+    )[0]["w"]
+    r = gq.cruzamento_por_geometria(wkb, ["pop_0_4", "cor_preta", "pop_total"])
+    assert r["pop_0_4"] > 0
+    assert r["cor_preta"] > 0
+    # A faixa de 0 a 4 anos nao pode passar da populacao toda: se a juncao do formato
+    # longo duplicasse linhas, e aqui que apareceria.
+    assert float(r["pop_0_4"]) < float(r["pop_total"])
+
+
+def test_media_ponderada_fica_na_faixa_dos_setores(gq: GeoQuery) -> None:
+    """Media ponderada, e nao soma: somar renda_media de 3 mil setores daria milhoes.
+
+    O teste ancora no unico invariante que uma media tem: ela cai entre o menor e o
+    maior dos valores que a compoem.
+    """
+    wkb = gq._rows(
+        """
+        select ST_AsBinary(
+            ST_Buffer(ST_SetSRID(ST_MakePoint(-46.6333, -23.5505), 4674)::geography, 2000)::geometry
+        ) as w
+        """,
+        [],
+    )[0]["w"]
+    r = gq.cruzamento_por_geometria(wkb, ["renda_media"])
+    faixa = gq._rows(
+        """
+        with area as (select ST_GeomFromWKB(%s, 4674) as g)
+        select min(r.renda_media) as menor, max(r.renda_media) as maior
+        from ibge.setor_censitario s
+        join ibge_tabular.setor_resumo r using (cod_setor)
+        cross join area a
+        where ST_Intersects(s.geom, a.g) and r.renda_media is not null
+        """,
+        [wkb],
+    )[0]
+    assert float(faixa["menor"]) <= float(r["renda_media"]) <= float(faixa["maior"])
+
+
+def test_densidade_e_recalculada_sobre_a_area_desenhada(gq: GeoQuery) -> None:
+    """Derivada, nao agregada: populacao rateada dividida pela area do desenho."""
+    wkb = gq._rows(
+        """
+        select ST_AsBinary(
+            ST_Buffer(ST_SetSRID(ST_MakePoint(-46.6333, -23.5505), 4674)::geography, 2000)::geometry
+        ) as w
+        """,
+        [],
+    )[0]["w"]
+    r = gq.cruzamento_por_geometria(wkb, ["densidade_hab_km2"])
+    esperado = float(r["pop_total"]) / float(r["area_km2"])
+    assert abs(r["densidade_hab_km2"] - esperado) < 0.5
+
+
+def test_recusa_o_que_nao_se_agrega_nomeando_a_saida(gq: GeoQuery, wkb_de_sp: bytes) -> None:
+    """Mediana de medianas nao e mediana. A recusa cita renda_media porque o loop do
+    agente da uma chance de autocorrecao, e ela so serve se disser para onde ir."""
+    with pytest.raises(ValueError, match="renda_media"):
+        gq.cruzamento_por_geometria(wkb_de_sp, ["renda_mediana"])

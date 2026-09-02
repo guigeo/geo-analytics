@@ -15,12 +15,11 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from geo_query import GeoQuery
 
 from .config import settings
 from .prompts import MSG_ERRO_TOOLS, MSG_LIMITE_ITERACOES, SYSTEM_PROMPT
 from .schemas import ChatRequest, ChatResponse, ContextoMapa, Destaques
-from .tools import execute_tool, openai_tools
+from .tools import Contexto, execute_tool, openai_tools
 
 log = logging.getLogger(__name__)
 
@@ -126,7 +125,7 @@ def _assistant_dict(msg: Any) -> dict[str, Any]:
 
 
 def run_turn(
-    gq: GeoQuery,
+    ctx: Contexto,
     client: ChatClient,
     store: SessionStore,
     req: ChatRequest,
@@ -165,7 +164,7 @@ def run_turn(
 
         for call in msg.tool_calls:
             t1 = time.monotonic()
-            result = execute_tool(gq, call.function.name, call.function.arguments)
+            result = execute_tool(ctx, call.function.name, call.function.arguments)
             log.info(
                 "tool %s(%s) %.3fs erro=%s",
                 call.function.name,
@@ -191,6 +190,12 @@ def run_turn(
                     return ChatResponse(resposta=MSG_ERRO_TOOLS, destaques=destaques, dados=dados)
             elif result.codigos and result.camada:
                 destaques = Destaques(camada=result.camada, codigos=result.codigos)
+                dados = result.rows
+            elif result.rows:
+                # Tool que responde sem pintar o mapa — hoje so a area desenhada, que
+                # ja esta na tela na cor do cliente. `dados` sao os numeros da resposta,
+                # nao "o que foi pintado": sem este ramo, uma resposta inteira chegaria
+                # ao front com dados=null so por nao ter destaque.
                 dados = result.rows
 
     store.trim(session)

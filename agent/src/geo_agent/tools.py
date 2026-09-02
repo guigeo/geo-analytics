@@ -13,6 +13,8 @@ from typing import Any, Literal
 
 from geo_query import GeoQuery
 
+from .acervo import Acervo, AcervoIndisponivel
+
 from .geocode import GeocodeIndisponivel
 from .geocode import pontos as geocode_pontos
 from pydantic import BaseModel, Field, ValidationError
@@ -266,7 +268,45 @@ class InfoLocalArgs(BaseModel):
     uf: str | None = Field(None, description="UF para desambiguar, por nome ou sigla")
 
 
+class InfoAreaDesenhadaArgs(BaseModel):
+    """Censo 2022 agregado sob uma AREA QUE O USUARIO DESENHOU no mapa e salvou.
+
+    Use quando a pergunta citar um recorte pelo nome que o usuario deu ("a area de
+    cobertura norte", "o poligono da fazenda", "a regiao que eu desenhei").
+
+    NA DUVIDA ENTRE ESTA E info_local, CHAME ESTA PRIMEIRO e nao pergunte ao usuario
+    qual das duas e: se nao existir desenho com aquele nome, ela devolve em `existem`
+    os nomes que existem, e ai voce chama info_local. Custa uma chamada; perguntar
+    custa um turno inteiro. Nomes de desenho parecem nomes de lugar de proposito —
+    quem desenha uma area sobre a Se costuma chama-la de "area da Se".
+
+    Peca em `metricas` o que a pergunta quer (use listar_metricas para os nomes). Sem
+    `metricas`, volta so a populacao.
+    """
+
+    nome: str = Field(min_length=1, description="Nome do desenho, como foi salvo")
+    metricas: list[str] | None = Field(
+        None, description="Campos do Censo a agregar sob a area (ex.: pop_total, renda_media)"
+    )
+
+
 # --- resultado + dispatch -------------------------------------------------------
+
+
+@dataclass
+class Contexto:
+    """Os bancos que uma tool pode alcancar — e a assimetria entre eles.
+
+    Era so a `GeoQuery` ate 2026-09-01. Passou a ser um par quando a pergunta sobre a
+    area desenhada entrou: ela le a geometria no `app_clientes` e cruza no `geodata`,
+    e sao dois bancos por exigencia da regra 5 do ADR-0001 (o central tem de continuar
+    reconstruivel). O tipo mostra a assimetria em vez de escondê-la: o `geodata`
+    sempre existe, o `acervo` pode faltar — sem ele o chat continua inteiro, so nao
+    responde sobre desenho (§9 do ADR).
+    """
+
+    geodata: GeoQuery
+    acervo: Acervo | None = None
 
 
 @dataclass
@@ -288,48 +328,48 @@ def _codes(rows: list[dict[str, Any]], key: str) -> list[str]:
     return [str(r[key]) for r in rows if r.get(key) is not None]
 
 
-def _listar_metricas(gq: GeoQuery, a: ListarMetricasArgs) -> ToolResult:
-    campos = gq.metricas(a.nivel)
+def _listar_metricas(ctx: Contexto, a: ListarMetricasArgs) -> ToolResult:
+    campos = ctx.geodata.metricas(a.nivel)
     payload = [{"campo": c, "rotulo": METRIC_LABELS.get(c, c)} for c in campos]
     return ToolResult(payload=payload)
 
 
-def _buscar_municipio(gq: GeoQuery, a: BuscarMunicipioArgs) -> ToolResult:
-    rows = gq.busca_municipios(a.nome, uf=normalize_uf(a.uf))
+def _buscar_municipio(ctx: Contexto, a: BuscarMunicipioArgs) -> ToolResult:
+    rows = ctx.geodata.busca_municipios(a.nome, uf=normalize_uf(a.uf))
     return ToolResult(payload=rows, camada="municipio", codigos=_codes(rows, "cd_mun"), rows=rows)
 
 
-def _info_municipio(gq: GeoQuery, a: InfoMunicipioArgs) -> ToolResult:
-    row = gq.municipio(a.cd_mun)
+def _info_municipio(ctx: Contexto, a: InfoMunicipioArgs) -> ToolResult:
+    row = ctx.geodata.municipio(a.cd_mun)
     if row is None:
         return ToolResult(payload={"erro": f"município {a.cd_mun} não encontrado"}, error=True)
     return ToolResult(payload=row, camada="municipio", codigos=[a.cd_mun], rows=[row])
 
 
-def _info_setor(gq: GeoQuery, a: InfoSetorArgs) -> ToolResult:
-    row = gq.setor(a.cd_setor)
+def _info_setor(ctx: Contexto, a: InfoSetorArgs) -> ToolResult:
+    row = ctx.geodata.setor(a.cd_setor)
     if row is None:
         return ToolResult(payload={"erro": f"setor {a.cd_setor} não encontrado"}, error=True)
     return ToolResult(payload=row, camada="setor", codigos=[a.cd_setor], rows=[row])
 
 
-def _ranking(gq: GeoQuery, a: RankingMunicipiosArgs) -> ToolResult:
-    rows = gq.ranking_municipios(a.metrica, uf=normalize_uf(a.uf), n=a.n, ordem=a.ordem)
+def _ranking(ctx: Contexto, a: RankingMunicipiosArgs) -> ToolResult:
+    rows = ctx.geodata.ranking_municipios(a.metrica, uf=normalize_uf(a.uf), n=a.n, ordem=a.ordem)
     return ToolResult(payload=rows, camada="municipio", codigos=_codes(rows, "cd_mun"), rows=rows)
 
 
-def _setores_proximos(gq: GeoQuery, a: SetoresProximosArgs) -> ToolResult:
-    rows = gq.setores_proximos(a.cd_setor, raio_km=a.raio_km, limite=a.limite)
+def _setores_proximos(ctx: Contexto, a: SetoresProximosArgs) -> ToolResult:
+    rows = ctx.geodata.setores_proximos(a.cd_setor, raio_km=a.raio_km, limite=a.limite)
     return ToolResult(payload=rows, camada="setor", codigos=_codes(rows, "cd_setor"), rows=rows)
 
 
-def _setores_no_ponto(gq: GeoQuery, a: SetoresNoPontoArgs) -> ToolResult:
-    rows = gq.setores_no_ponto(a.lon, a.lat, raio_km=a.raio_km, limite=a.limite)
+def _setores_no_ponto(ctx: Contexto, a: SetoresNoPontoArgs) -> ToolResult:
+    rows = ctx.geodata.setores_no_ponto(a.lon, a.lat, raio_km=a.raio_km, limite=a.limite)
     return ToolResult(payload=rows, camada="setor", codigos=_codes(rows, "cd_setor"), rows=rows)
 
 
-def _setor_que_contem(gq: GeoQuery, a: SetorQueContemArgs) -> ToolResult:
-    row = gq.setor_no_ponto(a.lon, a.lat)
+def _setor_que_contem(ctx: Contexto, a: SetorQueContemArgs) -> ToolResult:
+    row = ctx.geodata.setor_no_ponto(a.lon, a.lat)
     if row is None:
         return ToolResult(
             payload={"erro": f"nenhum setor contém o ponto ({a.lon}, {a.lat})"}, error=True
@@ -337,22 +377,22 @@ def _setor_que_contem(gq: GeoQuery, a: SetorQueContemArgs) -> ToolResult:
     return ToolResult(payload=row, camada="setor", codigos=[str(row["cd_setor"])], rows=[row])
 
 
-def _info_bairro(gq: GeoQuery, a: InfoBairroArgs) -> ToolResult:
-    row = gq.bairro(a.cd_bairro)
+def _info_bairro(ctx: Contexto, a: InfoBairroArgs) -> ToolResult:
+    row = ctx.geodata.bairro(a.cd_bairro)
     if row is None:
         return ToolResult(payload={"erro": f"bairro {a.cd_bairro} não encontrado"}, error=True)
     return ToolResult(payload=row, camada="bairro", codigos=[a.cd_bairro], rows=[row])
 
 
-def _ranking_bairros(gq: GeoQuery, a: RankingBairrosArgs) -> ToolResult:
-    rows = gq.ranking_bairros(
+def _ranking_bairros(ctx: Contexto, a: RankingBairrosArgs) -> ToolResult:
+    rows = ctx.geodata.ranking_bairros(
         a.metrica, cd_mun=a.cd_mun, uf=normalize_uf(a.uf), n=a.n, ordem=a.ordem
     )
     return ToolResult(payload=rows, camada="bairro", codigos=_codes(rows, "cd_bairro"), rows=rows)
 
 
-def _bairro_que_contem(gq: GeoQuery, a: BairroQueContemArgs) -> ToolResult:
-    row = gq.bairro_no_ponto(a.lon, a.lat)
+def _bairro_que_contem(ctx: Contexto, a: BairroQueContemArgs) -> ToolResult:
+    row = ctx.geodata.bairro_no_ponto(a.lon, a.lat)
     if row is None:
         return ToolResult(
             payload={
@@ -364,15 +404,15 @@ def _bairro_que_contem(gq: GeoQuery, a: BairroQueContemArgs) -> ToolResult:
     return ToolResult(payload=row, camada="bairro", codigos=[str(row["cd_bairro"])], rows=[row])
 
 
-def _info_distrito(gq: GeoQuery, a: InfoDistritoArgs) -> ToolResult:
-    row = gq.distrito(a.cd_distrito)
+def _info_distrito(ctx: Contexto, a: InfoDistritoArgs) -> ToolResult:
+    row = ctx.geodata.distrito(a.cd_distrito)
     if row is None:
         return ToolResult(payload={"erro": f"distrito {a.cd_distrito} não encontrado"}, error=True)
     return ToolResult(payload=row, camada="distrito", codigos=[a.cd_distrito], rows=[row])
 
 
-def _ranking_distritos(gq: GeoQuery, a: RankingDistritosArgs) -> ToolResult:
-    rows = gq.ranking_distritos(
+def _ranking_distritos(ctx: Contexto, a: RankingDistritosArgs) -> ToolResult:
+    rows = ctx.geodata.ranking_distritos(
         a.metrica, cd_mun=a.cd_mun, uf=normalize_uf(a.uf), n=a.n, ordem=a.ordem
     )
     return ToolResult(
@@ -380,8 +420,8 @@ def _ranking_distritos(gq: GeoQuery, a: RankingDistritosArgs) -> ToolResult:
     )
 
 
-def _distrito_que_contem(gq: GeoQuery, a: DistritoQueContemArgs) -> ToolResult:
-    row = gq.distrito_no_ponto(a.lon, a.lat)
+def _distrito_que_contem(ctx: Contexto, a: DistritoQueContemArgs) -> ToolResult:
+    row = ctx.geodata.distrito_no_ponto(a.lon, a.lat)
     if row is None:
         return ToolResult(
             payload={"erro": f"nenhum distrito contém o ponto ({a.lon}, {a.lat})"},
@@ -468,7 +508,7 @@ def _resultado_nivel(nivel: str, row: dict[str, Any], avisos: list[str]) -> Tool
     )
 
 
-def _info_local(gq: GeoQuery, a: InfoLocalArgs) -> ToolResult:
+def _info_local(ctx: Contexto, a: InfoLocalArgs) -> ToolResult:
     """A cascata bairro -> distrito -> localizacao, em codigo e nao no prompt.
 
     Fica aqui, e nao como instrucao no system prompt, porque o aviso e a parte que
@@ -486,25 +526,25 @@ def _info_local(gq: GeoQuery, a: InfoLocalArgs) -> ToolResult:
     # 1 e 2. Nome exato: bairro (recorte mais fino, 46,7% da populacao) e depois
     #        distrito (leva a cobertura a 76,2% — e o caso de Sao Paulo, que nao tem
     #        bairro nenhum e tem 96 distritos).
-    if bairros := gq.busca_bairros(a.nome, municipio=a.municipio, uf=uf, exato=True):
-        return _resultado_nivel("bairro", gq.bairro(bairros[0]["cd_bairro"]), [])
+    if bairros := ctx.geodata.busca_bairros(a.nome, municipio=a.municipio, uf=uf, exato=True):
+        return _resultado_nivel("bairro", ctx.geodata.bairro(bairros[0]["cd_bairro"]), [])
 
-    if distritos := gq.busca_distritos(a.nome, municipio=a.municipio, uf=uf, exato=True):
-        row = gq.distrito(distritos[0]["cd_distrito"])
+    if distritos := ctx.geodata.busca_distritos(a.nome, municipio=a.municipio, uf=uf, exato=True):
+        row = ctx.geodata.distrito(distritos[0]["cd_distrito"])
         return _resultado_nivel("distrito", row, _avisos_distrito(a.nome, row))
 
     # 3 e 4. So agora substring, na mesma ordem de niveis.
-    if bairros := gq.busca_bairros(a.nome, municipio=a.municipio, uf=uf, exato=False):
-        return _resultado_nivel("bairro", gq.bairro(bairros[0]["cd_bairro"]), [])
+    if bairros := ctx.geodata.busca_bairros(a.nome, municipio=a.municipio, uf=uf, exato=False):
+        return _resultado_nivel("bairro", ctx.geodata.bairro(bairros[0]["cd_bairro"]), [])
 
-    if distritos := gq.busca_distritos(a.nome, municipio=a.municipio, uf=uf, exato=False):
-        row = gq.distrito(distritos[0]["cd_distrito"])
+    if distritos := ctx.geodata.busca_distritos(a.nome, municipio=a.municipio, uf=uf, exato=False):
+        row = ctx.geodata.distrito(distritos[0]["cd_distrito"])
         return _resultado_nivel("distrito", row, _avisos_distrito(a.nome, row))
 
     # 5. O nome nao existe no IBGE em nivel nenhum. Ultimo recurso: resolver em
     #    coordenada e perguntar ao PostGIS quem a contem. E o caso "Vila Nova
     #    Conceicao", ausente de bairro, distrito e do nome_bairro do setor.
-    return _info_local_por_localizacao(gq, a, uf)
+    return _info_local_por_localizacao(ctx, a, uf)
 
 
 def _avisos_distrito(pedido: str, row: dict[str, Any]) -> list[str]:
@@ -518,7 +558,7 @@ def _avisos_distrito(pedido: str, row: dict[str, Any]) -> list[str]:
     return avisos
 
 
-def _info_local_por_localizacao(gq: GeoQuery, a: InfoLocalArgs, uf: str | None) -> ToolResult:
+def _info_local_por_localizacao(ctx: Contexto, a: InfoLocalArgs, uf: str | None) -> ToolResult:
     """Resolve o nome em coordenada e devolve o recorte do IBGE que a contem.
 
     O geocoding e CONFINADO ao municipio informado, e isso nao e refinamento: sem
@@ -529,7 +569,7 @@ def _info_local_por_localizacao(gq: GeoQuery, a: InfoLocalArgs, uf: str | None) 
     """
     alvo = None
     if a.municipio:
-        achados = gq.busca_municipios(a.municipio, uf=uf)
+        achados = ctx.geodata.busca_municipios(a.municipio, uf=uf)
         if not achados:
             return ToolResult(
                 payload={"erro": f"município '{a.municipio}' não encontrado"}, error=True
@@ -554,7 +594,7 @@ def _info_local_por_localizacao(gq: GeoQuery, a: InfoLocalArgs, uf: str | None) 
         if alvo is None:
             ponto = (lon, lat)
             break
-        m = gq.municipio_no_ponto(lon, lat)
+        m = ctx.geodata.municipio_no_ponto(lon, lat)
         if m is not None and str(m["cd_mun"]) == alvo:
             ponto = (lon, lat)
             break
@@ -570,7 +610,7 @@ def _info_local_por_localizacao(gq: GeoQuery, a: InfoLocalArgs, uf: str | None) 
         )
 
     lon, lat = ponto
-    row = gq.bairro_no_ponto(lon, lat) or gq.distrito_no_ponto(lon, lat)
+    row = ctx.geodata.bairro_no_ponto(lon, lat) or ctx.geodata.distrito_no_ponto(lon, lat)
     if row is None:
         return ToolResult(
             payload={"erro": f"'{a.nome}' foi localizado mas não caiu em nenhum recorte do IBGE"},
@@ -589,7 +629,92 @@ def _info_local_por_localizacao(gq: GeoQuery, a: InfoLocalArgs, uf: str | None) 
     return _resultado_nivel(nivel, row, avisos)
 
 
-Handler = Callable[[GeoQuery, Any], ToolResult]
+Handler = Callable[[Contexto, Any], ToolResult]
+
+
+def _avisos_de_borda(row: dict[str, Any]) -> list[str]:
+    """O que o rateio areal obriga a declarar, saindo da ROW e nao do prompt.
+
+    Regra 8 do ADR-0001, a mesma que rege a classe social: o que muda o sentido do
+    numero e dado. Ao prompt cabe reescrever com as palavras da resposta, nao decidir
+    se o aviso existe — instrucao em prompt longo cai no dia em que o contexto encher,
+    e este aviso e a diferenca entre um numero e um numero que se pode usar.
+    """
+    parciais = int(row.get("parciais") or 0)
+    if not parciais:
+        return []
+    total = float(row.get("pop_total") or 0)
+    rateada = float(row.get("pop_de_rateio") or 0)
+    pct = round(100 * rateada / total) if total else 0
+    return [
+        f"a area corta {parciais} setores censitarios ao meio; {pct}% da populacao "
+        "informada vem de rateio pela area da intersecao, o que supoe distribuicao "
+        "uniforme dentro do setor -- falso em setor rural grande com a vila num canto"
+    ]
+
+
+def _avisos_de_extensao(row: dict[str, Any]) -> list[str]:
+    """Area muito grande responde, e avisa a extensao — nao recusa (Decisao 4 do DESIGN).
+
+    O corte e em 1.000 setores porque e a partir dali que "a area desenhada" deixa de
+    ser um lugar e vira uma regiao: quem desenhou um circulo de 50 km sobre a Grande
+    Sao Paulo talvez nao esperasse 21 milhoes de pessoas na resposta.
+    """
+    setores = int(row.get("setores") or 0)
+    if setores < 1_000:
+        return []
+    area = row.get("area_km2")
+    return [
+        f"a area e extensa: {setores} setores censitarios"
+        + (f" e {area} km²" if area else "")
+        + ". Vale confirmar se e mesmo o recorte que a pessoa queria"
+    ]
+
+
+def _info_area_desenhada(ctx: Contexto, a: InfoAreaDesenhadaArgs) -> ToolResult:
+    """Cruza o Censo com um desenho do cliente. Le num banco, agrega no outro.
+
+    A geometria vem do `app_clientes` em WKB (~2 kB) e viaja como PARAMETRO da consulta
+    no `geodata`, que so le. E o caminho inteiro da Decisao 1 do DESIGN: sem
+    `postgres_fdw`, sem JOIN entre bancos, e sem o `geodata` deixar de ser reconstruivel.
+
+    O mapa NAO ganha destaque aqui, e a ausencia e deliberada: os destaques pintam
+    codigos do IBGE nas fontes PMTiles, e o desenho ja esta na tela, na cor do cliente,
+    desde que foi salvo. Pintar os 3 mil setores de dentro cobriria justamente o
+    desenho sobre o qual se perguntou.
+    """
+    if ctx.acervo is None:
+        return ToolResult(
+            payload={
+                "erro": "o acervo de desenhos nao esta disponivel neste ambiente",
+                "sugestao": "responda pelos niveis publicados: bairro, distrito ou municipio",
+            },
+            error=True,
+        )
+
+    try:
+        desenho = ctx.acervo.wkb_por_nome(a.nome)
+    except AcervoIndisponivel:
+        return ToolResult(
+            payload={"erro": "nao foi possivel ler o acervo de desenhos agora"}, error=True
+        )
+    if desenho is None:
+        nomes = [d["nome"] for d in ctx.acervo.listar(tamanho=20)["itens"]]
+        return ToolResult(
+            payload={"erro": f"nenhum desenho chamado {a.nome!r}", "existem": nomes}, error=True
+        )
+
+    row = ctx.geodata.cruzamento_por_geometria(desenho["wkb"], a.metricas)
+    avisos = _avisos_de_borda(row) + _avisos_de_extensao(row)
+    return ToolResult(
+        payload={
+            "desenho": {"nome": desenho["nome"], "tipo": desenho["tipo"]},
+            "avisos": avisos,
+            "dados": row,
+        },
+        rows=[row],
+    )
+
 
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "listar_metricas": (ListarMetricasArgs, _listar_metricas),
@@ -618,6 +743,10 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     # e descricao, e dois nomes quase iguais para semanticas diferentes (contem x raio)
     # sao convite a escolha errada.
     "setor_que_contem": (SetorQueContemArgs, _setor_que_contem),
+    # A unica tool que le fora do geodata. Fica por ultimo na lista pelo mesmo motivo
+    # pelo qual entrou por ultimo: o produto responde sobre o Brasil publicado, e sobre
+    # o desenho do cliente por cima disso.
+    "info_area_desenhada": (InfoAreaDesenhadaArgs, _info_area_desenhada),
 }
 
 
@@ -636,7 +765,7 @@ def openai_tools() -> list[dict[str, Any]]:
     ]
 
 
-def execute_tool(gq: GeoQuery, name: str, raw_args: str) -> ToolResult:
+def execute_tool(ctx: Contexto, name: str, raw_args: str) -> ToolResult:
     """Valida args (Pydantic) e despacha. Erros viram payload p/ o LLM se autocorrigir."""
     entry = TOOL_REGISTRY.get(name)
     if entry is None:
@@ -650,6 +779,6 @@ def execute_tool(gq: GeoQuery, name: str, raw_args: str) -> ToolResult:
     except ValidationError as exc:
         return ToolResult(payload={"erro": "argumentos inválidos", "detalhe": str(exc)}, error=True)
     try:
-        return handler(gq, args)
+        return handler(ctx, args)
     except ValueError as exc:  # ex.: metrica invalida (GeoQuery ja lista as validas)
         return ToolResult(payload={"erro": str(exc)}, error=True)

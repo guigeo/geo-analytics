@@ -30,9 +30,7 @@ router = APIRouter(prefix="/api/desenhos", tags=["desenhos"])
 # motivo do `state` de lá: o objeto nasce no startup e o módulo é importado antes.
 estado: dict[str, Any] = {}
 
-_SEM_ACERVO = (
-    "O acervo de desenhos está indisponível. O mapa e o chat seguem funcionando."
-)
+_SEM_ACERVO = "O acervo de desenhos está indisponível. O mapa e o chat seguem funcionando."
 
 
 def _acervo() -> Acervo:

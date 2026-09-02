@@ -15,6 +15,7 @@ import yaml
 from geo_query import GeoQuery
 
 from geo_agent.agent import SessionStore, run_turn
+from geo_agent.tools import Contexto
 from geo_agent.config import settings
 from geo_agent.schemas import ChatRequest, ChatResponse, ContextoMapa
 from geo_agent.tools import normalize_uf
@@ -33,13 +34,23 @@ def ambiente() -> dict[str, Any]:
     import openai
 
     gq = GeoQuery()
+    # O acervo entra quando existe: os casos de area desenhada so fazem sentido com
+    # ele, e os outros 30 nao o tocam. Sem ACERVO_DSN, aqueles casos pulam.
+    acervo = None
+    if settings.acervo_dsn:
+        from geo_agent.acervo import Acervo, nome_do_schema
+        from geo_agent.cliente import cliente_ativo
+
+        acervo = Acervo(dsn=settings.acervo_dsn, schema=nome_do_schema(cliente_ativo.id))
     yield {
-        "gq": gq,
+        "ctx": Contexto(geodata=gq, acervo=acervo),
         "client": openai.OpenAI(api_key=settings.openai_api_key),
         "store": SessionStore(),
         "sessoes": {},  # chave `sessao` do yaml -> session_id compartilhado
     }
     gq.close()
+    if acervo:
+        acervo.con.close()
 
 
 def _args_batem(esperados: dict[str, Any], reais: dict[str, Any]) -> bool:
@@ -98,5 +109,5 @@ def test_benchmark(caso: dict[str, Any], ambiente: dict[str, Any]) -> None:
     req = ChatRequest(pergunta=caso["pergunta"], session_id=session_id, contexto_mapa=ctx)
 
     trace: list[dict[str, Any]] = []
-    out = run_turn(ambiente["gq"], ambiente["client"], ambiente["store"], req, trace=trace)
+    out = run_turn(ambiente["ctx"], ambiente["client"], ambiente["store"], req, trace=trace)
     _verifica(caso, out, trace)

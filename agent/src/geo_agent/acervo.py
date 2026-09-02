@@ -349,9 +349,7 @@ class Acervo:
             raise DesenhoInvalido("geometria ausente ou sem 'type'")
         vertices = _conta_vertices(geometria.get("coordinates"))
         if vertices > MAX_VERTICES:
-            raise DesenhoInvalido(
-                f"geometria com {vertices} vértices; o teto é {MAX_VERTICES}"
-            )
+            raise DesenhoInvalido(f"geometria com {vertices} vértices; o teto é {MAX_VERTICES}")
         if vertices == 0:
             raise DesenhoInvalido("geometria sem coordenadas")
 

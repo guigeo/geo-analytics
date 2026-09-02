@@ -54,6 +54,54 @@ _CHAVE = {
 }
 
 
+# Como cada metrica do resumo se agrega sob uma area desenhada.
+#
+# Nao da para somar tudo, e a tabela existe porque a alternativa e silenciosa: somar
+# `renda_media` de 40 setores devolve um numero grande, plausivel e sem significado
+# nenhum. O modo de cada metrica e escolha de metodo, e escolha de metodo tem de estar
+# escrita em algum lugar -- aqui, e nao no prompt.
+#
+# O peso das medias e `domicilios_ocupados` porque as metricas ponderadas do resumo sao
+# todas POR DOMICILIO: renda do responsavel, moradores por domicilio, percentual de
+# domicilios com agua na rede, fatia de domicilios em cada classe. Ponderar por
+# populacao daria peso extra ao setor de familias grandes numa media que nao e de gente.
+_SOMAVEIS = frozenset({"pop_total", "domicilios_ocupados", "pop_masculino", "pop_feminino"})
+
+_PESO_DA_MEDIA: dict[str, str] = {
+    "media_moradores": "domicilios_ocupados",
+    "renda_media": "domicilios_ocupados",
+    "renda_domiciliar_estimada": "domicilios_ocupados",
+    "classe_social_score": "domicilios_ocupados",
+    "pct_agua_rede": "domicilios_ocupados",
+    "pct_esgoto_rede": "domicilios_ocupados",
+    "pct_lixo_coletado": "domicilios_ocupados",
+    "pct_classe_a": "domicilios_ocupados",
+    "pct_classe_b": "domicilios_ocupados",
+    "pct_classe_c": "domicilios_ocupados",
+    "pct_classe_de": "domicilios_ocupados",
+}
+
+# Derivadas: nao se agregam, se recalculam. Densidade sob uma area e a populacao
+# rateada dividida pela area DESENHADA -- media das densidades dos setores daria outro
+# numero, e o errado.
+_DERIVADAS = frozenset({"densidade_hab_km2"})
+
+# O que nao tem agregacao possivel, com a saida junto. Recusar nomeando a alternativa
+# e o que faz o LLM se autocorrigir em vez de repetir o pedido (o loop do agent.py da
+# uma chance).
+_SEM_AGREGACAO: dict[str, str] = {
+    "renda_mediana": (
+        "mediana de medianas nao e mediana: nao existe forma de agregar renda_mediana "
+        "sob uma area a partir dos setores. Use renda_media"
+    ),
+}
+
+# Setor coberto por menos que isto conta como cortado pela borda. Nao e 1.0 exato
+# porque ST_Intersection sobre geography devolve 0,9999... para setor inteiro cujo
+# poligono encosta na borda, e chamar isso de parcial inflaria o aviso.
+_LIMIAR_INTEIRO = "0.999"
+
+
 def _sem_acento(expr: str) -> sql.SQL:
     return sql.SQL(_SEM_ACENTO.format(expr))
 
@@ -291,7 +339,9 @@ class GeoQuery:
         clauses = [match]
         params: list[Any] = [nome]
         if municipio:
-            clauses.append(sql.SQL("{} = {}").format(_sem_acento("r.nome_municipio"), _sem_acento("%s")))
+            clauses.append(
+                sql.SQL("{} = {}").format(_sem_acento("r.nome_municipio"), _sem_acento("%s"))
+            )
             params.append(municipio)
         if uf:
             clauses.append(sql.SQL("m.nome_uf = %s"))
@@ -695,6 +745,140 @@ class GeoQuery:
             """),
             [cd_setor, float(raio_km) * 1000, int(limite)],
         )
+
+    # --- cruzamento sob geometria arbitraria -------------------------------
+
+    def cruzamento_por_geometria(
+        self, wkb: bytes, metricas: list[str] | None = None
+    ) -> dict[str, Any]:
+        """Agrega o Censo sob uma geometria arbitraria, com rateio areal na borda.
+
+        **So le.** O poligono chega como PARAMETRO, em WKB, e nao como tabela: e o que
+        dispensa `postgres_fdw` entre o `app_clientes` e o `geodata` e preserva a
+        promessa do `db.py` de que esta fachada nunca escreve no banco central
+        (Decisao 1 do DESIGN de DESENHO_NO_MAPA).
+
+        O aviso de borda sai DAQUI, junto do numero, e nao do prompt: regra 8 do
+        ADR-0001. Os campos `parciais` e `pop_de_rateio` existem para o chamador poder
+        montar a ressalva sem uma segunda consulta -- cobrar um round-trip pelo aviso
+        seria pagar para poder esquece-lo.
+
+        `pop_total` volta sempre, pedida ou nao, porque e ela que da sentido a
+        `pop_de_rateio`: "26.724 vieram de rateio" sem o total nao diz se e muito.
+
+        Medido em 2026-09-01 (468 mil setores, cache quente):
+
+        | Area                              | Setores | Parciais | Tempo   |
+        |-----------------------------------|---------|----------|---------|
+        | Buffer 500 m                      |      40 | 30 (75%) |    3 ms |
+        | Buffer 5 km                       |   3.286 | 164 (5%) |   36 ms |
+        | Buffer 50 km                      |  49.185 |      310 |  640 ms |
+        | Municipio de SP (21.308 vertices) |  27.719 |      775 | 1.320 ms|
+
+        E confere: o municipio de SP como desenho devolve 11.451.967 contra os
+        11.451.999 da tool municipal -- 0,0003% de diferenca.
+        """
+        pedidas = list(dict.fromkeys(metricas or []))
+        for m in pedidas:
+            self._check_metric("setor", m)
+            if motivo := _SEM_AGREGACAO.get(m):
+                raise ValueError(f"metrica {m!r} nao se agrega sob uma area: {motivo}")
+
+        limiar = sql.SQL(_LIMIAR_INTEIRO)
+        colunas: list[sql.Composed | sql.SQL] = [
+            sql.SQL("count(*) as setores"),
+            sql.SQL("count(*) filter (where f < {}) as parciais").format(limiar),
+            sql.SQL("round(sum(r.pop_total * f)) as pop_total"),
+            sql.SQL("round(sum(r.pop_total * f) filter (where f < {})) as pop_de_rateio").format(
+                limiar
+            ),
+        ]
+        longas: list[str] = []
+        for m in pedidas:
+            if m in ("pop_total",) or m in _DERIVADAS:
+                continue  # ja vem, ou se calcula depois
+            if m in _SOMAVEIS:
+                colunas.append(
+                    sql.SQL("round(sum(r.{met} * f)) as {met}").format(met=sql.Identifier(m))
+                )
+            elif peso := _PESO_DA_MEDIA.get(m):
+                colunas.append(
+                    sql.SQL(
+                        "round((sum(r.{met} * r.{peso} * f) / "
+                        "nullif(sum(r.{peso} * f), 0))::numeric, 2) as {met}"
+                    ).format(met=sql.Identifier(m), peso=sql.Identifier(peso))
+                )
+            else:
+                longas.append(m)
+
+        # O formato longo entra numa CTE separada e SO quando alguem pede: sao 18,9 M
+        # linhas, e junta-las por nada dobraria o custo da area grande.
+        if longas:
+            colunas_longas = [
+                sql.SQL(
+                    "round(sum(t.valor * f.f) filter (where t.cod_variavel = %s)) as {}"
+                ).format(sql.Identifier(m))
+                for m in longas
+            ]
+            trecho_longo = sql.SQL("""
+                , lon as (
+                    select {colunas}
+                    from frac f join ibge_tabular.setor t using (cod_setor)
+                    where t.cod_variavel = any(%s)
+                )
+            """).format(colunas=sql.SQL(",\n                           ").join(colunas_longas))
+            juncao = sql.SQL("res cross join lon")
+            saida = sql.SQL("res.*, lon.*")
+        else:
+            trecho_longo = sql.SQL("")
+            juncao = sql.SQL("res")
+            saida = sql.SQL("res.*")
+
+        consulta = sql.SQL("""
+            with area as (select ST_GeomFromWKB(%s, 4674) as g),
+            frac as (
+                select s.cod_setor,
+                       -- ST_Within primeiro: o caso comum e barato, e o ST_Intersection
+                       -- (caro) so roda na borda. E o que faz o rateio custar pouco em
+                       -- area grande, onde quase todo setor esta inteiro dentro.
+                       case when ST_Within(s.geom, a.g) then 1.0
+                            else ST_Area(ST_Intersection(s.geom, a.g)::geography)
+                                 / nullif(ST_Area(s.geom::geography), 0)
+                       end as f
+                from ibge.setor_censitario s, area a
+                where ST_Intersects(s.geom, a.g)
+            ),
+            res as (
+                select {colunas}
+                from frac join ibge_tabular.setor_resumo r using (cod_setor)
+            ){longo}
+            select {saida},
+                   (select round((ST_Area(g::geography) / 1000000)::numeric, 3) from area)
+                       as area_km2
+            from {juncao}
+        """).format(
+            colunas=sql.SQL(",\n                       ").join(colunas),
+            longo=trecho_longo,
+            saida=saida,
+            juncao=juncao,
+        )
+
+        params: list[Any] = [wkb]
+        if longas:
+            params.extend(self._variaveis[m] for m in longas)
+            params.append([self._variaveis[m] for m in longas])
+
+        row = self._rows(consulta, params)[0]
+        return self._com_derivadas(row, pedidas)
+
+    @staticmethod
+    def _com_derivadas(row: dict[str, Any], pedidas: list[str]) -> dict[str, Any]:
+        """Densidade se RECALCULA sobre a area desenhada; media das densidades seria outra coisa."""
+        if "densidade_hab_km2" in pedidas:
+            area = float(row.get("area_km2") or 0)
+            pop = float(row.get("pop_total") or 0)
+            row["densidade_hab_km2"] = round(pop / area, 1) if area else None
+        return row
 
     def close(self) -> None:
         self.con.close()

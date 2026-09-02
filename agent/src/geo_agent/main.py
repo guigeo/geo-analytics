@@ -17,6 +17,7 @@ from geo_query import GeoQuery
 from . import rotas_desenhos
 from .acervo import Acervo, AcervoIndisponivel, nome_do_schema
 from .agent import RateLimiter, SessionStore, run_turn
+from .tools import Contexto
 from .cliente import cliente_ativo
 from .config import settings
 from .geocode import GeocodeIndisponivel
@@ -151,7 +152,10 @@ def chat(req: ChatRequest, request: Request) -> ChatResponse:
     if not state["limiter"].allow(ip):
         raise _limite_estourado(state["limiter"], ip)
     try:
-        return run_turn(state["gq"], state["client"], state["store"], req)
+        # O Contexto e montado a cada turno, e nao guardado no state, porque o acervo
+        # pode ter subido depois do boot — ou caido depois dele.
+        ctx = Contexto(geodata=state["gq"], acervo=state.get("acervo"))
+        return run_turn(ctx, state["client"], state["store"], req)
     except openai.OpenAIError:
         log.exception("falha na chamada OpenAI")
         raise HTTPException(status_code=502, detail=MSG_ERRO_OPENAI) from None

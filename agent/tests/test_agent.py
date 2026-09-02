@@ -1,7 +1,7 @@
 """Loop de tool-calling com client OpenAI fake (offline): grounding, autocorrecao, teto.
 
 O client da OpenAI e falso, mas as tools consultam o geodata de verdade: os testes
-que pedem a fixture `gq` sao pulados sem GEODATA_DSN. Os de rate limit nao tocam
+que pedem a fixture `ctx` sao pulados sem GEODATA_DSN. Os de rate limit nao tocam
 banco nenhum e rodam sempre.
 """
 
@@ -16,6 +16,7 @@ import pytest
 from geo_query import GeoQuery
 
 from geo_agent.agent import RateLimiter, SessionStore, run_turn
+from geo_agent.tools import Contexto
 from geo_agent.config import settings
 from geo_agent.prompts import MSG_ERRO_TOOLS, MSG_LIMITE_ITERACOES
 from geo_agent.schemas import ChatRequest, ContextoMapa
@@ -53,11 +54,11 @@ class FakeClient:
 
 
 @pytest.fixture(scope="module")
-def gq() -> GeoQuery:
+def ctx() -> Contexto:
     if not os.getenv("GEODATA_DSN"):
         pytest.skip("defina GEODATA_DSN para rodar contra o geodata (ver query/geo_query/db.py)")
     q = GeoQuery()
-    yield q
+    yield Contexto(geodata=q)
     q.close()
 
 
@@ -65,14 +66,14 @@ def req(pergunta: str, session_id: str = "s1") -> ChatRequest:
     return ChatRequest(pergunta=pergunta, session_id=session_id)
 
 
-def test_resposta_direta_sem_tools(gq: GeoQuery) -> None:
+def test_resposta_direta_sem_tools(ctx: Contexto) -> None:
     client = FakeClient([texto("Não tenho dados de PIB — meus dados são do Censo 2022.")])
-    out = run_turn(gq, client, SessionStore(), req("PIB de Fortaleza?"))
+    out = run_turn(ctx, client, SessionStore(), req("PIB de Fortaleza?"))
     assert "Censo 2022" in out.resposta
     assert out.destaques is None and out.dados is None
 
 
-def test_destaques_derivados_da_tool(gq: GeoQuery) -> None:
+def test_destaques_derivados_da_tool(ctx: Contexto) -> None:
     client = FakeClient(
         [
             tool_call("ranking_municipios", {"metrica": "pop_total", "uf": "CE", "n": 2}),
@@ -80,14 +81,14 @@ def test_destaques_derivados_da_tool(gq: GeoQuery) -> None:
         ]
     )
     trace: list[dict[str, Any]] = []
-    out = run_turn(gq, client, SessionStore(), req("top 2 do CE"), trace=trace)
+    out = run_turn(ctx, client, SessionStore(), req("top 2 do CE"), trace=trace)
     assert out.destaques is not None and out.destaques.camada == "municipio"
     assert out.destaques.codigos[0] == "2304400"  # Fortaleza, direto da tool
     assert out.dados is not None and out.dados[0]["nm_mun"] == "Fortaleza"
     assert trace[0]["tool"] == "ranking_municipios" and not trace[0]["error"]
 
 
-def test_autocorrecao_apos_erro_de_metrica(gq: GeoQuery) -> None:
+def test_autocorrecao_apos_erro_de_metrica(ctx: Contexto) -> None:
     client = FakeClient(
         [
             tool_call("ranking_municipios", {"metrica": "pib_percapita"}),
@@ -95,7 +96,7 @@ def test_autocorrecao_apos_erro_de_metrica(gq: GeoQuery) -> None:
             texto("O município mais populoso do Brasil é São Paulo."),
         ]
     )
-    out = run_turn(gq, client, SessionStore(), req("maior município"))
+    out = run_turn(ctx, client, SessionStore(), req("maior município"))
     assert "São Paulo" in out.resposta
     assert out.destaques is not None and out.destaques.codigos == ["3550308"]
     # o erro voltou ao LLM como tool result
@@ -108,42 +109,42 @@ def test_autocorrecao_apos_erro_de_metrica(gq: GeoQuery) -> None:
     assert tool_msgs
 
 
-def test_segunda_falha_encerra_com_mensagem_amigavel(gq: GeoQuery) -> None:
+def test_segunda_falha_encerra_com_mensagem_amigavel(ctx: Contexto) -> None:
     client = FakeClient(
         [
             tool_call("ranking_municipios", {"metrica": "pib_percapita"}),
             tool_call("ranking_municipios", {"metrica": "idh"}),
         ]
     )
-    out = run_turn(gq, client, SessionStore(), req("ranking por pib"))
+    out = run_turn(ctx, client, SessionStore(), req("ranking por pib"))
     assert out.resposta == MSG_ERRO_TOOLS
 
 
-def test_teto_de_iteracoes(gq: GeoQuery) -> None:
+def test_teto_de_iteracoes(ctx: Contexto) -> None:
     client = FakeClient([tool_call("listar_metricas", {}) for _ in range(settings.max_tool_iters)])
-    out = run_turn(gq, client, SessionStore(), req("loop"))
+    out = run_turn(ctx, client, SessionStore(), req("loop"))
     assert out.resposta == MSG_LIMITE_ITERACOES
     assert len(client.requests) == settings.max_tool_iters
 
 
-def test_multi_turno_preserva_historico(gq: GeoQuery) -> None:
+def test_multi_turno_preserva_historico(ctx: Contexto) -> None:
     store = SessionStore()
     client = FakeClient([texto("Oi!"), texto("Continuando…")])
-    run_turn(gq, client, store, req("primeira pergunta"))
-    run_turn(gq, client, store, req("segunda pergunta"))
+    run_turn(ctx, client, store, req("primeira pergunta"))
+    run_turn(ctx, client, store, req("segunda pergunta"))
     ultimos = client.requests[-1]["messages"]
     conteudos = [m.get("content") or "" for m in ultimos]
     assert any("primeira pergunta" in c for c in conteudos)  # historico presente no turno 2
 
 
-def test_contexto_do_mapa_vai_na_mensagem(gq: GeoQuery) -> None:
+def test_contexto_do_mapa_vai_na_mensagem(ctx: Contexto) -> None:
     client = FakeClient([texto("Você está vendo a região de Curitiba.")])
     r = ChatRequest(
         pergunta="o que estou vendo?",
         session_id="s-ctx",
         contexto_mapa=ContextoMapa(centro=(-49.27, -25.43), zoom=11, camadas_ativas=["setor"]),
     )
-    run_turn(gq, client, SessionStore(), r)
+    run_turn(ctx, client, SessionStore(), r)
     user_msg = client.requests[0]["messages"][-1]
     assert "[contexto do mapa:" in user_msg["content"] and "-49.27" in user_msg["content"]
 
@@ -169,11 +170,11 @@ def test_retry_after_conta_a_janela_deslizante() -> None:
     assert rl.segundos_para_liberar("ip1", now=9.9) == 1  # nunca devolve 0 estourado
 
 
-def test_trim_corta_em_fronteira_de_turno(gq: GeoQuery) -> None:
+def test_trim_corta_em_fronteira_de_turno(ctx: Contexto) -> None:
     store = SessionStore(max_msgs=4)
     client = FakeClient([texto(f"r{i}") for i in range(4)])
     for i in range(4):
-        run_turn(gq, client, store, req(f"pergunta {i}", session_id="s-trim"))
+        run_turn(ctx, client, store, req(f"pergunta {i}", session_id="s-trim"))
     msgs = store.get("s-trim").messages
     assert len(msgs) <= 4 + 1  # poda aplicada (fronteira pode segurar 1 turno extra)
     assert msgs[0]["role"] == "user"  # nunca comeca em tool/assistant orfao

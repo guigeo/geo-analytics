@@ -10,11 +10,13 @@ Prepare o banco com:
 
 from __future__ import annotations
 
+import math
 import os
 import uuid
 
 import psycopg
 import pytest
+from psycopg import sql
 
 from geo_agent.acervo import Acervo, DesenhoInvalido, nome_do_schema
 from geo_agent.cliente import clientes_disponiveis
@@ -215,3 +217,70 @@ def test_papel_do_acervo_nao_le_o_geodata(acervo: Acervo) -> None:
         pytest.skip("o papel do acervo ja nao conecta no geodata — melhor ainda")
     with con, con.cursor() as cur, pytest.raises(psycopg.errors.InsufficientPrivilege):
         cur.execute("select count(*) from ibge.municipio")
+
+
+# --- buffer: o circulo e do servidor (fase 3) ---------------------------------
+
+CENTRO = {"type": "Point", "coordinates": [-46.6333, -23.5505]}
+
+
+def test_buffer_e_gerado_pelo_postgis_a_partir_do_centro(acervo: Acervo, limpo: list[str]) -> None:
+    """O front manda um Point e um raio; quem faz o circulo e o banco.
+
+    E a Decisao 2 do DESIGN: o navegador nao tem elipsoide, e o circulo que ele desenha
+    serve para a pessoa ver enquanto digita — nao para virar o dado.
+    """
+    d = acervo.criar(
+        tipo="buffer", nome=f"buf-{uuid.uuid4().hex[:8]}", geometria=CENTRO, raio_m=500
+    )
+    limpo.append(d["id"])
+
+    assert d["tipo"] == "buffer"
+    assert d["raio_m"] == 500
+    # Poligono, e nao o Point que entrou: se o centro tivesse sido gravado como
+    # geometria, o mapa nao teria area nenhuma para pintar.
+    assert d["geometria"]["type"] == "Polygon"
+    assert len(d["geometria"]["coordinates"][0]) - 1 == 64
+
+
+def test_area_do_buffer_bate_com_o_circulo(acervo: Acervo, limpo: list[str]) -> None:
+    """O raio e em METROS, e e isso que o `::geography` garante.
+
+    Sem o cast, o PostGIS leria 500 como 500 GRAUS e devolveria um poligono do tamanho
+    do planeta — que passaria por todo CHECK da tabela sem reclamar de nada.
+    """
+    raio = 500.0
+    d = acervo.criar(
+        tipo="buffer", nome=f"buf-{uuid.uuid4().hex[:8]}", geometria=CENTRO, raio_m=raio
+    )
+    limpo.append(d["id"])
+
+    esperado = math.pi * raio**2
+    # Poligono inscrito de 64 lados: area 0,15% menor que o circulo, sempre para baixo.
+    assert 0.99 < d["area_m2"] / esperado < 1.0
+
+
+def test_buffer_sem_raio_e_recusado(acervo: Acervo) -> None:
+    """Vira 422 e nao 500: e erro de quem pediu, nao defeito do servidor."""
+    with pytest.raises(DesenhoInvalido):
+        acervo.criar(tipo="buffer", nome="sem raio", geometria=CENTRO)
+
+
+def test_centro_e_raio_ficam_guardados_ao_lado_do_poligono(
+    acervo: Acervo, limpo: list[str]
+) -> None:
+    """Nao e redundancia: com centro e raio da para regerar o circulo com outro metodo
+    sem migrar dado, o que um poligono sozinho nao permitiria."""
+    d = acervo.criar(
+        tipo="buffer", nome=f"buf-{uuid.uuid4().hex[:8]}", geometria=CENTRO, raio_m=800
+    )
+    limpo.append(d["id"])
+
+    guardado = acervo._le(
+        sql.SQL(
+            "select ST_AsGeoJSON(ST_Transform(centro, 4326))::json as c, raio_m from {} where id = %s"
+        ).format(acervo._tabela()),
+        [d["id"]],
+    )[0]
+    assert guardado["raio_m"] == 800
+    assert guardado["c"]["coordinates"] == pytest.approx(CENTRO["coordinates"], abs=1e-9)

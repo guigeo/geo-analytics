@@ -7,6 +7,7 @@ import {
   faltam,
   geometriaParaSalvar,
   semUltimoVertice,
+  tracadoParaDesenhar,
 } from "./estado";
 import type { Coordenada } from "./geometria";
 
@@ -102,5 +103,55 @@ describe("comRaio", () => {
     const e = comRaio(comVertice(criarEstadoDesenho("buffer"), A), 500);
     expect(e.raioM).toBe(500);
     expect(e.coordenadas).toEqual([A]);
+  });
+});
+
+describe("o buffer no estado do traçado", () => {
+  const CENTRO: Coordenada = [-46.6333, -23.5505];
+
+  it("um segundo clique move o centro em vez de acrescentar outro", () => {
+    const outro: Coordenada = [-46.64, -23.55];
+    const estado = comVertice(comVertice(criarEstadoDesenho("buffer"), CENTRO), outro);
+    expect(estado.coordenadas).toEqual([outro]);
+  });
+
+  it("com centro mas sem raio não dá para salvar, e o painel diz o quê", () => {
+    const estado = comVertice(criarEstadoDesenho("buffer"), CENTRO);
+    expect(estado.completo).toBe(false);
+    expect(estado.impedimento).toContain("raio");
+    expect(geometriaParaSalvar(estado)).toBeNull();
+  });
+
+  it("o que vai ao servidor é o CENTRO, não o círculo", () => {
+    // O círculo definitivo é gerado pelo PostGIS; mandar o daqui faria o servidor
+    // guardar a aproximação em vez de calcular a boa.
+    const estado = comRaio(comVertice(criarEstadoDesenho("buffer"), CENTRO), 500);
+    expect(estado.completo).toBe(true);
+    expect(geometriaParaSalvar(estado)).toEqual({ type: "Point", coordinates: CENTRO });
+  });
+
+  it("o traçado desenha UM vértice e um anel de 64 pontos", () => {
+    // A separação existe por isto: bolinha em cada ponto do círculo sugeriria que dá
+    // para arrastá-los, e não dá — quem os move é o campo de raio.
+    const { vertices, anel } = tracadoParaDesenhar(
+      comRaio(comVertice(criarEstadoDesenho("buffer"), CENTRO), 500),
+    );
+    expect(vertices).toEqual([CENTRO]);
+    expect(anel).toHaveLength(64);
+  });
+
+  it("sem raio ainda não há anel para desenhar", () => {
+    const { vertices, anel } = tracadoParaDesenhar(
+      comVertice(criarEstadoDesenho("buffer"), CENTRO),
+    );
+    expect(vertices).toEqual([CENTRO]);
+    expect(anel).toBeNull();
+  });
+
+  it("trocar de modo larga o raio junto", () => {
+    // Um raio sobrevivente faria a próxima área desenhada parecer pronta para salvar
+    // por um motivo que não está na tela.
+    const buffer = comRaio(comVertice(criarEstadoDesenho("buffer"), CENTRO), 500);
+    expect(criarEstadoDesenho("poligono", buffer.coordenadas).raioM).toBeNull();
   });
 });

@@ -20,10 +20,13 @@ export interface PaginaDeDesenhos {
 export interface DesenhoNovo {
   tipo: TipoDesenho;
   nome: string;
+  /** No buffer é o CENTRO (um Point): o círculo é gerado pelo PostGIS ao salvar. */
   geometria: GeoJSON.Geometry;
   categoria?: string | null;
   cor?: string;
   observacao?: string | null;
+  /** Só no buffer, e ali obrigatório. Em metros. */
+  raio_m?: number | null;
 }
 
 export interface DesenhoEdicao {

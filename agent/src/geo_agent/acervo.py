@@ -279,13 +279,50 @@ class Acervo:
         cor: str = "#2563eb",
         observacao: str | None = None,
         origem: str = "desenho",
+        raio_m: float | None = None,
     ) -> dict[str, Any]:
-        """Grava um desenho. A geometria chega como GeoJSON e é validada antes do INSERT."""
+        """Grava um desenho. A geometria chega como GeoJSON e é validada antes do INSERT.
+
+        **No buffer, `geometria` é o CENTRO e o círculo é gerado aqui.** É a Decisão 2
+        do DESIGN, e a razão é que o navegador não tem elipsoide: o círculo que ele
+        desenha é sobre uma esfera de raio médio, com erro medido de -0,11% a +0,45%.
+        Meio metro num raio de 500 m não muda o que se vê na tela e mudaria o que se
+        responde sobre a área — então a aproximação fica na pré-visualização e a
+        geometria que PERSISTE sai do `ST_Buffer` sobre `geography`.
+
+        Centro e raio ficam guardados ao lado do polígono. Não é redundância: com eles
+        dá para regenerar o círculo com mais segmentos, ou noutro método, sem migrar
+        dado nenhum — o que um polígono sozinho não permitiria.
+        """
         self._valida_geometria(geometria)
+        if tipo == "buffer" and (raio_m is None or raio_m <= 0):
+            raise DesenhoInvalido("um buffer precisa de raio em metros")
+        # O ponto que chega, ja no CRS da casa. Serve de geometria final (ponto e
+        # poligono) ou de centro do buffer, e por isso e nomeado uma vez so.
+        entrada = sql.SQL("ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(%s::json), 4326), 4674)")
+        if tipo == "buffer":
+            # `::geography` e o ponto inteiro da conta: o raio e em METROS sobre o
+            # elipsoide, nao em graus. Sem o cast, 500 viraria 500 graus.
+            #
+            # `quad_segs=16` da 64 lados, e o numero e o mesmo do `circuloAproximado`
+            # do front por um motivo: o poligono inscrito tem area MENOR que o circulo,
+            # e quanto menos lados, menor. Com o padrao (32 lados) o buffer salvo saia
+            # 0,63% menor que o circulo, enquanto a tela mostrava um de 64 lados,
+            # 0,16% menor — medido em 2026-09-02. A pessoa via uma area antes de salvar
+            # e outra depois, sem nada explicar a diferenca.
+            geometria_sql = sql.SQL(
+                "ST_Buffer({}::geography, %s, 'quad_segs=16')::geometry"
+            ).format(entrada)
+            centro_sql = entrada
+        else:
+            geometria_sql = entrada
+            centro_sql = sql.SQL("NULL")
+
         rows = self._escreve(
             sql.SQL("""
-                insert into {tabela} (tipo, nome, categoria, cor, observacao, origem, geom)
-                values (%s, %s, %s, %s, %s, %s,
+                insert into {tabela}
+                    (tipo, nome, categoria, cor, observacao, origem, raio_m, geom, centro)
+                values (%s, %s, %s, %s, %s, %s, %s,
                         -- Duas coisas acontecem aqui, e a ordem importa.
                         --
                         -- O cast `::json` e obrigatorio: sem ele o parametro chega
@@ -300,12 +337,41 @@ class Acervo:
                         -- e seria errado do mesmo jeito: afirmaria um datum que
                         -- ninguem verificou. Conversao explicita custa nada aqui e
                         -- evita a pergunta "em que CRS isso esta, afinal".
-                        ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(%s::json), 4326), 4674))
+                        {geom}, {centro})
                 returning {campos}
-            """).format(tabela=self._tabela(), campos=_CAMPOS),
-            [tipo, nome.strip(), categoria, cor, observacao, origem, json.dumps(geometria)],
+            """).format(
+                tabela=self._tabela(), campos=_CAMPOS, geom=geometria_sql, centro=centro_sql
+            ),
+            self._parametros_do_insert(
+                tipo, nome, categoria, cor, observacao, origem, raio_m, geometria
+            ),
         )
         return rows[0]
+
+    @staticmethod
+    def _parametros_do_insert(
+        tipo: str,
+        nome: str,
+        categoria: str | None,
+        cor: str,
+        observacao: str | None,
+        origem: str,
+        raio_m: float | None,
+        geometria: dict[str, Any],
+    ) -> list[Any]:
+        """A ordem dos %s do INSERT, que muda com o tipo.
+
+        No buffer o GeoJSON aparece DUAS vezes — uma dentro do ST_Buffer, outra na
+        coluna `centro` — e o raio entra entre elas. Montar a lista aqui, ao lado da
+        consulta, é o que evita a classe de erro em que um parâmetro escorrega de
+        posição e o banco aceita porque os tipos por acaso batem.
+        """
+        geojson = json.dumps(geometria)
+        params: list[Any] = [tipo, nome.strip(), categoria, cor, observacao, origem, raio_m]
+        params.append(geojson)
+        if tipo == "buffer":
+            params.extend([raio_m, geojson])
+        return params
 
     def atualizar(self, id_: str, campos: dict[str, Any]) -> dict[str, Any] | None:
         """Edita ATRIBUTOS. A geometria não muda por aqui.

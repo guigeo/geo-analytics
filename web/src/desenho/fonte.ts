@@ -101,33 +101,38 @@ export const camadasTracado: LayerSpecification[] = [
 ];
 
 /**
- * O traçado em andamento: vértices, linha e — a partir de três — a área prévia.
+ * O traçado em andamento: os vértices marcados, e o anel que eles (ou o raio) formam.
  *
- * Mesma tradução de `geometriaDaMedicao`, e pelo mesmo motivo: o anel fecha repetindo
- * o primeiro vértice, senão o MapLibre recebe polígono degenerado.
+ * Recebe os dois separados porque no buffer eles divergem — um vértice clicado, 64
+ * pontos de círculo — e quem sabe dessa diferença é o `estado.ts`, com
+ * `tracadoParaDesenhar`. Aqui só se traduz para o que o MapLibre consome.
+ *
+ * O anel fecha repetindo o primeiro ponto, como o GeoJSON exige; sem isso o MapLibre
+ * recebe polígono degenerado.
  */
 export function geometriaDoTracado(
-  coordenadas: readonly [number, number][],
+  vertices: readonly [number, number][],
+  anel: readonly [number, number][] | null = null,
 ): GeoJSON.FeatureCollection {
-  if (coordenadas.length === 0) return COLECAO_VAZIA;
+  if (vertices.length === 0 && !anel) return COLECAO_VAZIA;
 
-  const feicoes: GeoJSON.Feature[] = coordenadas.map((c) => ({
+  const feicoes: GeoJSON.Feature[] = vertices.map((c) => ({
     type: "Feature",
     geometry: { type: "Point", coordinates: c },
     properties: {},
   }));
 
-  if (coordenadas.length >= 3) {
+  if (anel && anel.length >= 3) {
     feicoes.push({
       type: "Feature",
-      geometry: { type: "Polygon", coordinates: [[...coordenadas, coordenadas[0]]] },
+      geometry: { type: "Polygon", coordinates: [[...anel, anel[0]]] },
       properties: {},
     });
   }
-  if (coordenadas.length >= 2) {
+  if (anel && anel.length >= 2) {
     feicoes.push({
       type: "Feature",
-      geometry: { type: "LineString", coordinates: [...coordenadas, coordenadas[0]] },
+      geometry: { type: "LineString", coordinates: [...anel, anel[0]] },
       properties: {},
     });
   }

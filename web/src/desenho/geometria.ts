@@ -52,6 +52,17 @@ export const VERTICES_MINIMOS: Record<ModoDesenho, number> = {
  */
 export const MAX_VERTICES = 50_000;
 
+/**
+ * Teto do raio do buffer: 50 km.
+ *
+ * Não é limite geográfico — a Decisão 4 do DESIGN diz para avisar, não recusar, e um
+ * buffer de 64 segmentos custa o mesmo payload em qualquer raio. É limite de CAMPO DE
+ * TEXTO, que é outra coisa: digitar 500000 querendo 500 é escorregão, não intenção, e
+ * a diferença entre os dois é invisível depois de salvo. 50 km é o maior que foi
+ * medido (49.185 setores em 640 ms), então é o maior que se sabe que responde.
+ */
+export const MAX_RAIO_M = 50_000;
+
 export interface Invalidez {
   motivo: string;
 }
@@ -62,7 +73,11 @@ export interface Invalidez {
  * Devolve o motivo em vez de um booleano porque a mensagem é a metade útil: um
  * polígono recusado sem explicação leva a pessoa a clicar de novo do mesmo jeito.
  */
-export function validar(modo: ModoDesenho, coordenadas: readonly Coordenada[]): Invalidez | null {
+export function validar(
+  modo: ModoDesenho,
+  coordenadas: readonly Coordenada[],
+  raioM: number | null = null,
+): Invalidez | null {
   const minimo = VERTICES_MINIMOS[modo];
   if (coordenadas.length < minimo) {
     return {
@@ -74,6 +89,16 @@ export function validar(modo: ModoDesenho, coordenadas: readonly Coordenada[]): 
   }
   if (coordenadas.length > MAX_VERTICES) {
     return { motivo: `O desenho tem ${coordenadas.length} pontos; o limite é ${MAX_VERTICES}.` };
+  }
+  // O buffer é o único modo em que a geometria não sai só dos cliques: sem raio há um
+  // centro e mais nada. A regra vive aqui junto das outras, e não no `estado.ts`, para
+  // "o que falta para poder salvar" ter um dono só.
+  if (modo === "buffer") {
+    if (raioM === null || Number.isNaN(raioM)) return { motivo: "Informe o raio em metros." };
+    if (raioM <= 0) return { motivo: "O raio precisa ser maior que zero." };
+    if (raioM > MAX_RAIO_M) {
+      return { motivo: `O raio máximo é ${MAX_RAIO_M / 1000} km.` };
+    }
   }
   if (modo === "poligono") {
     if (temVerticesRepetidosSeguidos(coordenadas)) {
@@ -143,11 +168,61 @@ export function paraGeoJSON(
   return { type: "Polygon", coordinates: [[...coordenadas, coordenadas[0]]] };
 }
 
+/**
+ * Círculo geodésico em volta de um ponto, para PRÉ-VISUALIZAR enquanto se digita o raio.
+ *
+ * **Não é a geometria que fica.** Quem gera a definitiva é o PostGIS, com
+ * `ST_Buffer` sobre `geography`, no momento de salvar (Decisão 2 do DESIGN): lá o
+ * cálculo é sobre o elipsoide, aqui sobre uma esfera de raio médio — a mesma
+ * aproximação de `map/medicao.ts`, cujo erro foi medido em -0,11% a +0,45%. Meio
+ * metro num raio de 500 m não muda o que se vê na tela, e mudaria o que se responde
+ * sobre a área; por isso os dois cálculos existem, cada um onde importa.
+ *
+ * 64 segmentos: abaixo disso o polígono aparece como polígono num zoom de rua.
+ */
+export function circuloAproximado(centro: Coordenada, raioM: number): Coordenada[] {
+  const SEGMENTOS = 64;
+  const RAIO_DA_TERRA_M = 6_371_008.8;
+  const [lon, lat] = centro;
+  const latRad = (lat * Math.PI) / 180;
+  const lonRad = (lon * Math.PI) / 180;
+  const angular = raioM / RAIO_DA_TERRA_M;
+
+  const pontos: Coordenada[] = [];
+  for (let i = 0; i < SEGMENTOS; i += 1) {
+    // Fórmula do ponto de destino: a partir do centro, a `angular` radianos, no rumo
+    // `azimute`. Trabalhar em rumo e não em "lon + delta" é o que mantém o círculo
+    // redondo longe do equador — em latitude alta, um grau de longitude é bem mais
+    // curto que um de latitude, e somar deltas iguais daria uma elipse.
+    const azimute = (2 * Math.PI * i) / SEGMENTOS;
+    const latPonto = Math.asin(
+      Math.sin(latRad) * Math.cos(angular) +
+        Math.cos(latRad) * Math.sin(angular) * Math.cos(azimute),
+    );
+    const lonPonto =
+      lonRad +
+      Math.atan2(
+        Math.sin(azimute) * Math.sin(angular) * Math.cos(latRad),
+        Math.cos(angular) - Math.sin(latRad) * Math.sin(latPonto),
+      );
+    pontos.push([(lonPonto * 180) / Math.PI, (latPonto * 180) / Math.PI]);
+  }
+  return pontos;
+}
+
 /** A área do traçado em texto legível, ou `null` enquanto não há área a mostrar. */
 export function areaFormatada(
   modo: ModoDesenho,
   coordenadas: readonly Coordenada[],
+  raioM: number | null = null,
 ): string | null {
+  if (modo === "buffer") {
+    if (coordenadas.length === 0 || !raioM || raioM <= 0) return null;
+    // Do círculo aproximado, e não de πr²: é a área da geometria que está NA TELA,
+    // e é ela que a pessoa está conferindo. O número definitivo vem do servidor
+    // depois de salvar, e difere em fração de por cento.
+    return formatarMedida("area", areaEmMetrosQuadrados(circuloAproximado(coordenadas[0], raioM)));
+  }
   if (modo === "ponto" || coordenadas.length < 3) return null;
   return formatarMedida("area", areaEmMetrosQuadrados(coordenadas));
 }

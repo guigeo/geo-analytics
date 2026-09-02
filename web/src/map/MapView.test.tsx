@@ -65,6 +65,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
   const onEncerrarMedicao = vi.fn();
   const onVerticeDesenho = vi.fn();
   const onCancelarDesenho = vi.fn();
+  const onEncerrarDesenho = vi.fn();
   const onSelect = vi.fn();
   const resultado = render(
     <MapView
@@ -79,6 +80,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
       desenho={criarEstadoDesenho(null)}
       onVerticeDesenho={onVerticeDesenho}
       onCancelarDesenho={onCancelarDesenho}
+      onEncerrarDesenho={onEncerrarDesenho}
       desenhos={COLECAO_VAZIA}
       {...props}
     />,
@@ -89,6 +91,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
     onEncerrarMedicao,
     onVerticeDesenho,
     onCancelarDesenho,
+    onEncerrarDesenho,
     onSelect,
   };
 }
@@ -137,6 +140,7 @@ describe("MapView e a medição", () => {
         desenho={criarEstadoDesenho(null)}
         onVerticeDesenho={vi.fn()}
         onCancelarDesenho={vi.fn()}
+        onEncerrarDesenho={vi.fn()}
         desenhos={COLECAO_VAZIA}
       />,
     );
@@ -246,5 +250,48 @@ describe("MapView e o desenho", () => {
     montar({ desenho: criarEstadoDesenho("ponto", []) });
     handlers.get("mousemove")?.({ point: {} });
     expect(canvas.style.cursor).toBe("crosshair");
+  });
+});
+
+// O gesto de encerrar o traçado (fase 2). O duplo clique é o único lugar do desenho em
+// que o MapLibre entrega DOIS eventos para um gesto, e é onde isso importa.
+describe("MapView e o encerramento do traçado", () => {
+  const dobrarClique = () => handlers.get("dblclick")?.({});
+
+  it("duplo clique encerra, e avisa que o último vértice veio repetido", () => {
+    // O MapLibre dispara `click` nas duas batidas antes do `dblclick`: o último
+    // vértice entrou duas vezes, e quem limpa isso é o App.
+    const { onEncerrarDesenho } = montar({ desenho: criarEstadoDesenho("poligono", []) });
+    dobrarClique();
+    expect(onEncerrarDesenho).toHaveBeenCalledWith(true);
+  });
+
+  it("fora do desenho, o duplo clique não é da ferramenta", () => {
+    const { onEncerrarDesenho } = montar();
+    dobrarClique();
+    expect(onEncerrarDesenho).not.toHaveBeenCalled();
+  });
+
+  it("Enter encerra sem duplicar vértice, e só com o traçado pronto", () => {
+    const pronto = montar({
+      desenho: criarEstadoDesenho("poligono", [
+        [-46.66, -23.57],
+        [-46.65, -23.57],
+        [-46.65, -23.56],
+      ]),
+    });
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(pronto.onEncerrarDesenho).toHaveBeenCalledWith(false);
+    pronto.unmount();
+
+    // Com dois vértices não há polígono, e Enter não pode fingir que há.
+    const incompleto = montar({
+      desenho: criarEstadoDesenho("poligono", [
+        [-46.66, -23.57],
+        [-46.65, -23.57],
+      ]),
+    });
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(incompleto.onEncerrarDesenho).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,8 @@
-import { Check, Hexagon, MapPin, Undo2, X, type LucideIcon } from "lucide-react";
+import { Check, Circle, Hexagon, MapPin, Undo2, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { areaFormatada, type ModoDesenho } from "./geometria";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { areaFormatada, MAX_RAIO_M, type ModoDesenho } from "./geometria";
 import { faltam, type EstadoDesenho } from "./estado";
 
 interface Props {
@@ -10,6 +12,7 @@ interface Props {
   onDesfazer: () => void;
   onCancelar: () => void;
   onSalvar: () => void;
+  onMudarRaio: (raioM: number | null) => void;
   /** Acervo fora do ar. Desenhar segue possível; salvar, não — e a barra diz por quê. */
   acervoIndisponivel?: boolean;
 }
@@ -21,20 +24,19 @@ interface Ferramenta {
   dica: string;
 }
 
-/**
- * Duas ferramentas, não três.
- *
- * O buffer é a fase 3 do manifesto (itens 24 e 25 do DESIGN): ele depende do círculo
- * geodésico no cliente e do `ST_Buffer` no servidor, e nenhum dos dois existe ainda.
- * Um terceiro botão desabilitado prometeria em tela o que o backend recusaria.
- */
 const FERRAMENTAS: Ferramenta[] = [
   { modo: "ponto", rotulo: "Ponto", icone: MapPin, dica: "Clique no mapa para marcar o lugar." },
   {
     modo: "poligono",
     rotulo: "Área",
     icone: Hexagon,
-    dica: "Clique para marcar cada vértice do contorno.",
+    dica: "Clique para marcar cada vértice. Duplo clique ou Enter encerra.",
+  },
+  {
+    modo: "buffer",
+    rotulo: "Raio",
+    icone: Circle,
+    dica: "Clique o centro e informe o raio em metros.",
   },
 ];
 
@@ -56,12 +58,13 @@ export function BarraFerramentas({
   onDesfazer,
   onCancelar,
   onSalvar,
+  onMudarRaio,
   acervoIndisponivel = false,
 }: Props) {
   const desenhando = estado.modo !== null;
   const vertices = estado.coordenadas.length;
   const restam = faltam(estado);
-  const area = estado.modo ? areaFormatada(estado.modo, estado.coordenadas) : null;
+  const area = estado.modo ? areaFormatada(estado.modo, estado.coordenadas, estado.raioM) : null;
 
   return (
     <section
@@ -72,7 +75,7 @@ export function BarraFerramentas({
         Desenhar no mapa
       </p>
 
-      <div className="mt-2 grid grid-cols-2 gap-1.5">
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
         {FERRAMENTAS.map(({ modo, rotulo, icone: Icone }) => {
           const ativo = estado.modo === modo;
           return (
@@ -97,26 +100,61 @@ export function BarraFerramentas({
             {FERRAMENTAS.find((f) => f.modo === estado.modo)?.dica} Esc cancela.
           </p>
 
+          {/* O raio aparece no modo buffer e em nenhum outro: é o único em que a
+              geometria não sai só dos cliques. Fica ANTES do resumo porque é entrada,
+              e o resumo abaixo já reflete o que foi digitado. */}
+          {estado.modo === "buffer" && (
+            <div className="mt-2.5">
+              <label htmlFor="desenho-raio" className="block text-xs font-medium">
+                Raio em metros
+              </label>
+              <Input
+                id="desenho-raio"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAX_RAIO_M}
+                value={estado.raioM ?? ""}
+                onChange={(e) => {
+                  const valor = e.target.value.trim();
+                  onMudarRaio(valor === "" ? null : Number(valor));
+                }}
+                placeholder="500"
+                className="mt-1 h-8 text-sm"
+              />
+            </div>
+          )}
+
           {/* aria-live: quem usa leitor de tela acompanha o traçado crescer. Sem
               isto, a única saída da ferramenta enquanto se desenha seria visual. */}
           <div className="mt-2.5 rounded-md bg-primary/10 px-3 py-2" aria-live="polite">
             <p className="text-[0.6875rem] text-primary">
-              {vertices} ponto{vertices === 1 ? "" : "s"}
+              {estado.modo === "buffer"
+                ? vertices === 0
+                  ? "Sem centro"
+                  : "Centro marcado"
+                : `${vertices} ponto${vertices === 1 ? "" : "s"}`}
             </p>
-            <p className="mt-0.5 text-sm font-semibold tabular-nums">
+            {/* Uma linha só para o estado, e não duas. O impedimento É o estado
+                enquanto não dá para salvar — mostrá-lo aqui e repeti-lo num alerta
+                embaixo faria a barra dizer a mesma coisa duas vezes. E ele é a metade
+                útil da recusa: "inválido" sozinho leva a pessoa a clicar de novo do
+                mesmo jeito (AT-009). Vermelho quando é recusa, normal quando é só
+                "ainda falta". */}
+            <p
+              className={cn(
+                "mt-0.5 text-sm font-semibold",
+                estado.completo && "tabular-nums",
+                !estado.completo && estado.impedimento && "text-destructive",
+              )}
+            >
               {restam > 0
                 ? `Marque mais ${restam} ponto${restam === 1 ? "" : "s"}`
-                : (area ?? "Pronto para salvar")}
+                : estado.completo
+                  ? (area ?? "Pronto para salvar")
+                  : (estado.impedimento ?? "Traçado incompleto")}
             </p>
           </div>
-
-          {/* O impedimento é a metade útil da recusa: "inválido" sozinho leva a
-              pessoa a clicar de novo do mesmo jeito (AT-009). */}
-          {estado.impedimento && (
-            <p role="alert" className="mt-2 text-[0.6875rem] leading-4 text-destructive">
-              {estado.impedimento}
-            </p>
-          )}
 
           {acervoIndisponivel && (
             <p className="mt-2 text-[0.6875rem] leading-4 text-muted-foreground">

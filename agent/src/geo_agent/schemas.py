@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ContextoMapa(BaseModel):
@@ -52,6 +52,30 @@ class DesenhoNovo(BaseModel):
     categoria: str | None = Field(None, max_length=100)
     cor: str = Field("#2563eb", pattern=r"^#[0-9a-fA-F]{6}$")
     observacao: str | None = Field(None, max_length=2000)
+    # So no buffer, e ai obrigatorio. O teto de 50 km e o maior raio MEDIDO (49.185
+    # setores em 640 ms) — nao e limite geografico, e o limite do que se sabe que
+    # responde. O front tem o mesmo numero em `MAX_RAIO_M`, e a razao de existir nos
+    # dois e a de sempre: um avisa cedo, o outro protege.
+    raio_m: float | None = Field(None, gt=0, le=50_000)
+
+    @model_validator(mode="after")
+    def _buffer_precisa_de_centro_e_raio(self) -> DesenhoNovo:
+        """No buffer, `geometria` e o CENTRO e o raio e obrigatorio.
+
+        O circulo definitivo e gerado pelo PostGIS com ST_Buffer sobre geography, e nao
+        pelo navegador (Decisao 2 do DESIGN): o front manda um Point, nao um poligono
+        de 64 lados. Sem esta validacao, um buffer sem raio viraria um desenho de tipo
+        'buffer' cuja geometria e um ponto — e ninguem descobriria ate o mapa nao ter
+        o que pintar.
+        """
+        if self.tipo == "buffer":
+            if self.raio_m is None:
+                raise ValueError("um buffer precisa de raio_m")
+            if self.geometria.get("type") != "Point":
+                raise ValueError("no buffer, geometria deve ser o centro (um Point)")
+        elif self.raio_m is not None:
+            raise ValueError("raio_m so faz sentido no tipo 'buffer'")
+        return self
 
 
 class DesenhoEdicao(BaseModel):

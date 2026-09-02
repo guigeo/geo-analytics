@@ -21,7 +21,7 @@ import {
   geometriaDoTracado,
   TRACADO_SOURCE_ID,
 } from "@/desenho/fonte";
-import type { EstadoDesenho } from "@/desenho/estado";
+import { tracadoParaDesenhar, type EstadoDesenho } from "@/desenho/estado";
 
 export interface SelectedFeature {
   layerId: string;
@@ -69,6 +69,14 @@ interface Props {
   /** Esc: cancela o traçado. */
   onCancelarDesenho: () => void;
   /**
+   * Duplo clique ou Enter: encerra o traçado e vai para o formulário.
+   *
+   * Recebe `duplicouUltimo` porque o duplo clique deixa lixo: o MapLibre dispara
+   * `click` nas DUAS batidas antes do `dblclick`, então o último vértice entrou duas
+   * vezes. Quem decide o que fazer com isso é o `App`, que é dono dos vértices.
+   */
+  onEncerrarDesenho: (duplicouUltimo: boolean) => void;
+  /**
    * O acervo do cliente, como `/api/desenhos/geometrias` o devolve. Vem vazio também
    * quando o acervo está fora do ar — o mapa segue de pé (AT-012).
    */
@@ -90,6 +98,7 @@ export function MapView({
   desenho,
   onVerticeDesenho,
   onCancelarDesenho,
+  onEncerrarDesenho,
   desenhos,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +125,8 @@ export function MapView({
   onVerticeDesenhoRef.current = onVerticeDesenho;
   const onCancelarDesenhoRef = useRef(onCancelarDesenho);
   onCancelarDesenhoRef.current = onCancelarDesenho;
+  const onEncerrarDesenhoRef = useRef(onEncerrarDesenho);
+  onEncerrarDesenhoRef.current = onEncerrarDesenho;
   const desenhosRef = useRef(desenhos);
   desenhosRef.current = desenhos;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
@@ -188,6 +199,15 @@ export function MapView({
       }
     });
 
+    // Duplo clique encerra o traçado — o gesto que toda ferramenta de desenho tem, e
+    // que só existe aqui porque o zoom de duplo clique está desligado enquanto se
+    // desenha. Sem ele, terminar um polígono exige tirar a mão do mapa e achar um
+    // botão, no meio de um gesto que é todo de mapa.
+    map.on("dblclick", () => {
+      if (!desenhoRef.current.modo) return;
+      onEncerrarDesenhoRef.current(desenhoRef.current.modo === "poligono");
+    });
+
     map.on("mousemove", (e) => {
       if (medicaoRef.current.modo || desenhoRef.current.modo) {
         map.getCanvas().style.cursor = "crosshair";
@@ -202,9 +222,18 @@ export function MapView({
     // no botão do cabeçalho está com o foco lá — e o atalho tem de valer mesmo
     // assim, que é o que o painel promete em texto.
     const aoTeclar = (ev: KeyboardEvent) => {
-      if (ev.key !== "Escape") return;
-      if (medicaoRef.current.modo) onEncerrarRef.current();
-      if (desenhoRef.current.modo) onCancelarDesenhoRef.current();
+      if (ev.key === "Escape") {
+        if (medicaoRef.current.modo) onEncerrarRef.current();
+        if (desenhoRef.current.modo) onCancelarDesenhoRef.current();
+        return;
+      }
+      // Enter encerra pelo teclado. Existe porque duplo clique num mapa não tem
+      // equivalente para quem não usa mouse — e porque quem está digitando o raio do
+      // buffer já está no teclado, e sair dele para clicar duas vezes é um passo a mais.
+      // `false`: nenhum vértice foi duplicado, ao contrário do duplo clique.
+      if (ev.key === "Enter" && desenhoRef.current.modo && desenhoRef.current.completo) {
+        onEncerrarDesenhoRef.current(false);
+      }
     };
     document.addEventListener("keydown", aoTeclar);
 
@@ -292,7 +321,9 @@ export function MapView({
 
     const desenharTracado = () => {
       const fonte = map.getSource(TRACADO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
-      fonte?.setData(desenho.modo ? geometriaDoTracado(desenho.coordenadas) : COLECAO_VAZIA);
+      if (!desenho.modo) return void fonte?.setData(COLECAO_VAZIA);
+      const { vertices, anel } = tracadoParaDesenhar(desenho);
+      fonte?.setData(geometriaDoTracado(vertices, anel));
     };
 
     if (!map.isStyleLoaded()) {
@@ -359,8 +390,9 @@ export function MapView({
       // parece perda de dado a quem olha.
       const desenhoAtual = desenhoRef.current;
       const fonteTracado = map.getSource(TRACADO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      const tracado = tracadoParaDesenhar(desenhoAtual);
       fonteTracado?.setData(
-        desenhoAtual.modo ? geometriaDoTracado(desenhoAtual.coordenadas) : COLECAO_VAZIA,
+        desenhoAtual.modo ? geometriaDoTracado(tracado.vertices, tracado.anel) : COLECAO_VAZIA,
       );
       const fonteAcervo = map.getSource(DESENHOS_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
       fonteAcervo?.setData(desenhosRef.current);

@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   areaFormatada,
   autoIntersecta,
+  circuloAproximado,
+  MAX_RAIO_M,
   MAX_VERTICES,
   paraGeoJSON,
   validar,
   type Coordenada,
 } from "./geometria";
+import { areaEmMetrosQuadrados, distanciaEmMetros } from "@/map/medicao";
 
 const QUADRADO: Coordenada[] = [
   [-46.66, -23.57],
@@ -109,5 +112,48 @@ describe("areaFormatada", () => {
   it("formata a área do quadrado em unidade legível", () => {
     // ~0,01 grau de lado nesta latitude: da ordem de 1 km x 1,1 km.
     expect(areaFormatada("poligono", QUADRADO)).toMatch(/km²|ha|m²/);
+  });
+});
+
+describe("círculo do buffer", () => {
+  const CENTRO: Coordenada = [-46.6333, -23.5505];
+
+  it("tem 64 lados, e é o mesmo número que o PostGIS usa ao salvar", () => {
+    expect(circuloAproximado(CENTRO, 500)).toHaveLength(64);
+  });
+
+  it("a área do polígono inscrito fica logo abaixo de πr²", () => {
+    // Inscrito: sempre MENOR que o círculo, e por pouco. Se desse maior, o cálculo
+    // estaria circunscrevendo — e a área anunciada antes de salvar seria otimista.
+    const area = areaEmMetrosQuadrados(circuloAproximado(CENTRO, 500));
+    const circulo = Math.PI * 500 ** 2;
+    expect(area / circulo).toBeGreaterThan(0.99);
+    expect(area / circulo).toBeLessThan(1.0);
+  });
+
+  it("continua redondo longe do equador", () => {
+    // A armadilha de somar deltas iguais em lon/lat: em latitude alta um grau de
+    // longitude é bem mais curto que um de latitude, e o círculo sairia achatado.
+    // Aqui se mede a distância de cada ponto ao centro — todas têm de ser o raio.
+    for (const lat of [-33, 0, 5]) {
+      const pontos = circuloAproximado([-46.6, lat], 1000);
+      const distancias = pontos.map((p) => distanciaEmMetros([[-46.6, lat], p]));
+      expect(Math.min(...distancias)).toBeGreaterThan(995);
+      expect(Math.max(...distancias)).toBeLessThan(1005);
+    }
+  });
+
+  it("o buffer só é válido com raio, e o motivo diz qual é o problema", () => {
+    expect(validar("buffer", [CENTRO])?.motivo).toContain("raio");
+    expect(validar("buffer", [CENTRO], 0)?.motivo).toContain("maior que zero");
+    expect(validar("buffer", [CENTRO], MAX_RAIO_M + 1)?.motivo).toContain("50 km");
+    expect(validar("buffer", [CENTRO], 500)).toBeNull();
+  });
+
+  it("a área formatada do buffer sai do círculo, não de πr²", () => {
+    // É a área do que está NA TELA — e é ela que a pessoa está conferindo.
+    expect(areaFormatada("buffer", [CENTRO], 500)).toBeTruthy();
+    expect(areaFormatada("buffer", [CENTRO], null)).toBeNull();
+    expect(areaFormatada("buffer", [], 500)).toBeNull();
   });
 });

@@ -110,6 +110,7 @@ def criar(novo: DesenhoNovo) -> Any:
         categoria=novo.categoria,
         cor=novo.cor,
         observacao=novo.observacao,
+        raio_m=novo.raio_m,
     )
 
 

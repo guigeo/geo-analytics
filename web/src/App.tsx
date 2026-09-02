@@ -50,6 +50,7 @@ export function App() {
   // a barra mostra (o que falta, o impedimento, a área) sai de `criarEstadoDesenho`.
   const [modoDesenho, setModoDesenho] = useState<ModoDesenho | null>(null);
   const [verticesDesenho, setVerticesDesenho] = useState<Coordenada[]>([]);
+  const [raioDesenho, setRaioDesenho] = useState<number | null>(null);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export function App() {
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const medicao = criarEstadoMedicao(modoMedicao, verticesMedicao);
-  const desenho = criarEstadoDesenho(modoDesenho, verticesDesenho);
+  const desenho = criarEstadoDesenho(modoDesenho, verticesDesenho, raioDesenho);
 
   const encerrarMedicao = () => {
     setModoMedicao(null);
@@ -73,8 +74,23 @@ export function App() {
   const cancelarDesenho = () => {
     setModoDesenho(null);
     setVerticesDesenho([]);
+    setRaioDesenho(null);
     setPreenchendo(false);
     setErroAoSalvar(null);
+  };
+
+  /**
+   * Duplo clique ou Enter: encerra o traçado e abre o formulário.
+   *
+   * `duplicouUltimo` vem do duplo clique — o MapLibre dispara `click` nas duas batidas
+   * antes do `dblclick`, então o último vértice entrou repetido. Deixá-lo criaria dois
+   * pontos idênticos em sequência, que é justamente o que `validar` recusa como anel
+   * degenerado: a pessoa faria o gesto certo e receberia "há pontos repetidos".
+   */
+  const encerrarDesenho = (duplicouUltimo: boolean) => {
+    const limpo = duplicouUltimo ? semUltimoVertice(desenho) : desenho;
+    setVerticesDesenho(limpo.coordenadas);
+    if (limpo.completo) setPreenchendo(true);
   };
 
   // Clicar no modo já ativo desliga; trocar de modo zera os vértices, porque uma
@@ -93,6 +109,7 @@ export function App() {
 
   const alternarDesenho = (modo: ModoDesenho) => {
     setVerticesDesenho([]);
+    setRaioDesenho(null);
     setPreenchendo(false);
     setErroAoSalvar(null);
     setModoDesenho((atual) => (atual === modo ? null : modo));
@@ -107,9 +124,11 @@ export function App() {
     setErroAoSalvar(null);
     try {
       await acervo.salvar({
-        // O buffer é a fase 3; até lá, todo traçado é ponto ou área.
-        tipo: modoDesenho === "ponto" ? "ponto" : "poligono",
+        tipo: modoDesenho,
         geometria,
+        // No buffer a geometria enviada é o CENTRO; quem gera o círculo definitivo é
+        // o PostGIS, com ST_Buffer sobre geography (Decisão 2 do DESIGN).
+        ...(modoDesenho === "buffer" ? { raio_m: raioDesenho } : {}),
         ...dados,
       });
       cancelarDesenho();
@@ -203,6 +222,7 @@ export function App() {
                 setVerticesDesenho(comVertice(desenho, c).coordenadas);
               }}
               onCancelarDesenho={cancelarDesenho}
+              onEncerrarDesenho={encerrarDesenho}
               desenhos={acervo.desenhos}
             />
             <PainelMedicao
@@ -215,8 +235,8 @@ export function App() {
                 salvamento — o que jogaria fora o traçado que está sendo nomeado. */}
             {preenchendo && modoDesenho ? (
               <FormularioDesenho
-                tipo={modoDesenho === "ponto" ? "ponto" : "poligono"}
-                area={areaFormatada(modoDesenho, verticesDesenho)}
+                tipo={modoDesenho}
+                area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
                 categorias={acervo.categorias}
                 salvando={salvandoDesenho}
                 erro={erroAoSalvar}
@@ -232,6 +252,7 @@ export function App() {
                 onDesfazer={() => setVerticesDesenho(semUltimoVertice(desenho).coordenadas)}
                 onCancelar={cancelarDesenho}
                 onSalvar={() => setPreenchendo(true)}
+                onMudarRaio={setRaioDesenho}
                 acervoIndisponivel={acervo.erro?.indisponivel ?? false}
               />
             )}

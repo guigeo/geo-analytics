@@ -568,7 +568,7 @@ export function circuloAproximado(centro: Coordenada, raioM: number): Coordenada
 
 ## Próximo passo
 
-**Pronto para:** `/build .claude/sdd/features/DESIGN_DESENHO_NO_MAPA.md`
+**Pronto para:** `/build .claude/sdd/archive/DESENHO_NO_MAPA/DESIGN_DESENHO_NO_MAPA.md`
 
 Começar pela **fase 1** (itens 1–21). O item 1 é no `servidor-dados-gis` e é
 pré-requisito de tudo.

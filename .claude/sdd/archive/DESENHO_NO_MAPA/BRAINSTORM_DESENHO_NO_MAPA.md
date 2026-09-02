@@ -305,7 +305,7 @@ e de terceiros; nada é do cliente.
 
 ## Próximo passo
 
-**Pronto para:** `/define .claude/sdd/features/BRAINSTORM_DESENHO_NO_MAPA.md`
+**Pronto para:** `/define .claude/sdd/archive/DESENHO_NO_MAPA/BRAINSTORM_DESENHO_NO_MAPA.md`
 
 **Antes ou junto do `/define`**, tratar as quatro pendências entre repositórios (A–D acima) como
 emendas ao ADR-0001 do `webgis` — a regra do `CLAUDE.md` é explícita, e o precedente do recorte

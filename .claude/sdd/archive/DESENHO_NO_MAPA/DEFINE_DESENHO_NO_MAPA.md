@@ -199,4 +199,4 @@ Nenhuma delas impede o `/design` de começar.
 
 ## Próximo passo
 
-**Pronto para:** `/design .claude/sdd/features/DEFINE_DESENHO_NO_MAPA.md`
+**Pronto para:** `/design .claude/sdd/archive/DESENHO_NO_MAPA/DEFINE_DESENHO_NO_MAPA.md`

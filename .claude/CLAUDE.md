@@ -118,6 +118,7 @@ Adicione domínios a qualquer momento com `/create-kb "<dominio>"`. Candidatas p
 | [MAPA_FASE1](.claude/sdd/archive/MAPA_FASE1/SHIPPED_2026-06-27.md) | 2026-06-27 | Mapa estático (MapLibre) com 5 camadas IBGE/antenas via PMTiles + ETL `GeoParquet→PMTiles` (Docker) |
 | [REFINAMENTO_VISUAL](.claude/sdd/archive/REFINAMENTO_VISUAL/SHIPPED_2026-06-27.md) | 2026-06-27 | Polish visual: basemap z13 (ruas), paleta + rótulos UF/município, highlight ao clicar, legenda |
 | [AGENTE_IA](.claude/sdd/archive/AGENTE_IA/SHIPPED_2026-07-08.md) | 2026-07-08 | Chat com agente de IA (FastAPI + OpenAI function calling + DuckDB): responde do Censo 2022 via tools e pinta o mapa; benchmark 16/16 |
+| [DESENHO_NO_MAPA](.claude/sdd/archive/DESENHO_NO_MAPA/SHIPPED_2026-09-02.md) | 2026-09-02 | Desenho de ponto, área e raio guardado por cliente no `app_clientes` (schema e papel próprios), com o agente cruzando a área desenhada com o Censo por rateio areal |
 
 ---
 

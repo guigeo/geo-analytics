@@ -33,6 +33,12 @@ Caddy expõe `/api`). Parquets do agente na VPS em `~/projects/geo/data/processe
 `deploy.sh data`). Rate limit por IP no backend protege a chave OpenAI (30 perguntas/10 min
 no chat) e o proxy de geocoding (20/60s no `/api/geocode`).
 
+**Desde 2026-09-02 o app também ESCREVE.** O usuário desenha ponto, área e raio sobre o
+mapa, e isso vai para o **`app_clientes`** — outro banco, com schema e papel por cliente.
+É o primeiro dado do sistema que é do cliente e não do IBGE, e o primeiro em que "refaço
+do zero" deixou de ser rede de segurança. Ver a feature `DESENHO_NO_MAPA` no arquivo do
+SDD, e a emenda de 2026-08-31 à regra 4 do ADR-0001 do `webgis`.
+
 ## Fluxo (Makefile — porta de entrada única)
 
 ```bash
@@ -98,6 +104,11 @@ cd query && uv sync --group dev && uv run pytest && uv run ruff check .
 cd agent && uv sync --group dev && uv run pytest && uv run ruff check .
 CLIENTE=eb-prime uv run uvicorn geo_agent.main:app --port 8001   # o agente do cliente 2
 cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env; ~17 chamadas)
+
+# Acervo do cliente (fase DESENHO_NO_MAPA) — banco `app_clientes`, no servidor-dados-gis
+../servidor-dados-gis/cargas/app_clientes.sh <cliente> '<senha>'   # cria schema, papel e tabela
+../servidor-dados-gis/cargas/kmz_para_acervo.sh <cliente> arq.kmz  # carga administrativa de KMZ
+#   Os testes do acervo pulam sem ACERVO_DSN no agent/.env — sem erro, com a instrução.
 ```
 
 ## Arquitetura
@@ -199,6 +210,24 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve
   `{campo, rotulo}`. Além do loop de chat, `main.py` expõe `GET /api/geocode` — proxy pro
   Nominatim/OSM pra busca de endereço do front (rate limit próprio por IP, separado do chat).
+- **`agent/…/acervo.py`** — a fachada que **ESCREVE**, e a única. Irmã do `query/`, oposta
+  a ele: aquele lê o `geodata` (universal, reconstruível), este escreve o `app_clientes`
+  (do cliente, insubstituível). **Leitura tem retomada, escrita não** — repetir um SELECT
+  é seguro, repetir um INSERT cria dois desenhos, e a assimetria mora na assinatura de
+  dois métodos irmãos. O isolamento entre clientes é do **Postgres**, não da aplicação: o
+  papel de um não tem `USAGE` no schema do outro, e o banco recusa em vez de misturar.
+  `rotas_desenhos.py` expõe o CRUD em `/api/desenhos`; toda falha vira 503 ou 422.
+  `tools.py:info_area_desenhada` lê a geometria aqui em WKB e a manda como **parâmetro**
+  da consulta no `geodata` — sem `postgres_fdw`, sem JOIN entre bancos. O cruzamento é
+  `query/queries.py:cruzamento_por_geometria`, com **rateio areal** na borda: os avisos
+  (quanto veio de rateio; se a área cabe dentro de um setor só) saem da ROW, não do
+  prompt — regra 8 do ADR. `ACERVO_DSN` vazio NÃO impede o boot: cai uma tool, não o chat.
+- **`web/src/desenho/`** — geometria e estado **puros** (fora do React e do MapLibre, como
+  `map/medicao.ts`), fontes GeoJSON, cliente REST e os três componentes. **O buffer manda
+  o CENTRO, não o círculo:** quem gera o polígono é o `ST_Buffer` sobre `geography`, com
+  64 lados dos dois lados — o navegador não tem elipsoide, e o círculo dele só
+  pré-visualiza. **Esconder desenho é FILTRO por id**, não `visibility`: a visibilidade é
+  da camada, e as três camadas do acervo servem todos os desenhos.
 - **Saídas** (não versionadas): `data/processed/*.parquet` e os `*.pmtiles`, que o
   pipeline escreve direto no host de tiles compartilhado (`TILES_DIR` no `.env` →
   `GEO_TILES_DIR=/tiles` no container). Sem `TILES_DIR`, `docker compose` e
@@ -244,6 +273,31 @@ de endereço/rua** no header via `/api/geocode` (proxy do agente pro Nominatim, 
 manda CORS); **glossário de métricas** no agente (`METRIC_LABELS`) — o LLM parou de
 vazar nome cru de coluna (`pop_total`) na resposta.
 
+**Arquivada em 2026-09-02, ainda NÃO publicada: `DESENHO_NO_MAPA`.** Ponto, área e raio
+desenhados no mapa, guardados no `app_clientes`, com o agente respondendo sobre a área
+desenhada. Código completo e exercitado localmente nos dois clientes. O que falta é
+decisão e execução do Guilherme, nesta ordem:
+
+1. **Backup do `app_clientes` antes de publicar.** É o primeiro dado do sistema em que
+   "refaço do zero" não é rede de segurança. Nada disso deve ir ao ar antes.
+2. **`ACERVO_DSN` do papel `app_eb_prime`** — no agente do cliente 2, aqui e na VPS. O
+   schema dele existe e já tem as duas primeiras áreas reais de cliente (carregadas de
+   KMZ em 2026-09-02); nenhum processo tem como lê-las.
+3. **Na VPS:** rodar `cargas/app_clientes.sh` lá, pôr o DSN no `.env` do agente
+   (comparando mtimes, pra não sobrescrever a chave da OpenAI), `make ship-ia` +
+   `restart`, `make ship-app`. O portão já cobre `/api/desenhos`: o `basicauth` é
+   diretiva de site inteiro, e os dois clientes têm `PORTAO_USUARIO`.
+4. **Remedir na VPS (A-001).** Os tempos do cruzamento foram medidos neste Mac; lá a
+   memória é menor. A primeira execução **fria** de uma área grande custou 3,9 s aqui,
+   contra 640 ms com cache quente.
+5. **Só para o cliente 2 ir ao ar:** DNS e a allowlist de CORS do host de tiles, que
+   libera `*.averisen.com` — `app.ebprime.com.br` é domínio próprio.
+
+**Achado de segurança em aberto:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a
+`PUBLIC`, então qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e
+deixado no central de propósito — endurecer banco em produção não é coisa de fazer de
+passagem dentro de uma feature.
+
 Ideias em aberto, **revisadas em 2026-08-31** — metade da lista anterior já tinha sido
 entregue e o parágrafo seguia descrevendo o mundo de antes do passo 4 do ADR:
 
@@ -253,8 +307,10 @@ entregue e o parágrafo seguia descrevendo o mundo de antes do passo 4 do ADR:
   `ST_Contains`. Não há DuckDB nem GeoArrow no código.
 - ~~"novas tools se as perguntas extrapolarem as 7 atuais"~~ — são **15** hoje, com os
   níveis bairro, distrito e a cascata `info_local`.
+- ~~"desenho no mapa, com os dados do cliente"~~ — **feito**: `DESENHO_NO_MAPA`, acima.
 - **Segue em aberto:** Atlas do Desenvolvimento Humano/IDHM por município; POIs via
-  OSM/Geofabrik com ANAC para aeroportos; streaming se a latência do chat doer.
+  OSM/Geofabrik com ANAC para aeroportos; streaming se a latência do chat doer; um caso
+  de área desenhada no `benchmark.yaml` (o ambiente já recebe o acervo).
 - **Segue barrado por espaço:** eixo de ruas nacional (OSM). A VPS tem **3,9 GB livres
   de 38 GB (90% usado)**, medido em 2026-08-31 — não os ~6 GB que este parágrafo dizia.
   Hetzner Volume continua sendo a rota mais barata, e não upgrade de plano.

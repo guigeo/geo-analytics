@@ -10,8 +10,8 @@
 | **Feature** | DESENHO_NO_MAPA |
 | **Fases** | 1 a 4, todas |
 | **Data** | 2026-09-01 |
-| **DEFINE** | [DEFINE_DESENHO_NO_MAPA.md](../features/DEFINE_DESENHO_NO_MAPA.md) |
-| **DESIGN** | [DESIGN_DESENHO_NO_MAPA.md](../features/DESIGN_DESENHO_NO_MAPA.md) |
+| **DEFINE** | [DEFINE_DESENHO_NO_MAPA.md](./DEFINE_DESENHO_NO_MAPA.md) |
+| **DESIGN** | [DESIGN_DESENHO_NO_MAPA.md](./DESIGN_DESENHO_NO_MAPA.md) |
 | **ADR** | ADR-0001 do `webgis`, emendas de 2026-08-31 (`8f6ef9c`) |
 | **Commits** | `507b1ed` (backend), `ccc2189` (frontend), `0cd7e6c` (fase 4), `7b285d2` (fases 2 e 3), `91857f2`/`943a31b` (`servidor-dados-gis`) |
 | **Status** | Manifesto completo. Não publicado — ver *Antes de ir para a VPS* |

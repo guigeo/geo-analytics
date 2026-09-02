@@ -56,13 +56,25 @@ export function highlightLayers(camadas: DefinicaoCamada[]): LayerSpecification[
     ]);
 }
 
+/**
+ * Aplica os destaques. Devolve `false` quando o style ainda não tem as camadas.
+ *
+ * O retorno existe para quem chama poder tentar de novo: aplicar destaque antes de o
+ * style ser parseado não dá erro, dá silêncio — e um destaque perdido em silêncio é
+ * uma resposta do agente que o mapa ignorou.
+ */
 export function applyHighlights(map: Map, destaques: Destaques | null) {
+  let achou = false;
   for (const [camada, field] of Object.entries(CODE_FIELDS)) {
     const codigos = destaques?.camada === camada ? destaques.codigos : [];
     const filter = codeFilter(field, codigos);
     for (const kind of ["fill", "line"] as const) {
       const id = `${camada}__highlight-${kind}`;
-      if (map.getLayer(id)) map.setFilter(id, filter);
+      if (map.getLayer(id)) {
+        map.setFilter(id, filter);
+        achou = true;
+      }
     }
   }
+  return achou;
 }

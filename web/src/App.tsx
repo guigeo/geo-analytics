@@ -51,6 +51,7 @@ export function App() {
   const [modoDesenho, setModoDesenho] = useState<ModoDesenho | null>(null);
   const [verticesDesenho, setVerticesDesenho] = useState<Coordenada[]>([]);
   const [raioDesenho, setRaioDesenho] = useState<number | null>(null);
+  const [desenhosVisiveis, setDesenhosVisiveis] = useState(true);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -199,6 +200,8 @@ export function App() {
                 void acervo.apagar(d.id);
               }}
               onRecarregar={acervo.recarregar}
+              visivelNoMapa={desenhosVisiveis}
+              onAlternarVisibilidade={() => setDesenhosVisiveis((v) => !v)}
             />
           </div>
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
@@ -224,6 +227,7 @@ export function App() {
               onCancelarDesenho={cancelarDesenho}
               onEncerrarDesenho={encerrarDesenho}
               desenhos={acervo.desenhos}
+              desenhosVisiveis={desenhosVisiveis}
             />
             <PainelMedicao
               medicao={medicao}

@@ -19,9 +19,43 @@ import {
   COLECAO_VAZIA,
   DESENHOS_SOURCE_ID,
   geometriaDoTracado,
+  IDS_CAMADAS_DESENHOS,
   TRACADO_SOURCE_ID,
 } from "@/desenho/fonte";
 import { tracadoParaDesenhar, type EstadoDesenho } from "@/desenho/estado";
+
+/**
+ * Faz `tentar` acontecer assim que o style existir — que **não** é o mesmo que ele
+ * estar carregado.
+ *
+ * Aqui morava um defeito que só o uso pegou (2026-09-02: nenhum desenho aparecia no
+ * mapa). O código pedia `map.isStyleLoaded()` e, quando falso, agendava em
+ * `map.once("load", …)`. As duas metades estão erradas:
+ *
+ * - `Style.loaded()` devolve **false enquanto qualquer tile estiver carregando**, e
+ *   também logo depois de um `setData` — nada disso impede escrever numa fonte. O que
+ *   `setData` precisa é que a FONTE exista, e ela existe assim que o style é parseado.
+ * - `once("load")` dispara uma vez só, no primeiro carregamento. Agendar nele depois
+ *   disso é agendar para nunca — e era exatamente o caso: o acervo chega da rede
+ *   enquanto os PMTiles ainda carregam, então caía sempre no ramo que não roda.
+ *
+ * `styledata` dispara a cada mudança de style, inclusive no `setStyle` do tema, e o
+ * ouvinte se remove quando consegue. `tentar` devolve se conseguiu.
+ */
+function assimQuePuder(map: maplibregl.Map, tentar: () => boolean) {
+  if (tentar()) return;
+  const aoMudarOStyle = () => {
+    if (tentar()) map.off("styledata", aoMudarOStyle);
+  };
+  map.on("styledata", aoMudarOStyle);
+}
+
+/** Escreve numa fonte GeoJSON. Devolve `false` se ela ainda não existe. */
+function escreverNaFonte(map: maplibregl.Map, id: string, dados: GeoJSON.FeatureCollection) {
+  const fonte = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
+  fonte?.setData(dados);
+  return fonte !== undefined;
+}
 
 export interface SelectedFeature {
   layerId: string;
@@ -81,6 +115,8 @@ interface Props {
    * quando o acervo está fora do ar — o mapa segue de pé (AT-012).
    */
   desenhos: GeoJSON.FeatureCollection;
+  /** Liga e desliga o acervo no mapa, como o painel de camadas faz com as camadas. */
+  desenhosVisiveis: boolean;
 }
 
 export function MapView({
@@ -100,6 +136,7 @@ export function MapView({
   onCancelarDesenho,
   onEncerrarDesenho,
   desenhos,
+  desenhosVisiveis,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -129,6 +166,8 @@ export function MapView({
   onEncerrarDesenhoRef.current = onEncerrarDesenho;
   const desenhosRef = useRef(desenhos);
   desenhosRef.current = desenhos;
+  const desenhosVisiveisRef = useRef(desenhosVisiveis);
+  desenhosVisiveisRef.current = desenhosVisiveis;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
   const initialThemeRef = useRef(theme);
   const initialSatelliteRef = useRef(satellite);
@@ -261,11 +300,7 @@ export function MapView({
     visibleRef.current = visible;
     const map = mapRef.current;
     if (!map) return;
-    if (!map.isStyleLoaded()) {
-      map.once("load", () => applyVisibility(map, visible));
-      return;
-    }
-    applyVisibility(map, visible);
+    assimQuePuder(map, () => applyVisibility(map, visible));
   }, [visible]);
 
   useEffect(() => {
@@ -301,16 +336,13 @@ export function MapView({
     const map = mapRef.current;
     if (!map) return;
 
-    const desenhar = () => {
-      const fonte = map.getSource(MEDICAO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
-      fonte?.setData(medicao.modo ? geometriaDaMedicao(medicao) : MEDICAO_VAZIA);
-    };
-
-    if (!map.isStyleLoaded()) {
-      map.once("load", desenhar);
-      return;
-    }
-    desenhar();
+    assimQuePuder(map, () =>
+      escreverNaFonte(
+        map,
+        MEDICAO_SOURCE_ID,
+        medicao.modo ? geometriaDaMedicao(medicao) : MEDICAO_VAZIA,
+      ),
+    );
   }, [medicao]);
 
   // O traçado em andamento. Fonte separada da dos desenhos salvos porque muda a cada
@@ -319,18 +351,14 @@ export function MapView({
     const map = mapRef.current;
     if (!map) return;
 
-    const desenharTracado = () => {
-      const fonte = map.getSource(TRACADO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
-      if (!desenho.modo) return void fonte?.setData(COLECAO_VAZIA);
-      const { vertices, anel } = tracadoParaDesenhar(desenho);
-      fonte?.setData(geometriaDoTracado(vertices, anel));
-    };
-
-    if (!map.isStyleLoaded()) {
-      map.once("load", desenharTracado);
-      return;
-    }
-    desenharTracado();
+    const { vertices, anel } = tracadoParaDesenhar(desenho);
+    assimQuePuder(map, () =>
+      escreverNaFonte(
+        map,
+        TRACADO_SOURCE_ID,
+        desenho.modo ? geometriaDoTracado(vertices, anel) : COLECAO_VAZIA,
+      ),
+    );
   }, [desenho]);
 
   // O acervo salvo. Muda quando alguém grava ou apaga algo, e não a cada clique.
@@ -338,27 +366,28 @@ export function MapView({
     const map = mapRef.current;
     if (!map) return;
 
-    const pintar = () => {
-      const fonte = map.getSource(DESENHOS_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
-      fonte?.setData(desenhos);
-    };
-
-    if (!map.isStyleLoaded()) {
-      map.once("load", pintar);
-      return;
-    }
-    pintar();
+    assimQuePuder(map, () => escreverNaFonte(map, DESENHOS_SOURCE_ID, desenhos));
   }, [desenhos]);
+
+  // Ligar e desligar o acervo. É `visibility` e não uma fonte vazia de propósito: com
+  // a fonte vazia, religar exigiria buscar tudo de novo, e o mapa piscaria em cada
+  // clique do interruptor. O dado continua carregado; o que muda é o que se pinta.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const valor = desenhosVisiveis ? "visible" : "none";
+    assimQuePuder(map, () => {
+      if (!map.getLayer(IDS_CAMADAS_DESENHOS[0])) return false;
+      for (const id of IDS_CAMADAS_DESENHOS) map.setLayoutProperty(id, "visibility", valor);
+      return true;
+    });
+  }, [desenhosVisiveis]);
 
   useEffect(() => {
     highlightsRef.current = highlights ?? null;
     const map = mapRef.current;
     if (!map) return;
-    if (!map.isStyleLoaded()) {
-      map.once("load", () => applyHighlights(map, highlightsRef.current));
-      return;
-    }
-    applyHighlights(map, highlightsRef.current);
+    assimQuePuder(map, () => applyHighlights(map, highlightsRef.current));
   }, [highlights]);
 
   // Troca de tema ou satélite: reconstrói o style (basemap claro/escuro/satélite
@@ -394,20 +423,31 @@ export function MapView({
       fonteTracado?.setData(
         desenhoAtual.modo ? geometriaDoTracado(tracado.vertices, tracado.anel) : COLECAO_VAZIA,
       );
-      const fonteAcervo = map.getSource(DESENHOS_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
-      fonteAcervo?.setData(desenhosRef.current);
+      escreverNaFonte(map, DESENHOS_SOURCE_ID, desenhosRef.current);
+      // O style novo nasce com as camadas visíveis: sem isto, trocar o tema religaria
+      // um acervo que a pessoa tinha desligado.
+      const valor = desenhosVisiveisRef.current ? "visible" : "none";
+      for (const id of IDS_CAMADAS_DESENHOS) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", valor);
+      }
     });
   }, [theme, satellite, satelliteOverlay]);
 
   return <div ref={containerRef} className="map" />;
 }
 
+/** Aplica a visibilidade. Devolve `false` enquanto o style não tem as camadas. */
 function applyVisibility(map: maplibregl.Map, visible: Record<string, boolean>) {
+  let achou = false;
   for (const c of camadas) {
     const value = visible[c.id] ? "visible" : "none";
     for (const suffix of SUFIXOS_SUBCAMADA) {
       const id = c.id + suffix;
-      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", value);
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, "visibility", value);
+        achou = true;
+      }
     }
   }
+  return achou;
 }

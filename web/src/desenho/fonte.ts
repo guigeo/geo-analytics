@@ -38,6 +38,8 @@ export const fonteTracado: GeoJSONSourceSpecification = { type: "geojson", data:
  * Sem isso seria uma camada por desenho — 500 camadas no volume-alvo, o que o
  * MapLibre aguenta mal e recompila a cada mudança. Uma camada, a cor vindo do dado.
  */
+export const IDS_CAMADAS_DESENHOS = ["desenhos-area", "desenhos-contorno", "desenhos-ponto"];
+
 export const camadasDesenhos: LayerSpecification[] = [
   {
     id: "desenhos-area",

@@ -26,17 +26,33 @@ const FONTES: Record<string, { setData: ReturnType<typeof vi.fn> }> = {
 const doubleClickZoom = { enable: vi.fn(), disable: vi.fn() };
 const canvas = { style: { cursor: "" } };
 
+// O style "carregado" vira estado do dublê: é justamente a condição que o defeito de
+// 2026-09-02 exigia para aparecer, e com um `true` fixo ela era inalcançável no teste.
+const style = { carregado: true };
+const ouvintesDeStyleData: (() => void)[] = [];
+
 const mapaDublado = {
-  on: (evento: string, fn: (e: unknown) => void) => handlers.set(evento, fn),
+  on: (evento: string, fn: (e: unknown) => void) => {
+    if (evento === "styledata") ouvintesDeStyleData.push(fn as () => void);
+    handlers.set(evento, fn);
+  },
+  off: (evento: string, fn: () => void) => {
+    if (evento === "styledata") {
+      const i = ouvintesDeStyleData.indexOf(fn);
+      if (i >= 0) ouvintesDeStyleData.splice(i, 1);
+    }
+  },
   once: (evento: string, fn: (e: unknown) => void) => handlers.set(`once:${evento}`, fn),
   addControl: vi.fn(),
   remove: vi.fn(),
   getCanvas: () => canvas,
-  getSource: (id: string) => FONTES[id] ?? { setData: vi.fn() },
-  getLayer: () => undefined,
+  // Antes do style ser parseado NAO EXISTE fonte — e era esse o caso que o codigo
+  // antigo tratava esperando por `load`, um evento que ja tinha passado.
+  getSource: (id: string) => (style.carregado ? (FONTES[id] ?? { setData: vi.fn() }) : undefined),
+  getLayer: (id: string) => (style.carregado && id.startsWith("desenhos-") ? { id } : undefined),
   setLayoutProperty: vi.fn(),
   queryRenderedFeatures: () => [],
-  isStyleLoaded: () => true,
+  isStyleLoaded: () => style.carregado,
   getBounds: () => ({ getWest: () => 0, getSouth: () => 0, getEast: () => 1, getNorth: () => 1 }),
   getCenter: () => ({ lng: 0, lat: 0 }),
   setStyle: vi.fn(),
@@ -82,6 +98,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
       onCancelarDesenho={onCancelarDesenho}
       onEncerrarDesenho={onEncerrarDesenho}
       desenhos={COLECAO_VAZIA}
+      desenhosVisiveis
       {...props}
     />,
   );
@@ -101,6 +118,8 @@ const clicar = () =>
 
 beforeEach(() => {
   handlers.clear();
+  ouvintesDeStyleData.length = 0;
+  style.carregado = true;
   vi.clearAllMocks();
   canvas.style.cursor = "";
 });
@@ -142,6 +161,7 @@ describe("MapView e a medição", () => {
         onCancelarDesenho={vi.fn()}
         onEncerrarDesenho={vi.fn()}
         desenhos={COLECAO_VAZIA}
+        desenhosVisiveis
       />,
     );
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -293,5 +313,88 @@ describe("MapView e o encerramento do traçado", () => {
     });
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     expect(incompleto.onEncerrarDesenho).not.toHaveBeenCalled();
+  });
+});
+
+// A regressão que fechou o defeito de 2026-09-02: NENHUM desenho aparecia no mapa.
+//
+// A causa não era o desenho — era o portão. O código pedia `map.isStyleLoaded()` e,
+// quando falso, agendava em `map.once("load", …)`. Só que `Style.loaded()` do MapLibre
+// devolve false **enquanto qualquer tile estiver carregando**, e `load` dispara uma vez
+// só: com oito fontes PMTiles no ar, o acervo chegava da rede no meio do carregamento e
+// caía num agendamento que nunca rodaria.
+//
+// Os testes de antes não pegavam porque o mapa dublado dizia `isStyleLoaded: () => true`
+// sempre — o defeito morava justamente na única condição que o dublê não sabia produzir.
+describe("MapView com o style ainda carregando", () => {
+  const parsearOStyle = () => {
+    style.carregado = true;
+    for (const fn of [...ouvintesDeStyleData]) fn();
+  };
+
+  it("pinta o acervo assim que o style existe, e não espera por `load`", () => {
+    const doServidor: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: PONTO },
+          properties: { cor: "#dc2626" },
+        },
+      ],
+    };
+    style.carregado = false;
+    montar({ desenhos: doServidor });
+    expect(setDataAcervo).not.toHaveBeenCalled();
+
+    // `load` já passou — se o código dependesse dele, ficaria em branco para sempre.
+    parsearOStyle();
+    expect(setDataAcervo).toHaveBeenCalledWith(doServidor);
+  });
+
+  it("desenha o traçado que começou antes de o style terminar", () => {
+    style.carregado = false;
+    montar({ desenho: criarEstadoDesenho("ponto", [PONTO]) });
+    expect(setDataTracado).not.toHaveBeenCalled();
+
+    parsearOStyle();
+    const desenhado = setDataTracado.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection;
+    expect(desenhado.features).toHaveLength(1);
+    expect(desenhado.features[0].geometry.type).toBe("Point");
+  });
+
+  it("larga o ouvinte depois de conseguir, em vez de acumular um por render", () => {
+    style.carregado = false;
+    montar({ desenhos: COLECAO_VAZIA });
+    const antes = ouvintesDeStyleData.length;
+    expect(antes).toBeGreaterThan(0);
+
+    parsearOStyle();
+    // Sem o `off`, cada pan que reabrisse o portão somaria ouvintes sobre o mesmo mapa.
+    expect(ouvintesDeStyleData.length).toBeLessThan(antes);
+  });
+});
+
+describe("MapView e o liga/desliga do acervo", () => {
+  const visibilidadeAplicada = () =>
+    mapaDublado.setLayoutProperty.mock.calls
+      .filter(([id]) => String(id).startsWith("desenhos-"))
+      .map(([, , valor]) => valor);
+
+  it("desligado, esconde as três camadas do acervo", () => {
+    montar({ desenhosVisiveis: false });
+    expect(visibilidadeAplicada()).toEqual(["none", "none", "none"]);
+  });
+
+  it("ligado, mostra as três", () => {
+    montar({ desenhosVisiveis: true });
+    expect(visibilidadeAplicada()).toEqual(["visible", "visible", "visible"]);
+  });
+
+  it("esconde por visibilidade, e não esvaziando a fonte", () => {
+    // Esvaziar a fonte obrigaria a buscar tudo de novo ao religar, e o mapa piscaria
+    // a cada clique do interruptor. O dado fica; muda o que se pinta.
+    montar({ desenhosVisiveis: false, desenhos: COLECAO_VAZIA });
+    expect(setDataAcervo).toHaveBeenCalledWith(COLECAO_VAZIA);
   });
 });

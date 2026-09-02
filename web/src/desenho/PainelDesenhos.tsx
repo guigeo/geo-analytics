@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RotateCcw, Search, Trash2 } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { Desenho, ErroDoAcervo, PaginaDeDesenhos } from "./api";
 
@@ -20,6 +21,9 @@ interface Props {
   onFocalizar: (desenho: Desenho) => void;
   onApagar: (desenho: Desenho) => void;
   onRecarregar: () => void;
+  /** Liga e desliga o acervo no mapa — o mesmo gesto do painel de camadas. */
+  visivelNoMapa: boolean;
+  onAlternarVisibilidade: () => void;
 }
 
 /**
@@ -47,6 +51,8 @@ export function PainelDesenhos({
   onFocalizar,
   onApagar,
   onRecarregar,
+  visivelNoMapa,
+  onAlternarVisibilidade,
 }: Props) {
   // Qual linha está pedindo confirmação. Um id, e não um booleano: sem isso, abrir a
   // confirmação numa linha a abriria em todas.
@@ -61,13 +67,23 @@ export function PainelDesenhos({
 
   return (
     <aside className="flex min-h-0 flex-col border-r border-t border-border bg-background">
-      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
+      <div className="flex items-center gap-2 px-4 pb-2 pt-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Desenhos
         </h2>
         {total > 0 && (
           <span className="text-[0.6875rem] tabular-nums text-muted-foreground">{total}</span>
         )}
+        {/* O interruptor fica no cabeçalho e vale para o acervo inteiro — é a mesma
+            unidade do painel de camadas, onde uma chave liga uma CAMADA e não uma
+            feição. Um interruptor por desenho seria outra coisa, e com centenas de
+            linhas viraria uma lista de interruptores. */}
+        <Switch
+          className="ml-auto"
+          checked={visivelNoMapa}
+          onCheckedChange={onAlternarVisibilidade}
+          aria-label="Mostrar os desenhos no mapa"
+        />
       </div>
 
       <div className="px-3 pb-2">

@@ -12,6 +12,18 @@ import type { ContextoMapa } from "@/chat/api";
 import { useTheme } from "@/hooks/use-theme";
 import { PainelMedicao } from "@/components/PainelMedicao";
 import { criarEstadoMedicao, type Coordenada, type ModoMedicao } from "@/map/medicao";
+import { BarraFerramentas } from "@/desenho/BarraFerramentas";
+import { FormularioDesenho, type DadosDoFormulario } from "@/desenho/FormularioDesenho";
+import { PainelDesenhos } from "@/desenho/PainelDesenhos";
+import { useAcervo } from "@/desenho/useAcervo";
+import { areaFormatada, bboxDe, type Desenho, type ModoDesenho } from "@/desenho/geometria";
+import {
+  comVertice,
+  criarEstadoDesenho,
+  geometriaParaSalvar,
+  semUltimoVertice,
+} from "@/desenho/estado";
+import { ErroDoAcervo } from "@/desenho/api";
 
 const visibilidadeInicial = Object.fromEntries(
   camadas.map((c) => [c.id, c.visivelPorPadrao]),
@@ -34,18 +46,35 @@ export function App() {
   // duas fontes para o mesmo número.
   const [modoMedicao, setModoMedicao] = useState<ModoMedicao | null>(null);
   const [verticesMedicao, setVerticesMedicao] = useState<Coordenada[]>([]);
+  // Desenho: mesmo arranjo da medição — modo e vértices são o estado, e tudo o que
+  // a barra mostra (o que falta, o impedimento, a área) sai de `criarEstadoDesenho`.
+  const [modoDesenho, setModoDesenho] = useState<ModoDesenho | null>(null);
+  const [verticesDesenho, setVerticesDesenho] = useState<Coordenada[]>([]);
+  const [preenchendo, setPreenchendo] = useState(false);
+  const [salvandoDesenho, setSalvandoDesenho] = useState(false);
+  const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
   // Viewport em ref: muda a cada pan/zoom sem re-renderizar; lido só no envio do chat.
   const viewportRef = useRef<Viewport | null>(null);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
 
+  const acervo = useAcervo();
+
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const medicao = criarEstadoMedicao(modoMedicao, verticesMedicao);
+  const desenho = criarEstadoDesenho(modoDesenho, verticesDesenho);
 
   const encerrarMedicao = () => {
     setModoMedicao(null);
     setVerticesMedicao([]);
+  };
+
+  const cancelarDesenho = () => {
+    setModoDesenho(null);
+    setVerticesDesenho([]);
+    setPreenchendo(false);
+    setErroAoSalvar(null);
   };
 
   // Clicar no modo já ativo desliga; trocar de modo zera os vértices, porque uma
@@ -56,6 +85,48 @@ export function App() {
     // Medir e inspecionar disputam o clique: ao entrar na ferramenta, o painel de
     // atributos larga o que estava selecionado em vez de mostrar feição antiga.
     setSelected(null);
+    // Medir e desenhar disputam o mesmo clique. Uma ferramenta por vez, e a que
+    // sai leva o traçado junto — deixá-lo pela metade na tela prometeria que ele
+    // continua editável, e o próximo clique já seria da outra ferramenta.
+    cancelarDesenho();
+  };
+
+  const alternarDesenho = (modo: ModoDesenho) => {
+    setVerticesDesenho([]);
+    setPreenchendo(false);
+    setErroAoSalvar(null);
+    setModoDesenho((atual) => (atual === modo ? null : modo));
+    setSelected(null);
+    encerrarMedicao();
+  };
+
+  const salvarDesenho = async (dados: DadosDoFormulario) => {
+    const geometria = geometriaParaSalvar(desenho);
+    if (!geometria || !modoDesenho) return;
+    setSalvandoDesenho(true);
+    setErroAoSalvar(null);
+    try {
+      await acervo.salvar({
+        // O buffer é a fase 3; até lá, todo traçado é ponto ou área.
+        tipo: modoDesenho === "ponto" ? "ponto" : "poligono",
+        geometria,
+        ...dados,
+      });
+      cancelarDesenho();
+    } catch (e) {
+      setErroAoSalvar(
+        e instanceof ErroDoAcervo ? e.message : "Não foi possível salvar. Tente de novo.",
+      );
+    } finally {
+      setSalvandoDesenho(false);
+    }
+  };
+
+  const focalizarDesenho = (d: Desenho) => {
+    const bbox = bboxDe(d.geometria);
+    // Um ponto tem caixa degenerada, e o `maxZoom` é quem decide o enquadramento;
+    // numa área, o `fitBounds` já faz o trabalho.
+    if (bbox) setFocus({ bbox, key: Date.now(), maxZoom: d.tipo === "ponto" ? 16 : 14 });
   };
 
   // Busca do header: voa até o alvo; município também ganha o destaque azul
@@ -89,7 +160,28 @@ export function App() {
           onAlternarMedicao={alternarMedicao}
         />
         <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
-          <LayerPanel visible={visible} onToggle={toggleLayer} />
+          {/* Grid, e não flex, para as duas colunas da esquerda: os itens de grid
+              esticam até a altura da linha sozinhos, e é isso que faz a área de
+              rolagem de cada painel ter altura definida sem alterar nenhum deles. */}
+          <div className="grid min-h-0 grid-rows-[1fr_1.2fr]">
+            <LayerPanel visible={visible} onToggle={toggleLayer} />
+            <PainelDesenhos
+              pagina={acervo.pagina}
+              categorias={acervo.categorias}
+              carregando={acervo.carregando}
+              erro={acervo.erro}
+              busca={acervo.busca}
+              onBuscar={acervo.buscar}
+              categoria={acervo.categoria}
+              onFiltrarCategoria={acervo.filtrarCategoria}
+              onIrParaPagina={acervo.irParaPagina}
+              onFocalizar={focalizarDesenho}
+              onApagar={(d) => {
+                void acervo.apagar(d.id);
+              }}
+              onRecarregar={acervo.recarregar}
+            />
+          </div>
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
           <div className="relative overflow-hidden">
             <MapView
@@ -106,12 +198,43 @@ export function App() {
               medicao={medicao}
               onVerticeMedicao={(c) => setVerticesMedicao((prev) => [...prev, c])}
               onEncerrarMedicao={encerrarMedicao}
+              desenho={desenho}
+              onVerticeDesenho={(c) => {
+                setVerticesDesenho(comVertice(desenho, c).coordenadas);
+              }}
+              onCancelarDesenho={cancelarDesenho}
+              desenhos={acervo.desenhos}
             />
             <PainelMedicao
               medicao={medicao}
               onEncerrar={encerrarMedicao}
               onRecomecar={() => setVerticesMedicao([])}
             />
+            {/* Barra e formulário dividem o mesmo canto: são dois passos do mesmo
+                gesto, e mostrar os dois convidaria a trocar de modo no meio de um
+                salvamento — o que jogaria fora o traçado que está sendo nomeado. */}
+            {preenchendo && modoDesenho ? (
+              <FormularioDesenho
+                tipo={modoDesenho === "ponto" ? "ponto" : "poligono"}
+                area={areaFormatada(modoDesenho, verticesDesenho)}
+                categorias={acervo.categorias}
+                salvando={salvandoDesenho}
+                erro={erroAoSalvar}
+                onSalvar={(dados) => {
+                  void salvarDesenho(dados);
+                }}
+                onCancelar={() => setPreenchendo(false)}
+              />
+            ) : (
+              <BarraFerramentas
+                estado={desenho}
+                onAlternarModo={alternarDesenho}
+                onDesfazer={() => setVerticesDesenho(semUltimoVertice(desenho).coordenadas)}
+                onCancelar={cancelarDesenho}
+                onSalvar={() => setPreenchendo(true)}
+                acervoIndisponivel={acervo.erro?.indisponivel ?? false}
+              />
+            )}
           </div>
           <div className="flex min-h-0 flex-col border-l border-border bg-background">
             <div className="min-h-0 flex-1">

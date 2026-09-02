@@ -15,6 +15,13 @@ import {
   type Coordenada,
   type EstadoMedicao,
 } from "./medicao";
+import {
+  COLECAO_VAZIA,
+  DESENHOS_SOURCE_ID,
+  geometriaDoTracado,
+  TRACADO_SOURCE_ID,
+} from "@/desenho/fonte";
+import type { EstadoDesenho } from "@/desenho/estado";
 
 export interface SelectedFeature {
   layerId: string;
@@ -55,6 +62,17 @@ interface Props {
   onVerticeMedicao: (coordenada: Coordenada) => void;
   /** Esc: encerra a medição sem passar pelo painel. */
   onEncerrarMedicao: () => void;
+  /** Desenho em andamento. Como a medição, ele toma o clique do mapa. */
+  desenho: EstadoDesenho;
+  /** Um clique no mapa durante o desenho. */
+  onVerticeDesenho: (coordenada: Coordenada) => void;
+  /** Esc: cancela o traçado. */
+  onCancelarDesenho: () => void;
+  /**
+   * O acervo do cliente, como `/api/desenhos/geometrias` o devolve. Vem vazio também
+   * quando o acervo está fora do ar — o mapa segue de pé (AT-012).
+   */
+  desenhos: GeoJSON.FeatureCollection;
 }
 
 export function MapView({
@@ -69,6 +87,10 @@ export function MapView({
   medicao,
   onVerticeMedicao,
   onEncerrarMedicao,
+  desenho,
+  onVerticeDesenho,
+  onCancelarDesenho,
+  desenhos,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -86,6 +108,16 @@ export function MapView({
   onVerticeRef.current = onVerticeMedicao;
   const onEncerrarRef = useRef(onEncerrarMedicao);
   onEncerrarRef.current = onEncerrarMedicao;
+  // O desenho segue o mesmo arranjo da medição, e pelo mesmo motivo: os handlers do
+  // mapa são registrados uma vez só e precisam enxergar o estado de agora.
+  const desenhoRef = useRef(desenho);
+  desenhoRef.current = desenho;
+  const onVerticeDesenhoRef = useRef(onVerticeDesenho);
+  onVerticeDesenhoRef.current = onVerticeDesenho;
+  const onCancelarDesenhoRef = useRef(onCancelarDesenho);
+  onCancelarDesenhoRef.current = onCancelarDesenho;
+  const desenhosRef = useRef(desenhos);
+  desenhosRef.current = desenhos;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
   const initialThemeRef = useRef(theme);
   const initialSatelliteRef = useRef(satellite);
@@ -137,6 +169,13 @@ export function MapView({
         onVerticeRef.current([e.lngLat.lng, e.lngLat.lat]);
         return;
       }
+      // Desenhando vale a mesma regra, e as duas ferramentas nunca estão ligadas ao
+      // mesmo tempo — o `App` desliga uma ao entrar na outra. A ordem aqui só existe
+      // para que o dia em que isso mudar tenha uma resposta em vez de duas.
+      if (desenhoRef.current.modo) {
+        onVerticeDesenhoRef.current([e.lngLat.lng, e.lngLat.lat]);
+        return;
+      }
       const active = activeLayers();
       const hits = active.length ? map.queryRenderedFeatures(e.point, { layers: active }) : [];
       if (hits.length) {
@@ -150,7 +189,7 @@ export function MapView({
     });
 
     map.on("mousemove", (e) => {
-      if (medicaoRef.current.modo) {
+      if (medicaoRef.current.modo || desenhoRef.current.modo) {
         map.getCanvas().style.cursor = "crosshair";
         return;
       }
@@ -163,7 +202,9 @@ export function MapView({
     // no botão do cabeçalho está com o foco lá — e o atalho tem de valer mesmo
     // assim, que é o que o painel promete em texto.
     const aoTeclar = (ev: KeyboardEvent) => {
-      if (ev.key === "Escape" && medicaoRef.current.modo) onEncerrarRef.current();
+      if (ev.key !== "Escape") return;
+      if (medicaoRef.current.modo) onEncerrarRef.current();
+      if (desenhoRef.current.modo) onCancelarDesenhoRef.current();
     };
     document.addEventListener("keydown", aoTeclar);
 
@@ -204,20 +245,32 @@ export function MapView({
     map.fitBounds(focus.bbox, { padding: 48, duration: 1200, maxZoom: focus.maxZoom ?? 12 });
   }, [focus]);
 
-  // Desenha a medição e ajusta o que o mapa faz enquanto ela está ligada.
+  // Duplo clique e cursor: uma decisão só, valendo para as duas ferramentas.
   //
-  // O duplo clique é desligado de propósito: marcar dois vértices próximos em
-  // sequência é o gesto normal de quem contorna um terreno, e com o zoom ligado
-  // isso salta o mapa para debaixo do cursor no meio da medição.
+  // Cada efeito cuidava do seu, e o resultado passou a depender da ordem em que
+  // rodavam: com o desenho ligado, o efeito da medição reabilitava o zoom um
+  // instante antes de o do desenho desligá-lo de novo. Ter uma ferramenta ativa é
+  // uma pergunta só, e por isso mora num lugar só.
+  //
+  // Desligar o zoom não é detalhe: marcar dois vértices próximos em sequência é o
+  // gesto normal de quem contorna um terreno, e com o zoom ligado isso salta o mapa
+  // para debaixo do cursor no meio do traçado.
+  const ferramentaAtiva = medicao.modo !== null || desenho.modo !== null;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-
-    if (medicao.modo) map.doubleClickZoom.disable();
-    else {
+    if (ferramentaAtiva) {
+      map.doubleClickZoom.disable();
+    } else {
       map.doubleClickZoom.enable();
       map.getCanvas().style.cursor = "";
     }
+  }, [ferramentaAtiva]);
+
+  // Desenha a medição na sua fonte.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
     const desenhar = () => {
       const fonte = map.getSource(MEDICAO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
@@ -230,6 +283,41 @@ export function MapView({
     }
     desenhar();
   }, [medicao]);
+
+  // O traçado em andamento. Fonte separada da dos desenhos salvos porque muda a cada
+  // clique: numa fonte só, cada vértice novo reenviaria o acervo inteiro ao GPU.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const desenharTracado = () => {
+      const fonte = map.getSource(TRACADO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      fonte?.setData(desenho.modo ? geometriaDoTracado(desenho.coordenadas) : COLECAO_VAZIA);
+    };
+
+    if (!map.isStyleLoaded()) {
+      map.once("load", desenharTracado);
+      return;
+    }
+    desenharTracado();
+  }, [desenho]);
+
+  // O acervo salvo. Muda quando alguém grava ou apaga algo, e não a cada clique.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const pintar = () => {
+      const fonte = map.getSource(DESENHOS_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      fonte?.setData(desenhos);
+    };
+
+    if (!map.isStyleLoaded()) {
+      map.once("load", pintar);
+      return;
+    }
+    pintar();
+  }, [desenhos]);
 
   useEffect(() => {
     highlightsRef.current = highlights ?? null;
@@ -266,6 +354,16 @@ export function MapView({
       const medicaoAtual = medicaoRef.current;
       const fonte = map.getSource(MEDICAO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
       fonte?.setData(medicaoAtual.modo ? geometriaDaMedicao(medicaoAtual) : MEDICAO_VAZIA);
+      // O acervo e o traçado pelo mesmo motivo — e aqui o esquecimento seria pior:
+      // trocar o tema apagaria da tela desenhos que continuam salvos no banco, o que
+      // parece perda de dado a quem olha.
+      const desenhoAtual = desenhoRef.current;
+      const fonteTracado = map.getSource(TRACADO_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      fonteTracado?.setData(
+        desenhoAtual.modo ? geometriaDoTracado(desenhoAtual.coordenadas) : COLECAO_VAZIA,
+      );
+      const fonteAcervo = map.getSource(DESENHOS_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      fonteAcervo?.setData(desenhosRef.current);
     });
   }, [theme, satellite, satelliteOverlay]);
 

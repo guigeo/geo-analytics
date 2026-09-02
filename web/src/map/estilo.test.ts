@@ -44,13 +44,20 @@ describe.each(CLIENTES)("style de %s", (_nome, config) => {
     expect(new Set(ids).size, `ids repetidos em ${ids.length} camadas`).toBe(ids.length);
   });
 
-  it("declara uma fonte por camada do cliente, mais basemap, satélite, seleção e medição", () => {
+  it("declara uma fonte por camada do cliente, mais as fontes da casca", () => {
     const estilo = montarEstilo({ camadas: config.camadas, ...COMBINACOES[0] });
     for (const c of config.camadas) {
       expect(Object.keys(estilo.sources)).toContain(c.id);
     }
     expect(Object.keys(estilo.sources)).toEqual(
-      expect.arrayContaining(["basemap", "satellite", "selection", "medicao"]),
+      expect.arrayContaining([
+        "basemap",
+        "satellite",
+        "selection",
+        "medicao",
+        "desenhos",
+        "desenho-tracado",
+      ]),
     );
   });
 
@@ -65,5 +72,46 @@ describe.each(CLIENTES)("style de %s", (_nome, config) => {
       );
       expect(ids[ids.length - 1]).toBe("medicao-vertice");
     }
+  });
+
+  // Desenhar é da casca pelo mesmo argumento da medição: a regra 1 do ADR-0001 diz
+  // que o que *difere* entre clientes é dado — ferramenta que nenhum cliente quer
+  // desligar não é ponto de variação. O que difere é o CONTEÚDO do acervo, e esse
+  // já é dado, num schema por cliente. Este teste é o que impede alguém de inventar
+  // uma chave de configuração para desligar o desenho sem notar que quebrou o outro.
+  it("desenha o acervo e o traçado em qualquer combinação", () => {
+    for (const opcoes of COMBINACOES) {
+      const ids = montarEstilo({ camadas: config.camadas, ...opcoes }).layers.map((c) => c.id);
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          "desenhos-area",
+          "desenhos-contorno",
+          "desenhos-ponto",
+          "desenho-tracado-area",
+          "desenho-tracado-linha",
+          "desenho-tracado-vertice",
+        ]),
+      );
+    }
+  });
+
+  // O acervo fica ACIMA das camadas de dado e ABAIXO da seleção. Não é arrumação:
+  // um desenho grande escondendo o realce do clique faria o mapa parecer não ter
+  // respondido ao gesto.
+  it("põe os desenhos acima do dado do cliente e abaixo da seleção", () => {
+    const camadasDoEstilo = montarEstilo({ camadas: config.camadas, ...COMBINACOES[0] }).layers;
+    const ids = camadasDoEstilo.map((c) => c.id);
+    const primeiroDesenho = ids.indexOf("desenhos-area");
+    // Pela FONTE, e não por sufixo de id: as camadas do cliente terminam em
+    // `__outline` e `__label`, e procurar um sufixo que não existe faria o teste
+    // passar com `indexOf` devolvendo -1 sem comparar coisa nenhuma.
+    const ultimaDoCliente = camadasDoEstilo.reduce(
+      (maior, c, i) =>
+        "source" in c && config.camadas.some((camada) => camada.id === c.source) ? i : maior,
+      -1,
+    );
+    expect(ultimaDoCliente).toBeGreaterThan(-1);
+    expect(ultimaDoCliente).toBeLessThan(primeiroDesenho);
+    expect(primeiroDesenho).toBeLessThan(ids.indexOf("selection-fill"));
   });
 });

@@ -9,9 +9,20 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { MapView } from "./MapView";
 import { criarEstadoMedicao, MEDICAO_SOURCE_ID, type Coordenada } from "./medicao";
+import { criarEstadoDesenho } from "@/desenho/estado";
+import { COLECAO_VAZIA, DESENHOS_SOURCE_ID, TRACADO_SOURCE_ID } from "@/desenho/fonte";
 
 const handlers = new Map<string, (e: unknown) => void>();
 const setData = vi.fn();
+// Um espião por fonte: as três mudam por motivos diferentes, e um espião só não
+// distinguiria "apagou a medição" de "não havia desenho".
+const setDataTracado = vi.fn();
+const setDataAcervo = vi.fn();
+const FONTES: Record<string, { setData: ReturnType<typeof vi.fn> }> = {
+  [MEDICAO_SOURCE_ID]: { setData },
+  [TRACADO_SOURCE_ID]: { setData: setDataTracado },
+  [DESENHOS_SOURCE_ID]: { setData: setDataAcervo },
+};
 const doubleClickZoom = { enable: vi.fn(), disable: vi.fn() };
 const canvas = { style: { cursor: "" } };
 
@@ -21,7 +32,7 @@ const mapaDublado = {
   addControl: vi.fn(),
   remove: vi.fn(),
   getCanvas: () => canvas,
-  getSource: (id: string) => (id === MEDICAO_SOURCE_ID ? { setData } : { setData: vi.fn() }),
+  getSource: (id: string) => FONTES[id] ?? { setData: vi.fn() },
   getLayer: () => undefined,
   setLayoutProperty: vi.fn(),
   queryRenderedFeatures: () => [],
@@ -52,6 +63,8 @@ const PONTO: Coordenada = [-46.5745, -23.618];
 function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
   const onVerticeMedicao = vi.fn();
   const onEncerrarMedicao = vi.fn();
+  const onVerticeDesenho = vi.fn();
+  const onCancelarDesenho = vi.fn();
   const onSelect = vi.fn();
   const resultado = render(
     <MapView
@@ -63,10 +76,21 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
       medicao={criarEstadoMedicao(null)}
       onVerticeMedicao={onVerticeMedicao}
       onEncerrarMedicao={onEncerrarMedicao}
+      desenho={criarEstadoDesenho(null)}
+      onVerticeDesenho={onVerticeDesenho}
+      onCancelarDesenho={onCancelarDesenho}
+      desenhos={COLECAO_VAZIA}
       {...props}
     />,
   );
-  return { ...resultado, onVerticeMedicao, onEncerrarMedicao, onSelect };
+  return {
+    ...resultado,
+    onVerticeMedicao,
+    onEncerrarMedicao,
+    onVerticeDesenho,
+    onCancelarDesenho,
+    onSelect,
+  };
 }
 
 const clicar = () =>
@@ -110,6 +134,10 @@ describe("MapView e a medição", () => {
         medicao={criarEstadoMedicao(null)}
         onVerticeMedicao={vi.fn()}
         onEncerrarMedicao={onEncerrarMedicao}
+        desenho={criarEstadoDesenho(null)}
+        onVerticeDesenho={vi.fn()}
+        onCancelarDesenho={vi.fn()}
+        desenhos={COLECAO_VAZIA}
       />,
     );
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -150,6 +178,72 @@ describe("MapView e a medição", () => {
 
   it("o cursor vira mira enquanto mede", () => {
     montar({ medicao: criarEstadoMedicao("area", []) });
+    handlers.get("mousemove")?.({ point: {} });
+    expect(canvas.style.cursor).toBe("crosshair");
+  });
+});
+
+// O desenho divide com a medição o mesmo evento de clique, e as duas dividem esse
+// evento com a seleção de feição. É o único ponto do arquivo em que três coisas
+// disputam um gesto, e nenhuma delas se prova lendo o código.
+describe("MapView e o desenho", () => {
+  it("desenhando, o clique marca vértice e NÃO seleciona", () => {
+    const { onVerticeDesenho, onSelect } = montar({ desenho: criarEstadoDesenho("poligono", []) });
+    clicar();
+    expect(onVerticeDesenho).toHaveBeenCalledWith(PONTO);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("Esc cancela o traçado, e só quando há um", () => {
+    const { onCancelarDesenho, unmount } = montar({ desenho: criarEstadoDesenho("ponto", []) });
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(onCancelarDesenho).toHaveBeenCalledOnce();
+    unmount();
+
+    const semDesenho = montar();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(semDesenho.onCancelarDesenho).not.toHaveBeenCalled();
+  });
+
+  it("o traçado vai para a fonte do traçado, não para a do acervo", () => {
+    montar({ desenho: criarEstadoDesenho("poligono", [PONTO, [-46.568, -23.618]]) });
+    const desenhado = setDataTracado.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection;
+    expect(desenhado.features.map((f) => f.geometry.type)).toEqual([
+      "Point",
+      "Point",
+      "LineString",
+    ]);
+    // O acervo recebeu a coleção vazia da prop, e não o traçado: se as duas fontes
+    // se misturassem, cada vértice novo reenviaria o acervo inteiro ao GPU.
+    expect(setDataAcervo).toHaveBeenCalledWith(COLECAO_VAZIA);
+  });
+
+  it("pinta o acervo como veio do servidor, sem remontar a coleção", () => {
+    const doServidor: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          id: "abc",
+          geometry: { type: "Point", coordinates: PONTO },
+          properties: { cor: "#dc2626", nome: "Portaria" },
+        },
+      ],
+    };
+    montar({ desenhos: doServidor });
+    // A MESMA referência: `cor` em `properties` é o que `["get", "cor"]` lê, e uma
+    // segunda montagem da coleção é onde essa propriedade se perderia.
+    expect(setDataAcervo).toHaveBeenCalledWith(doServidor);
+  });
+
+  it("desliga o zoom de duplo clique enquanto desenha", () => {
+    montar({ desenho: criarEstadoDesenho("poligono", []) });
+    expect(doubleClickZoom.disable).toHaveBeenCalled();
+    expect(doubleClickZoom.enable).not.toHaveBeenCalled();
+  });
+
+  it("o cursor vira mira enquanto desenha", () => {
+    montar({ desenho: criarEstadoDesenho("ponto", []) });
     handlers.get("mousemove")?.({ point: {} });
     expect(canvas.style.cursor).toBe("crosshair");
   });

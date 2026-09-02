@@ -26,6 +26,14 @@ import { camadasDoMapa, fontesDeDados } from "./layers";
 import { highlightLayers } from "./highlight";
 import { selectionLayers, selectionSource, SELECTION_SOURCE_ID } from "./selection";
 import { camadasMedicao, fonteMedicao, MEDICAO_SOURCE_ID } from "./medicao";
+import {
+  camadasDesenhos,
+  camadasTracado,
+  DESENHOS_SOURCE_ID,
+  fonteDesenhos,
+  fonteTracado,
+  TRACADO_SOURCE_ID,
+} from "@/desenho/fonte";
 
 export interface OpcoesDeEstilo {
   camadas: DefinicaoCamada[];
@@ -51,6 +59,8 @@ export function montarEstilo({
       ...fontesDeDados(camadas),
       [SELECTION_SOURCE_ID]: selectionSource,
       [MEDICAO_SOURCE_ID]: fonteMedicao,
+      [DESENHOS_SOURCE_ID]: fonteDesenhos,
+      [TRACADO_SOURCE_ID]: fonteTracado,
     },
     layers: [
       ...(satelite
@@ -58,9 +68,16 @@ export function montarEstilo({
         : basemapLayers(tema)),
       ...camadasDoMapa(camadas),
       ...highlightLayers(camadas),
+      // Os desenhos ficam acima do dado universal e abaixo da seleção: são dado do
+      // CLIENTE, então valem mais que o recorte do IBGE debaixo deles — mas menos
+      // que o realce do que a pessoa acabou de clicar, que é resposta a um gesto de
+      // agora e sumiria embaixo de uma área grande.
+      ...camadasDesenhos,
       ...selectionLayers,
-      // A medição fica por último: é anotação do usuário, e tem de aparecer por
-      // cima de tudo — inclusive da seleção e do satélite.
+      // O traçado em andamento e a medição são a mesma natureza — anotação sendo
+      // feita — e por isso vêm por cima de tudo. A ordem entre os dois não decide
+      // nada: as ferramentas se excluem, e entrar numa desliga a outra.
+      ...camadasTracado,
       ...camadasMedicao,
     ],
   };

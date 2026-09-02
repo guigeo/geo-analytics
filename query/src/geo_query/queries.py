@@ -792,6 +792,13 @@ class GeoQuery:
             sql.SQL("round(sum(r.pop_total * f) filter (where f < {})) as pop_de_rateio").format(
                 limiar
             ),
+            # A menor e a maior cobertura entre os setores tocados. Existem por causa
+            # do caso que so o dado real mostrou: um lote de 0,7 ha cai INTEIRO dentro
+            # de um setor de 6,7 ha, e ai "quantos setores foram cortados" nao descreve
+            # nada — o que descreve e "esta area e 10% de um setor so". Sem a fracao,
+            # o aviso nao teria como dizer isso.
+            sql.SQL("round(min(f)::numeric, 4) as fracao_menor"),
+            sql.SQL("round(max(f)::numeric, 4) as fracao_maior"),
         ]
         longas: list[str] = []
         for m in pedidas:

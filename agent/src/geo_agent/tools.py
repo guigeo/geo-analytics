@@ -643,13 +643,33 @@ def _avisos_de_borda(row: dict[str, Any]) -> list[str]:
     parciais = int(row.get("parciais") or 0)
     if not parciais:
         return []
+
+    setores = int(row.get("setores") or 0)
+    # Area inteira dentro de UM setor. Descoberto em 2026-09-02 carregando as duas
+    # primeiras areas reais de cliente: eram lotes de 0,7 ha e 2,4 ha, cada um contido
+    # num unico setor. Dizer "corta 1 setor ao meio" ali e falso na forma — nao corta
+    # nada — e, pior, esconde que o numero inteiro e uma divisao: a populacao daquele
+    # setor multiplicada pela fracao de area. Nao ha agregacao nenhuma acontecendo, e
+    # a premissa de distribuicao uniforme, que num bairro se dilui entre centenas de
+    # setores, aqui responde por 100% do resultado.
+    if setores == 1:
+        pct_area = round(100 * float(row.get("fracao_menor") or 0))
+        return [
+            f"esta area cabe dentro de UM setor censitario e ocupa cerca de {pct_area}% "
+            "dele. O numero nao e uma contagem: e a populacao do setor inteiro "
+            "multiplicada por essa fracao de area, por rateio. Isso so vale se as "
+            "pessoas estiverem distribuidas por igual dentro do setor, o que num lote "
+            "ou numa quadra raramente e verdade. Trate como ordem de grandeza"
+        ]
+
     total = float(row.get("pop_total") or 0)
     rateada = float(row.get("pop_de_rateio") or 0)
     pct = round(100 * rateada / total) if total else 0
     return [
-        f"a area corta {parciais} setores censitarios ao meio; {pct}% da populacao "
-        "informada vem de rateio pela area da intersecao, o que supoe distribuicao "
-        "uniforme dentro do setor -- falso em setor rural grande com a vila num canto"
+        f"a area toca {parciais} de {setores} setores censitarios apenas em parte; "
+        f"{pct}% da populacao informada vem de rateio pela area da intersecao, o que "
+        "supoe distribuicao uniforme dentro do setor -- falso em setor rural grande "
+        "com a vila num canto"
     ]
 
 

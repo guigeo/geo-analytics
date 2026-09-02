@@ -517,3 +517,45 @@ def test_area_enorme_responde_com_aviso_em_vez_de_recusar(ctx_com_acervo: Contex
     # O teto do AT-008. Medido em 2026-09-01 nesta maquina: 640 ms com cache quente.
     # Na VPS ainda nao foi medido (A-001) — este numero e o piso do que la precisa dar.
     assert decorrido < 3.0
+
+
+def test_area_menor_que_um_setor_avisa_que_o_numero_e_uma_divisao(
+    ctx_com_acervo: Contexto,
+) -> None:
+    """O caso que so o dado real mostrou, em 2026-09-02.
+
+    As duas primeiras areas de cliente que entraram eram LOTES — 0,7 ha e 2,4 ha —, e
+    cada uma cabia inteira dentro de um unico setor censitario. Dizer "corta 1 setor ao
+    meio" ali e falso na forma, e esconde o que importa: o numero e a populacao daquele
+    setor multiplicada pela fracao de area, e mais nada. Num bairro a premissa de
+    distribuicao uniforme se dilui entre centenas de setores; num lote ela responde por
+    100% do resultado.
+    """
+    lote = ctx_com_acervo.geodata._rows(
+        """
+        -- Um quadrado de ~100 m dentro de um setor urbano povoado: a forma de um lote.
+        with s as (
+            select geom from ibge.setor_censitario
+            where cod_setor = (select cod_setor from ibge_tabular.setor_resumo
+                               where pop_total > 300 order by cod_setor limit 1)
+        )
+        select ST_AsGeoJSON(ST_Transform(
+            ST_Buffer(ST_PointOnSurface(geom)::geography, 50)::geometry, 4326))::json as g
+        from s
+        """,
+        [],
+    )[0]["g"]
+    nome = f"teste-lote-{uuid.uuid4().hex[:8]}"
+    d = ctx_com_acervo.acervo.criar(tipo="poligono", nome=nome, geometria=lote)
+    try:
+        r = execute_tool(ctx_com_acervo, "info_area_desenhada", json.dumps({"nome": nome}))
+    finally:
+        ctx_com_acervo.acervo.apagar(d["id"])
+
+    assert not r.error
+    assert r.payload["dados"]["setores"] == 1
+    aviso = " ".join(r.payload["avisos"])
+    assert "UM setor" in aviso
+    # O que NAO pode aparecer: a linguagem de agregacao, que descreveria mal um lote.
+    assert "corta" not in aviso
+    assert "ordem de grandeza" in aviso

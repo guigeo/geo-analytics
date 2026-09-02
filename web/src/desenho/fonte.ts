@@ -13,7 +13,11 @@
  * com `cor` nas propriedades. Converter de novo aqui daria duas montagens da mesma
  * coleção — e a de baixo, a do servidor, é a que o `properties` das camadas espera.
  */
-import type { GeoJSONSourceSpecification, LayerSpecification } from "maplibre-gl";
+import type {
+  FilterSpecification,
+  GeoJSONSourceSpecification,
+  LayerSpecification,
+} from "maplibre-gl";
 
 export const DESENHOS_SOURCE_ID = "desenhos";
 export const TRACADO_SOURCE_ID = "desenho-tracado";
@@ -38,21 +42,50 @@ export const fonteTracado: GeoJSONSourceSpecification = { type: "geojson", data:
  * Sem isso seria uma camada por desenho — 500 camadas no volume-alvo, o que o
  * MapLibre aguenta mal e recompila a cada mudança. Uma camada, a cor vindo do dado.
  */
-export const IDS_CAMADAS_DESENHOS = ["desenhos-area", "desenhos-contorno", "desenhos-ponto"];
+/**
+ * Que geometria cada camada do acervo pinta. Existe como dado, e não só dentro das
+ * specs abaixo, porque o filtro precisa ser REMONTADO quando alguém esconde um desenho
+ * — e remontar exige saber qual era a metade fixa do filtro.
+ */
+const GEOMETRIA_DA_CAMADA = {
+  "desenhos-area": "Polygon",
+  "desenhos-contorno": "Polygon",
+  "desenhos-ponto": "Point",
+} as const;
+
+export const IDS_CAMADAS_DESENHOS = Object.keys(
+  GEOMETRIA_DA_CAMADA,
+) as (keyof typeof GEOMETRIA_DA_CAMADA)[];
+
+/**
+ * O filtro de uma camada do acervo, escondendo os ids pedidos.
+ *
+ * Esconder por FILTRO e não por `visibility` é o que torna o liga/desliga unitário: a
+ * visibilidade é da camada inteira, e as três camadas servem os quinhentos desenhos.
+ * O id vem de `properties.id`, que o servidor põe em cada feição.
+ */
+export function filtroDoAcervo(
+  camada: keyof typeof GEOMETRIA_DA_CAMADA,
+  ocultos: readonly string[] = [],
+): FilterSpecification {
+  const base: FilterSpecification = ["==", ["geometry-type"], GEOMETRIA_DA_CAMADA[camada]];
+  if (ocultos.length === 0) return base;
+  return ["all", base, ["!", ["in", ["get", "id"], ["literal", [...ocultos]]]]];
+}
 
 export const camadasDesenhos: LayerSpecification[] = [
   {
     id: "desenhos-area",
     type: "fill",
     source: DESENHOS_SOURCE_ID,
-    filter: ["==", ["geometry-type"], "Polygon"],
+    filter: filtroDoAcervo("desenhos-area"),
     paint: { "fill-color": ["get", "cor"], "fill-opacity": 0.2 },
   },
   {
     id: "desenhos-contorno",
     type: "line",
     source: DESENHOS_SOURCE_ID,
-    filter: ["==", ["geometry-type"], "Polygon"],
+    filter: filtroDoAcervo("desenhos-contorno"),
     layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": ["get", "cor"], "line-width": 2 },
   },
@@ -60,7 +93,7 @@ export const camadasDesenhos: LayerSpecification[] = [
     id: "desenhos-ponto",
     type: "circle",
     source: DESENHOS_SOURCE_ID,
-    filter: ["==", ["geometry-type"], "Point"],
+    filter: filtroDoAcervo("desenhos-ponto"),
     paint: {
       "circle-radius": 6,
       "circle-color": ["get", "cor"],

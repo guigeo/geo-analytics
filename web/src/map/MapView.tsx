@@ -19,6 +19,7 @@ import {
   COLECAO_VAZIA,
   DESENHOS_SOURCE_ID,
   geometriaDoTracado,
+  filtroDoAcervo,
   IDS_CAMADAS_DESENHOS,
   TRACADO_SOURCE_ID,
 } from "@/desenho/fonte";
@@ -115,8 +116,8 @@ interface Props {
    * quando o acervo está fora do ar — o mapa segue de pé (AT-012).
    */
   desenhos: GeoJSON.FeatureCollection;
-  /** Liga e desliga o acervo no mapa, como o painel de camadas faz com as camadas. */
-  desenhosVisiveis: boolean;
+  /** Ids dos desenhos escondidos. Um por vez, como o painel de camadas faz por camada. */
+  desenhosOcultos: readonly string[];
 }
 
 export function MapView({
@@ -136,7 +137,7 @@ export function MapView({
   onCancelarDesenho,
   onEncerrarDesenho,
   desenhos,
-  desenhosVisiveis,
+  desenhosOcultos,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -166,8 +167,8 @@ export function MapView({
   onEncerrarDesenhoRef.current = onEncerrarDesenho;
   const desenhosRef = useRef(desenhos);
   desenhosRef.current = desenhos;
-  const desenhosVisiveisRef = useRef(desenhosVisiveis);
-  desenhosVisiveisRef.current = desenhosVisiveis;
+  const desenhosOcultosRef = useRef(desenhosOcultos);
+  desenhosOcultosRef.current = desenhosOcultos;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
   const initialThemeRef = useRef(theme);
   const initialSatelliteRef = useRef(satellite);
@@ -226,6 +227,18 @@ export function MapView({
         onVerticeDesenhoRef.current([e.lngLat.lng, e.lngLat.lat]);
         return;
       }
+      // O acervo é consultado PRIMEIRO, e por duas razões que se somam: ele desenha
+      // por cima das camadas de dado, então é o que está debaixo do cursor; e é dado
+      // do cliente, que sempre ganha do recorte do IBGE quando os dois coincidem.
+      const doAcervo = map
+        .queryRenderedFeatures(e.point, { layers: camadasDoAcervoPresentes(map) })
+        .at(0);
+      if (doAcervo) {
+        selection()?.setData({ type: "Feature", geometry: doAcervo.geometry, properties: {} });
+        onSelect({ layerId: DESENHOS_SOURCE_ID, properties: doAcervo.properties ?? {} });
+        return;
+      }
+
       const active = activeLayers();
       const hits = active.length ? map.queryRenderedFeatures(e.point, { layers: active }) : [];
       if (hits.length) {
@@ -253,7 +266,8 @@ export function MapView({
         return;
       }
       const active = activeLayers();
-      const hits = active.length ? map.queryRenderedFeatures(e.point, { layers: active }) : [];
+      const alvos = [...camadasDoAcervoPresentes(map), ...active];
+      const hits = alvos.length ? map.queryRenderedFeatures(e.point, { layers: alvos }) : [];
       map.getCanvas().style.cursor = hits.length ? "pointer" : "";
     });
 
@@ -369,19 +383,21 @@ export function MapView({
     assimQuePuder(map, () => escreverNaFonte(map, DESENHOS_SOURCE_ID, desenhos));
   }, [desenhos]);
 
-  // Ligar e desligar o acervo. É `visibility` e não uma fonte vazia de propósito: com
-  // a fonte vazia, religar exigiria buscar tudo de novo, e o mapa piscaria em cada
-  // clique do interruptor. O dado continua carregado; o que muda é o que se pinta.
+  // Esconder desenho é por FILTRO, não por `visibility` nem esvaziando a fonte.
+  //
+  // `visibility` é da camada inteira, e as três camadas do acervo servem os quinhentos
+  // desenhos — desligar uma delas apagaria todos de uma vez, que foi a primeira versão
+  // e não era o que se pedia. Esvaziar a fonte obrigaria a rebuscar tudo ao religar.
+  // O filtro por id é o único dos três que é unitário e não custa rede.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const valor = desenhosVisiveis ? "visible" : "none";
     assimQuePuder(map, () => {
       if (!map.getLayer(IDS_CAMADAS_DESENHOS[0])) return false;
-      for (const id of IDS_CAMADAS_DESENHOS) map.setLayoutProperty(id, "visibility", valor);
+      for (const id of IDS_CAMADAS_DESENHOS) map.setFilter(id, filtroDoAcervo(id, desenhosOcultos));
       return true;
     });
-  }, [desenhosVisiveis]);
+  }, [desenhosOcultos]);
 
   useEffect(() => {
     highlightsRef.current = highlights ?? null;
@@ -424,16 +440,26 @@ export function MapView({
         desenhoAtual.modo ? geometriaDoTracado(tracado.vertices, tracado.anel) : COLECAO_VAZIA,
       );
       escreverNaFonte(map, DESENHOS_SOURCE_ID, desenhosRef.current);
-      // O style novo nasce com as camadas visíveis: sem isto, trocar o tema religaria
-      // um acervo que a pessoa tinha desligado.
-      const valor = desenhosVisiveisRef.current ? "visible" : "none";
+      // O style novo nasce sem filtro: sem isto, trocar o tema faria reaparecer os
+      // desenhos que a pessoa tinha escondido.
       for (const id of IDS_CAMADAS_DESENHOS) {
-        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", valor);
+        if (map.getLayer(id)) map.setFilter(id, filtroDoAcervo(id, desenhosOcultosRef.current));
       }
     });
   }, [theme, satellite, satelliteOverlay]);
 
   return <div ref={containerRef} className="map" />;
+}
+
+/**
+ * As camadas do acervo que já existem no style.
+ *
+ * O `queryRenderedFeatures` LANÇA se receber um id de camada que não existe — e entre
+ * o `new Map()` e o style ser parseado ele não existe. Filtrar é o que impede um clique
+ * apressado de virar exceção no console.
+ */
+function camadasDoAcervoPresentes(map: maplibregl.Map) {
+  return IDS_CAMADAS_DESENHOS.filter((id) => map.getLayer(id));
 }
 
 /** Aplica a visibilidade. Devolve `false` enquanto o style não tem as camadas. */

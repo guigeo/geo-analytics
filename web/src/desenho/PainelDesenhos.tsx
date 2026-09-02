@@ -21,9 +21,9 @@ interface Props {
   onFocalizar: (desenho: Desenho) => void;
   onApagar: (desenho: Desenho) => void;
   onRecarregar: () => void;
-  /** Liga e desliga o acervo no mapa — o mesmo gesto do painel de camadas. */
-  visivelNoMapa: boolean;
-  onAlternarVisibilidade: () => void;
+  /** Ids escondidos do mapa. Uma chave por desenho, como o painel de camadas faz. */
+  ocultos: readonly string[];
+  onAlternarVisibilidade: (id: string) => void;
 }
 
 /**
@@ -51,7 +51,7 @@ export function PainelDesenhos({
   onFocalizar,
   onApagar,
   onRecarregar,
-  visivelNoMapa,
+  ocultos,
   onAlternarVisibilidade,
 }: Props) {
   // Qual linha está pedindo confirmação. Um id, e não um booleano: sem isso, abrir a
@@ -67,23 +67,13 @@ export function PainelDesenhos({
 
   return (
     <aside className="flex min-h-0 flex-col border-r border-t border-border bg-background">
-      <div className="flex items-center gap-2 px-4 pb-2 pt-4">
+      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Desenhos
         </h2>
         {total > 0 && (
           <span className="text-[0.6875rem] tabular-nums text-muted-foreground">{total}</span>
         )}
-        {/* O interruptor fica no cabeçalho e vale para o acervo inteiro — é a mesma
-            unidade do painel de camadas, onde uma chave liga uma CAMADA e não uma
-            feição. Um interruptor por desenho seria outra coisa, e com centenas de
-            linhas viraria uma lista de interruptores. */}
-        <Switch
-          className="ml-auto"
-          checked={visivelNoMapa}
-          onCheckedChange={onAlternarVisibilidade}
-          aria-label="Mostrar os desenhos no mapa"
-        />
       </div>
 
       <div className="px-3 pb-2">
@@ -170,6 +160,17 @@ export function PainelDesenhos({
                       </span>
                     )}
                   </button>
+
+                  {/* Uma chave por desenho, como cada camada tem a sua no painel de
+                      cima. É filtro por id no MapLibre, não `visibility`: a
+                      visibilidade é da camada, e as três camadas do acervo servem
+                      todos os desenhos — desligar uma apagaria o acervo inteiro. */}
+                  <Switch
+                    className="shrink-0"
+                    checked={!ocultos.includes(d.id)}
+                    onCheckedChange={() => onAlternarVisibilidade(d.id)}
+                    aria-label={`Mostrar ${d.nome} no mapa`}
+                  />
 
                   {confirmando === d.id ? (
                     // Confirmar na própria linha (AT-015), e não num diálogo: quem

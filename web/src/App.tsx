@@ -51,7 +51,9 @@ export function App() {
   const [modoDesenho, setModoDesenho] = useState<ModoDesenho | null>(null);
   const [verticesDesenho, setVerticesDesenho] = useState<Coordenada[]>([]);
   const [raioDesenho, setRaioDesenho] = useState<number | null>(null);
-  const [desenhosVisiveis, setDesenhosVisiveis] = useState(true);
+  // Quem está ESCONDIDO, e não quem está visível: desenho novo nasce visível, e uma
+  // lista de visíveis obrigaria a lembrar de acrescentar cada um que chega.
+  const [desenhosOcultos, setDesenhosOcultos] = useState<string[]>([]);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -200,8 +202,12 @@ export function App() {
                 void acervo.apagar(d.id);
               }}
               onRecarregar={acervo.recarregar}
-              visivelNoMapa={desenhosVisiveis}
-              onAlternarVisibilidade={() => setDesenhosVisiveis((v) => !v)}
+              ocultos={desenhosOcultos}
+              onAlternarVisibilidade={(id) =>
+                setDesenhosOcultos((atual) =>
+                  atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+                )
+              }
             />
           </div>
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
@@ -227,7 +233,7 @@ export function App() {
               onCancelarDesenho={cancelarDesenho}
               onEncerrarDesenho={encerrarDesenho}
               desenhos={acervo.desenhos}
-              desenhosVisiveis={desenhosVisiveis}
+              desenhosOcultos={desenhosOcultos}
             />
             <PainelMedicao
               medicao={medicao}

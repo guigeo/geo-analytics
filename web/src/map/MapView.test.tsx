@@ -51,6 +51,7 @@ const mapaDublado = {
   getSource: (id: string) => (style.carregado ? (FONTES[id] ?? { setData: vi.fn() }) : undefined),
   getLayer: (id: string) => (style.carregado && id.startsWith("desenhos-") ? { id } : undefined),
   setLayoutProperty: vi.fn(),
+  setFilter: vi.fn(),
   queryRenderedFeatures: () => [],
   isStyleLoaded: () => style.carregado,
   getBounds: () => ({ getWest: () => 0, getSouth: () => 0, getEast: () => 1, getNorth: () => 1 }),
@@ -98,7 +99,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
       onCancelarDesenho={onCancelarDesenho}
       onEncerrarDesenho={onEncerrarDesenho}
       desenhos={COLECAO_VAZIA}
-      desenhosVisiveis
+      desenhosOcultos={[]}
       {...props}
     />,
   );
@@ -161,7 +162,7 @@ describe("MapView e a medição", () => {
         onCancelarDesenho={vi.fn()}
         onEncerrarDesenho={vi.fn()}
         desenhos={COLECAO_VAZIA}
-        desenhosVisiveis
+        desenhosOcultos={[]}
       />,
     );
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -375,26 +376,63 @@ describe("MapView com o style ainda carregando", () => {
   });
 });
 
-describe("MapView e o liga/desliga do acervo", () => {
-  const visibilidadeAplicada = () =>
-    mapaDublado.setLayoutProperty.mock.calls
+describe("MapView e o liga/desliga por desenho", () => {
+  const filtrosAplicados = () =>
+    mapaDublado.setFilter.mock.calls
       .filter(([id]) => String(id).startsWith("desenhos-"))
-      .map(([, , valor]) => valor);
+      .map(([, filtro]) => JSON.stringify(filtro));
 
-  it("desligado, esconde as três camadas do acervo", () => {
-    montar({ desenhosVisiveis: false });
-    expect(visibilidadeAplicada()).toEqual(["none", "none", "none"]);
+  it("sem nada escondido, o filtro é só o da geometria", () => {
+    montar({ desenhosOcultos: [] });
+    for (const f of filtrosAplicados()) expect(f).not.toContain("literal");
   });
 
-  it("ligado, mostra as três", () => {
-    montar({ desenhosVisiveis: true });
-    expect(visibilidadeAplicada()).toEqual(["visible", "visible", "visible"]);
+  it("esconder um desenho o tira das TRÊS camadas, pelo id", () => {
+    montar({ desenhosOcultos: ["abc-123"] });
+    const filtros = filtrosAplicados();
+    expect(filtros).toHaveLength(3);
+    for (const f of filtros) expect(f).toContain("abc-123");
   });
 
-  it("esconde por visibilidade, e não esvaziando a fonte", () => {
-    // Esvaziar a fonte obrigaria a buscar tudo de novo ao religar, e o mapa piscaria
-    // a cada clique do interruptor. O dado fica; muda o que se pinta.
-    montar({ desenhosVisiveis: false, desenhos: COLECAO_VAZIA });
-    expect(setDataAcervo).toHaveBeenCalledWith(COLECAO_VAZIA);
+  it("esconder é filtro, e não `visibility` nem fonte vazia", () => {
+    // `visibility` é da camada, e as três servem TODOS os desenhos: desligar uma
+    // apagaria o acervo inteiro, que foi a primeira versão e não era o pedido.
+    // Esvaziar a fonte obrigaria a rebuscar tudo ao religar.
+    montar({ desenhosOcultos: ["abc-123"] });
+    const porVisibilidade = mapaDublado.setLayoutProperty.mock.calls.filter(([id]) =>
+      String(id).startsWith("desenhos-"),
+    );
+    expect(porVisibilidade).toHaveLength(0);
+  });
+});
+
+describe("MapView e o clique no desenho", () => {
+  const FEICAO = {
+    layer: { id: "desenhos-area" },
+    geometry: { type: "Polygon", coordinates: [[]] },
+    properties: { id: "abc-123", nome: "Terreno", cor: "#16a34a", tipo: "poligono" },
+  };
+
+  it("clicar num desenho abre os atributos DELE, não os da camada debaixo", () => {
+    // O acervo pinta por cima das camadas de dado e é dado do cliente: quando os dois
+    // coincidem debaixo do cursor, quem responde é o desenho.
+    mapaDublado.queryRenderedFeatures = ((_p: unknown, opcoes?: { layers?: string[] }) =>
+      opcoes?.layers?.some((l) => l.startsWith("desenhos-")) ? [FEICAO] : []) as never;
+    const { onSelect } = montar();
+    clicar();
+    expect(onSelect).toHaveBeenCalledWith({
+      layerId: "desenhos",
+      properties: FEICAO.properties,
+    });
+    mapaDublado.queryRenderedFeatures = (() => []) as never;
+  });
+
+  it("desenhando, o clique segue sendo do vértice", () => {
+    mapaDublado.queryRenderedFeatures = (() => [FEICAO]) as never;
+    const { onSelect, onVerticeDesenho } = montar({ desenho: criarEstadoDesenho("ponto", []) });
+    clicar();
+    expect(onVerticeDesenho).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+    mapaDublado.queryRenderedFeatures = (() => []) as never;
   });
 });

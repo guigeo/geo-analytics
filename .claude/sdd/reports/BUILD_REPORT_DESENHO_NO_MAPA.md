@@ -26,7 +26,7 @@
 | **Arquivos criados** | 14 (10 em `web/src/desenho/`, 3 no `agent/`, 1 no `servidor-dados-gis`) |
 | **Arquivos modificados** | 7 (`agent/` ×4, `web/src/map/` ×4 incluindo testes, `App.tsx`) |
 | **Linhas novas** | ~2.550 |
-| **Testes do agente** | **105** (offline + os que exigem `ACERVO_DSN`/`GEODATA_DSN`, que pulam sem eles) |
+| **Testes do agente** | **106** (offline + os que exigem `ACERVO_DSN`/`GEODATA_DSN`, que pulam sem eles) |
 | **Testes do front** | 131, incluindo 27 novos dos módulos puros e 6 do gesto de desenhar |
 | **Testes do query** | **49** (41 de antes + 8 do cruzamento) |
 | **Portão do front** | `format:check`, `lint`, `typecheck`, `test`, `build` — verde, nos dois clientes |
@@ -193,6 +193,49 @@ tool e reescreve o aviso, e Copacabana e Vila Madalena seguem no `info_local` de
 
 ---
 
+## O primeiro dado real (2026-09-02) — fora do manifesto
+
+Duas áreas do cliente 2 chegaram em KMZ do Google Earth e entraram por
+`servidor-dados-gis/cargas/kmz_para_acervo.sh`, novo — **não** por feature da
+aplicação, e não como camada: camada mora no host de tiles, aberto na internet sem
+credencial. O destino é `cliente_eb_prime.desenho` com `origem = 'carga'`, a coluna
+prevista desde o primeiro dia e que até aqui nenhuma carga real havia escrito.
+
+| Área | Tamanho | Setor que a contém | População |
+|---|---|---|---|
+| BASILAR CERAMICA 2 | 0,70 ha, 8 vértices | 6,68 ha, 346 pessoas — cobre 10,3% | 36 |
+| POTENCIAL INCORP SCS | 2,40 ha, 57 vértices | 23,88 ha, 2 pessoas — cobre 10,2% | 0 |
+
+**AT-004 passou a valer com dado real:** o papel do cliente 1 recebe
+`permission denied for schema cliente_eb_prime`. Até hoje o isolamento era testado
+contra schema vazio.
+
+### O defeito que o dado real revelou
+
+As duas são **lotes**, não recortes de bairro — `ST_Within(área, setor)` é verdadeiro
+nas duas. O aviso dizia *"a área corta 1 setores censitários ao meio"*: não corta nada.
+E o erro de forma escondia o de fundo — ali o número não agrega coisa nenhuma, é a
+população de **um** setor multiplicada pela fração de área. Num bairro a premissa de
+distribuição uniforme se dilui entre centenas de setores; num lote ela responde por
+100% do resultado. São dois avisos distintos agora, e a consulta devolve
+`fracao_menor`/`fracao_maior` para o de baixo poder dizer quanto do setor a área ocupa.
+
+Buffer e contorno do IBGE nunca produziriam esse caso: eu só desenhei áreas do tamanho
+de bairro. **Nenhum teste sintético meu tinha o formato do problema.**
+
+### Duas pedras no caminho da carga
+
+O `ubuntu-small` do GDAL — a imagem das outras cargas — traz o driver **KML** mas não o
+**LIBKML**, que é quem abre KMZ; o `ogr2ogr` recusa o arquivo listando os drivers que
+tem, e KML não está entre os tentados. A `ubuntu-full` resolveria por mais de 1 GB de
+download; o KMZ é extraído com o `zipfile` da stdlib, o mesmo recurso que o `_comum.sh`
+já usa em `descompactar`, pelo mesmo motivo.
+
+E o `psql` **não** substitui `:'variável'` dentro de `$$ … $$` nem em `-c` — só no que
+lê da entrada padrão. Custou duas execuções falhas até o script passar tudo por stdin.
+
+---
+
 ## Testes de aceitação
 
 | AT | Cobertura | Onde |
@@ -200,7 +243,7 @@ tool e reescreve o aviso, e Copacabana e Vila Madalena seguem no `info_local` de
 | AT-001 | ✅ ponta a ponta, contra agente vivo | manual + `test_rotas_desenhos.py` |
 | AT-002 | ✅ área salva com a área calculada | `geometria.test.ts`, `test_acervo.py` |
 | AT-003 | ⛔ **fase 3** | buffer não existe ainda |
-| AT-004 | ✅ recusa com `InsufficientPrivilege`, não lista vazia | `test_acervo.py` |
+| AT-004 | ✅ recusa com `InsufficientPrivilege`; conferido com **dado real** em 02/09 | `test_acervo.py` |
 | AT-005 | ✅ **0,0003%** contra a tool municipal | `test_queries.py`, `test_tools.py` |
 | AT-006 | ✅ **0,0001%** ao reconstituir um setor cortado ao meio | `test_queries.py` |
 | AT-007 | ✅ a row traz `parciais` e `pop_de_rateio` antes de qualquer texto | `test_tools.py` |
@@ -211,7 +254,7 @@ tool e reescreve o aviso, e Copacabana e Vila Madalena seguem no `info_local` de
 | AT-013 | ✅ paginação e filtro; ⏳ o tempo com 500 itens ainda não foi medido | `useAcervo.ts` |
 | AT-014 | ✅ categoria nasce do uso, via `/categorias` | `test_acervo.py` |
 | AT-015 | ✅ confirmação na própria linha | `PainelDesenhos.tsx` |
-| AT-016 | ✅ `origem` `desenho` e `carga` convivem | `test_acervo.py` |
+| AT-016 | ✅ `origem` `desenho` e `carga` convivem; a carga real rodou em 02/09 | `test_acervo.py`, `kmz_para_acervo.sh` |
 | AT-017 | ✅ zero clientes citados em `.py` e `.tsx` | `test_cliente.py` |
 
 ---

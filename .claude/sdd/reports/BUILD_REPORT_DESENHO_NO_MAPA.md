@@ -1,4 +1,4 @@
-# BUILD REPORT: DESENHO_NO_MAPA — Fases 1 e 4
+# BUILD REPORT: DESENHO_NO_MAPA — completo (fases 1 a 4)
 
 > Desenho de ponto e área sobre o mapa, guardados no acervo do cliente, com isolamento
 > garantido pelo Postgres e não pela aplicação.
@@ -8,13 +8,13 @@
 | Atributo | Valor |
 |----------|-------|
 | **Feature** | DESENHO_NO_MAPA |
-| **Fases** | 1 (alicerce, ponto e área) e 4 (o agente enxerga). Faltam 2 e 3 — encerramento do traçado e buffer |
+| **Fases** | 1 a 4, todas |
 | **Data** | 2026-09-01 |
 | **DEFINE** | [DEFINE_DESENHO_NO_MAPA.md](../features/DEFINE_DESENHO_NO_MAPA.md) |
 | **DESIGN** | [DESIGN_DESENHO_NO_MAPA.md](../features/DESIGN_DESENHO_NO_MAPA.md) |
 | **ADR** | ADR-0001 do `webgis`, emendas de 2026-08-31 (`8f6ef9c`) |
-| **Commits** | `507b1ed` (backend), `ccc2189` (frontend), `0cd7e6c` (fase 4), `91857f2`/`943a31b` (`servidor-dados-gis`) |
-| **Status** | Fases 1 e 4 completas. Não publicado — ver *Antes de ir para a VPS* |
+| **Commits** | `507b1ed` (backend), `ccc2189` (frontend), `0cd7e6c` (fase 4), `7b285d2` (fases 2 e 3), `91857f2`/`943a31b` (`servidor-dados-gis`) |
+| **Status** | Manifesto completo. Não publicado — ver *Antes de ir para a VPS* |
 
 ---
 
@@ -22,13 +22,14 @@
 
 | Métrica | Valor |
 |---------|-------|
-| **Itens do manifesto** | 25 de 26 como escritos (1–21 e 26–30); 1 com desvio declarado (item 21) |
+| **Itens do manifesto** | 29 de 30 como escritos; 1 com desvio declarado (item 21) |
 | **Arquivos criados** | 14 (10 em `web/src/desenho/`, 3 no `agent/`, 1 no `servidor-dados-gis`) |
 | **Arquivos modificados** | 7 (`agent/` ×4, `web/src/map/` ×4 incluindo testes, `App.tsx`) |
 | **Linhas novas** | ~2.550 |
-| **Testes do agente** | **106** (offline + os que exigem `ACERVO_DSN`/`GEODATA_DSN`, que pulam sem eles) |
+| **Testes do agente** | **110** (offline + os que exigem `ACERVO_DSN`/`GEODATA_DSN`, que pulam sem eles) |
 | **Testes do front** | 131, incluindo 27 novos dos módulos puros e 6 do gesto de desenhar |
 | **Testes do query** | **49** (41 de antes + 8 do cruzamento) |
+| **Testes do front** | **145** |
 | **Portão do front** | `format:check`, `lint`, `typecheck`, `test`, `build` — verde, nos dois clientes |
 
 ---
@@ -48,7 +49,7 @@
 | 9–12 | `desenho/geometria.ts` + `estado.ts` + testes | ✅ | 27 testes; área reaproveitada de `map/medicao.ts` |
 | 13 | `desenho/fonte.ts` | ✅ | Duas fontes; cor por `["get","cor"]`, não uma camada por desenho |
 | 14 | `desenho/api.ts` | ✅ | `ErroDoAcervo` separa 503 de 422 |
-| 15 | `desenho/BarraFerramentas.tsx` | ⚠️ | **Dois** modos, não três — ver desvio 1 |
+| 15 | `desenho/BarraFerramentas.tsx` | ✅ | Os três modos (o buffer entrou na fase 3) |
 | 16 | `desenho/FormularioDesenho.tsx` | ✅ | Categoria por `datalist`; paleta fechada de seis cores |
 | 17 | `desenho/PainelDesenhos.tsx` | ✅ | Busca, filtro, página e o estado de acervo fora do ar |
 | 18 | `map/MapView.tsx` | ✅ | Traçado e acervo em fontes separadas; ambos restaurados após `setStyle` |
@@ -61,11 +62,11 @@
 
 ## Desvios do DESIGN
 
-**1. A barra traz dois modos, não três.** O manifesto pede "os três modos" no item 15 e,
-duas linhas abaixo, põe "modos polígono e buffer" na fase 3 (item 23). O buffer depende
-do círculo geodésico (item 24) e do `ST_Buffer` no servidor (item 25), ambos declarados
-fase 3. Um terceiro botão prometeria em tela o que o backend recusaria. **AT-003 fica
-pendente** e é a única do MVP que esta fase não cobre.
+**1. A barra trouxe dois modos na fase 1, não três.** O manifesto pedia "os três modos"
+no item 15 e, duas linhas abaixo, punha "modos polígono e buffer" na fase 3 (item 23).
+O buffer dependia do círculo geodésico e do `ST_Buffer`, ambos fase 3, e um terceiro
+botão prometeria em tela o que o backend recusaria. **Resolvido na fase 3**, que entrou
+logo depois: são três modos hoje, e o AT-003 passa.
 
 **2. O mapa consome a `FeatureCollection` que o servidor monta.** O `fonte.ts` chegou a
 ter `colecaoDeDesenhos(Desenho[])`, e ela saiu: `/api/desenhos/geometrias` já devolve a
@@ -236,13 +237,53 @@ lê da entrada padrão. Custou duas execuções falhas até o script passar tudo
 
 ---
 
+## Fases 2 e 3 — o gesto e o buffer
+
+| # | Item | Status | Notas |
+|---|------|--------|-------|
+| 22 | `desenho/geometria.ts` (auto-interseção) | ✅ | Já tinha entrado na fase 1 |
+| 22 | Encerramento do traçado | ✅ | Duplo clique e Enter, no `MapView` |
+| 23 | `desenho/BarraFerramentas.tsx` | ✅ | Terceiro modo + campo de raio |
+| 24 | `circuloAproximado` | ✅ | 64 lados, geodésico, só pré-visualização |
+| 25 | `acervo.py` | ✅ | `ST_Buffer` sobre `geography`; centro e raio guardados |
+
+### As duas coisas que a execução decidiu
+
+**Os dois círculos passaram a ter 64 lados.** O `ST_Buffer` usa 32 por padrão, e um
+polígono inscrito tem área menor que o círculo — quanto menos lados, menor. O buffer
+salvo saía 0,63% abaixo enquanto a tela mostrava um de 64 lados, 0,16% abaixo: a pessoa
+via uma área antes de salvar e outra depois, sem nada explicando a diferença.
+`quad_segs=16` casa os dois em **0,149%**.
+
+**O duplo clique deixa lixo.** O MapLibre dispara `click` nas duas batidas antes do
+`dblclick`, então o último vértice entra repetido — e vértice repetido é exatamente o
+que `validar` recusa como anel degenerado. Sem tratar, o gesto certo devolveria "há
+pontos repetidos no traçado". O `MapView` informa por qual caminho se encerrou e o
+`App` descarta o duplicado; o Enter passa `false` porque não duplica nada.
+
+### O que o buffer muda para o cliente real
+
+Medido no mesmo ponto dos lotes que chegaram no dia anterior:
+
+| Recorte | Setores | Parciais | De rateio | População |
+|---|---|---|---|---|
+| Lote de 0,70 ha | 1 | 1 | **100%** | 36 |
+| Buffer de 500 m ali | 30 | 21 | **50%** | 6.933 |
+
+O buffer não é só mais uma forma de desenhar: é o que move a pergunta do cliente para a
+faixa em que o Censo por setor responde bem. Num lote, todo o número vem de supor gente
+espalhada por igual dentro de um setor; num raio de 500 m, metade vem de setores
+inteiros que estão de fato lá dentro.
+
+---
+
 ## Testes de aceitação
 
 | AT | Cobertura | Onde |
 |----|-----------|------|
 | AT-001 | ✅ ponta a ponta, contra agente vivo | manual + `test_rotas_desenhos.py` |
 | AT-002 | ✅ área salva com a área calculada | `geometria.test.ts`, `test_acervo.py` |
-| AT-003 | ⛔ **fase 3** | buffer não existe ainda |
+| AT-003 | ✅ buffer de 500 m salvo como polígono de 64 lados, erro de 0,149% | `test_acervo.py`, `geometria.test.ts` |
 | AT-004 | ✅ recusa com `InsufficientPrivilege`; conferido com **dado real** em 02/09 | `test_acervo.py` |
 | AT-005 | ✅ **0,0003%** contra a tool municipal | `test_queries.py`, `test_tools.py` |
 | AT-006 | ✅ **0,0001%** ao reconstituir um setor cortado ao meio | `test_queries.py` |
@@ -273,9 +314,9 @@ lê da entrada padrão. Custou duas execuções falhas até o script passar tudo
 
 ## Próximo passo
 
-Sobram as fases 2 e 3: encerramento explícito do traçado e o buffer por raio (AT-003,
-a única aceitação do MVP ainda descoberta). Nenhuma das duas é pré-requisito da outra,
-e o buffer é a que o usuário pediu por nome no `/brainstorm`.
+O manifesto acabou. O que resta é publicar — com o backup do `app_clientes` antes, e
+com um `ACERVO_DSN` do papel `app_eb_prime` para o cliente 2 enxergar as áreas que já
+estão no banco dele.
 
 Vale também um caso de área desenhada no `benchmark.yaml`: o ambiente do benchmark já
 recebe o acervo, e o que falta é decidir de onde vem a geometria do caso — cravar um

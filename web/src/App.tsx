@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Bot, PanelRightOpen } from "lucide-react";
+import { Bot, Layers, PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { MapView, type MapFocus, type SelectedFeature, type Viewport } from "@/map/MapView";
@@ -74,6 +74,7 @@ export function App() {
   // O chat nasce aberto: é o que a aplicação tem de diferente, e escondê-lo por
   // padrão obrigaria a descobri-lo. Recolher é um clique, e devolve a largura ao mapa.
   const [chatRecolhido, setChatRecolhido] = useState(false);
+  const [camadasRecolhidas, setCamadasRecolhidas] = useState(false);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -86,6 +87,9 @@ export function App() {
   // Os desenhos do cliente saem da MESMA coleção que o mapa consome. Memoizado porque
   // ela só muda quando alguém grava ou apaga, e o painel repinta a cada clique no mapa.
   const itens = useMemo(() => itensDoAcervo(acervo.desenhos), [acervo.desenhos]);
+  // O formulário de salvar manda na coluna: um salvamento pela metade que some atrás
+  // de uma aba é armadilha — a pessoa não fica sabendo que ainda deve algo.
+  const esquerdaAberta = !camadasRecolhidas || (preenchendo && modoDesenho !== null);
 
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -220,7 +224,7 @@ export function App() {
         <div
           className="grid min-h-0 flex-1"
           style={{
-            gridTemplateColumns: `${larguraEsquerda}px 1fr ${
+            gridTemplateColumns: `${esquerdaAberta ? larguraEsquerda : LARGURA_ABA}px 1fr ${
               chatRecolhido ? LARGURA_ABA : larguraChat
             }px`,
           }}
@@ -232,48 +236,66 @@ export function App() {
           {/* A esquerda mostra a árvore OU o formulário de salvar — nunca os dois.
               O formulário era a última peça a pousar sobre o mapa, e pousava bem em
               cima do que se acabou de desenhar, que é o que se quer olhar ao decidir
-              como chamá-lo. */}
-          <div className="relative min-h-0">
-            {preenchendo && modoDesenho ? (
-              <FormularioDesenho
-                tipo={modoDesenho}
-                area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
-                categorias={acervo.categorias}
-                salvando={salvandoDesenho}
-                erro={erroAoSalvar}
-                onSalvar={(dados) => {
-                  void salvarDesenho(dados);
-                }}
-                onCancelar={() => setPreenchendo(false)}
+              como chamá-lo.
+
+              Recolhida, vira a mesma aba de 44px do chat. O formulário ABERTO manda
+              na coluna e ignora o recolhimento: salvamento pela metade que some atrás
+              de uma aba é armadilha — a pessoa não sabe que ainda deve algo. */}
+          {!esquerdaAberta ? (
+            <button
+              type="button"
+              onClick={() => setCamadasRecolhidas(false)}
+              aria-label="Abrir o painel de camadas"
+              aria-expanded={false}
+              className="flex flex-col items-center gap-2 border-r border-border bg-background py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <PanelLeftOpen aria-hidden="true" className="size-4" />
+              <Layers aria-hidden="true" className="size-5 text-primary" />
+            </button>
+          ) : (
+            <div className="relative min-h-0">
+              {preenchendo && modoDesenho ? (
+                <FormularioDesenho
+                  tipo={modoDesenho}
+                  area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
+                  categorias={acervo.categorias}
+                  salvando={salvandoDesenho}
+                  erro={erroAoSalvar}
+                  onSalvar={(dados) => {
+                    void salvarDesenho(dados);
+                  }}
+                  onCancelar={() => setPreenchendo(false)}
+                />
+              ) : (
+                <LayerPanel
+                  visible={visible}
+                  onToggle={toggleLayer}
+                  itens={itens}
+                  ocultos={desenhosOcultos}
+                  onAlternarItem={(id) =>
+                    setDesenhosOcultos((atual) =>
+                      atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+                    )
+                  }
+                  onFocalizar={focalizarDesenho}
+                  onApagar={(item) => {
+                    void acervo.apagar(item.id);
+                  }}
+                  erroDoAcervo={acervo.erro}
+                  onRecarregar={acervo.recarregar}
+                  onRecolher={() => setCamadasRecolhidas(true)}
+                />
+              )}
+              <Redimensionador
+                largura={larguraEsquerda}
+                onLargura={setLarguraEsquerda}
+                minima={200}
+                maxima={560}
+                padrao={LARGURA_PADRAO}
+                rotulo="Redimensionar o painel de camadas"
               />
-            ) : (
-              <LayerPanel
-                visible={visible}
-                onToggle={toggleLayer}
-                itens={itens}
-                ocultos={desenhosOcultos}
-                onAlternarItem={(id) =>
-                  setDesenhosOcultos((atual) =>
-                    atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
-                  )
-                }
-                onFocalizar={focalizarDesenho}
-                onApagar={(item) => {
-                  void acervo.apagar(item.id);
-                }}
-                erroDoAcervo={acervo.erro}
-                onRecarregar={acervo.recarregar}
-              />
-            )}
-            <Redimensionador
-              largura={larguraEsquerda}
-              onLargura={setLarguraEsquerda}
-              minima={200}
-              maxima={560}
-              padrao={LARGURA_PADRAO}
-              rotulo="Redimensionar o painel de camadas"
-            />
-          </div>
+            </div>
+          )}
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
           <div className="relative overflow-hidden">
             <MapView

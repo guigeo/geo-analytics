@@ -20,6 +20,7 @@ const semAcervo = {
   onApagar: vi.fn(),
   erroDoAcervo: null,
   onRecarregar: vi.fn(),
+  onRecolher: vi.fn(),
 };
 
 function desenho(id: string, nome: string, tipo = "poligono"): ItemDoAcervo {
@@ -100,6 +101,13 @@ describe("LayerPanel", () => {
     abrir(grupo.rotulo);
     fireEvent.click(screen.getAllByRole("switch")[0]);
     expect(onToggle).toHaveBeenCalledWith(grupo.camadas[0].id);
+  });
+
+  it("o cabeçalho oferece recolher a coluna", () => {
+    const onRecolher = vi.fn();
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} onRecolher={onRecolher} />);
+    fireEvent.click(screen.getByRole("button", { name: /recolher o painel/i }));
+    expect(onRecolher).toHaveBeenCalledOnce();
   });
 
   it("não repete a instrução que mora nos Atributos", () => {

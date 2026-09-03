@@ -3,6 +3,7 @@ import {
   ChevronRight,
   CloudOff,
   Layers,
+  PanelLeftClose,
   RadioTower,
   RotateCcw,
   Trash2,
@@ -35,6 +36,8 @@ interface Props {
   /** Acervo fora do ar não é acervo vazio (AT-012): são estados diferentes na tela. */
   erroDoAcervo: ErroDoAcervo | null;
   onRecarregar: () => void;
+  /** Recolhe a coluna para a aba fina, devolvendo a largura ao mapa. */
+  onRecolher: () => void;
 }
 
 // Ícone da legenda por id de ícone do mapa (mantém painel e marcador em sintonia).
@@ -66,6 +69,7 @@ export function LayerPanel({
   onApagar,
   erroDoAcervo,
   onRecarregar,
+  onRecolher,
 }: Props) {
   const grupos = useMemo(() => agruparCamadas(camadas), []);
   // Guarda os ABERTOS, e começa vazio: toda sessão nasce com tudo recolhido. Guardar
@@ -77,7 +81,22 @@ export function LayerPanel({
 
   return (
     <Secao className="border-r border-border bg-background">
-      <SecaoCabecalho titulo="Camadas" icone={Layers} />
+      <SecaoCabecalho
+        titulo="Camadas"
+        icone={Layers}
+        acao={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Recolher o painel de camadas"
+            aria-expanded
+            onClick={onRecolher}
+          >
+            <PanelLeftClose aria-hidden="true" />
+          </Button>
+        }
+      />
 
       <SecaoCorpo>
         <div className="flex flex-col gap-1">

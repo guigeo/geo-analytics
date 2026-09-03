@@ -81,11 +81,14 @@ describe("os dois clientes", () => {
     expect(geoAnalytics.tema.marcaEscura).toBe("oklch(0.72 0.15 230)");
   });
 
-  it("nenhuma camada do EB Prime nasce ligada", () => {
-    // Pedido do Gui em 2026-08-29: quem usa escolhe o nível ao entrar, em vez de
-    // achar o mapa já com município desenhado por cima.
-    for (const c of ebPrime.camadas) {
-      expect(c.visivelPorPadrao, `camada ${c.id}`).toBe(false);
+  it("nenhum cliente consegue nascer com camada ligada", () => {
+    // Pedido do Gui em 2026-08-29 e virado regra da casca em 2026-09-02: quem usa
+    // escolhe o nível ao entrar, em vez de achar o mapa já com município desenhado
+    // por cima. Antes era um campo que cada cliente punha em `false`; hoje o campo
+    // não existe, e é isto que esta asserção guarda — se ele voltar, alguém pode
+    // pôr `true` e o teste antigo, que só olhava um cliente, não veria.
+    for (const c of [...geoAnalytics.camadas, ...ebPrime.camadas]) {
+      expect(c, `camada ${c.id}`).not.toHaveProperty("visivelPorPadrao");
     }
   });
 

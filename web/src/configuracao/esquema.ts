@@ -75,14 +75,13 @@ export const ANCORAS_ICONE = ["centro", "base"] as const;
  * enxerga; o grupo vem junto com a camada, e grupo que ficou sem camada nenhuma
  * simplesmente não aparece.
  *
- * `abertoPorPadrao` é o que faz o painel nascer curto: nenhuma camada começa ligada,
- * então abrir tudo mostraria oito interruptores desligados e nada mais. O IBGE abre
- * porque é o assunto da aplicação; infraestrutura fica a um clique, com a contagem à
- * vista para não virar gaveta escondida.
+ * Não há "abre por padrão": **toda sessão começa com tudo recolhido**, decidido em
+ * 2026-09-02. Chave que só pode ter um valor não é configuração, é cerimônia — e é
+ * uma chave a mais para alguém virar sem querer.
  */
 export const GRUPOS_DE_CAMADA = {
-  ibge: { rotulo: "Informações IBGE", abertoPorPadrao: true },
-  infraestrutura: { rotulo: "Infraestrutura", abertoPorPadrao: false },
+  ibge: { rotulo: "Informações IBGE" },
+  infraestrutura: { rotulo: "Infraestrutura" },
 } as const;
 
 export const IDS_DE_GRUPO = Object.keys(GRUPOS_DE_CAMADA) as [IdDeGrupo, ...IdDeGrupo[]];
@@ -116,7 +115,6 @@ export const EsquemaCamada = z
     /** Pontos: deixar ícones sobrepostos em vez de escondê-los por colisão. */
     iconesPodemSobrepor: z.boolean().optional(),
     rotuloNoMapa: EsquemaRotuloNoMapa.optional(),
-    visivelPorPadrao: z.boolean(),
     atributos: z
       .array(EsquemaAtributo)
       .min(1, "camada sem atributo não mostra nada ao ser clicada"),

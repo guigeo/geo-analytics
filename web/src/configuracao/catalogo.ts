@@ -19,7 +19,7 @@ import type { DefinicaoCamada } from "./esquema";
 /** Ajusta uma camada do catálogo para um cliente, sem tocar no catálogo. */
 export function com(
   camada: DefinicaoCamada,
-  ajustes: Partial<Pick<DefinicaoCamada, "rotulo" | "cor" | "visivelPorPadrao">>,
+  ajustes: Partial<Pick<DefinicaoCamada, "rotulo" | "cor">>,
 ): DefinicaoCamada {
   return { ...camada, ...ajustes };
 }
@@ -36,7 +36,6 @@ export const CATALOGO = {
     opacidadePreenchimento: 0,
     contorno: { cor: "#3a5a8c", largura: 2 },
     rotuloNoMapa: { campo: "NM_UF", zoomMinimo: 4, tamanho: 12, cor: "#27406b" },
-    visivelPorPadrao: false,
     atributos: [
       { chave: "NM_UF", rotulo: "Nome" },
       { chave: "SIGLA_UF", rotulo: "UF" },
@@ -53,7 +52,6 @@ export const CATALOGO = {
     opacidadePreenchimento: 0.15,
     contorno: { cor: "#1d6b52", largura: 1 },
     rotuloNoMapa: { campo: "NM_MUN", zoomMinimo: 8, tamanho: 11, cor: "#16432f" },
-    visivelPorPadrao: false,
     atributos: [
       { chave: "NM_MUN", rotulo: "Nome" },
       { chave: "CD_MUN", rotulo: "Código IBGE" },
@@ -69,7 +67,6 @@ export const CATALOGO = {
     cor: "#b8577d",
     opacidadePreenchimento: 0.16,
     contorno: { cor: "#8f3a5c", largura: 0.8 },
-    visivelPorPadrao: false,
     atributos: [
       { chave: "NM_DIST", rotulo: "Distrito" },
       { chave: "NM_MUN", rotulo: "Município" },
@@ -85,7 +82,6 @@ export const CATALOGO = {
     cor: "#8e5bd0",
     opacidadePreenchimento: 0.18,
     contorno: { cor: "#6f3fb0", largura: 0.6 },
-    visivelPorPadrao: false,
     atributos: [
       { chave: "NM_BAIRRO", rotulo: "Bairro" },
       { chave: "NM_MUN", rotulo: "Município" },
@@ -101,7 +97,6 @@ export const CATALOGO = {
     cor: "#e08a3c",
     opacidadePreenchimento: 0.18,
     contorno: { cor: "#c46a1f", largura: 0.4 },
-    visivelPorPadrao: false,
     atributos: [
       { chave: "CD_SETOR", rotulo: "Setor" },
       { chave: "NM_MUN", rotulo: "Município" },
@@ -118,7 +113,6 @@ export const CATALOGO = {
     icone: ANTENNA_ICON,
     ancoraIcone: "base",
     iconesPodemSobrepor: true,
-    visivelPorPadrao: false,
     atributos: [
       { chave: "operadora", rotulo: "Operadora" },
       { chave: "tecnologia", rotulo: "Tecnologia" },
@@ -133,7 +127,6 @@ export const CATALOGO = {
     geometria: "linha",
     cor: "#c2410c",
     larguraLinha: 1.8,
-    visivelPorPadrao: false,
     atributos: [
       { chave: "sigla", rotulo: "Rodovia" },
       { chave: "tipovia", rotulo: "Tipo" },
@@ -149,7 +142,6 @@ export const CATALOGO = {
     geometria: "linha",
     cor: "#4b5563",
     larguraLinha: 1.4,
-    visivelPorPadrao: false,
     atributos: [
       { chave: "nome", rotulo: "Ferrovia" },
       { chave: "bitola", rotulo: "Bitola" },

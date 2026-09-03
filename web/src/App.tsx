@@ -26,9 +26,15 @@ import {
 } from "@/desenho/estado";
 import { ErroDoAcervo } from "@/desenho/api";
 
-const visibilidadeInicial = Object.fromEntries(
-  camadas.map((c) => [c.id, c.visivelPorPadrao]),
-) as Record<string, boolean>;
+/**
+ * Toda sessão começa com TUDO desligado — decidido em 2026-09-02, e é regra da casca,
+ * não escolha de cliente. Quem entra escolhe o nível que quer, em vez de achar o mapa
+ * já com município desenhado por cima do que veio ver.
+ */
+const visibilidadeInicial = Object.fromEntries(camadas.map((c) => [c.id, false])) as Record<
+  string,
+  boolean
+>;
 
 /** Largura inicial do painel esquerdo, e para onde o duplo clique na alça volta. */
 const LARGURA_PADRAO = 268;

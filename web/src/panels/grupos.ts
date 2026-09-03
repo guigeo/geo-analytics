@@ -10,7 +10,6 @@ import { GRUPOS_DE_CAMADA, type DefinicaoCamada, type IdDeGrupo } from "@/config
 export interface GrupoDeCamadas {
   id: IdDeGrupo;
   rotulo: string;
-  abertoPorPadrao: boolean;
   camadas: DefinicaoCamada[];
 }
 
@@ -30,7 +29,6 @@ export function agruparCamadas(camadas: readonly DefinicaoCamada[]): GrupoDeCama
     .map(([id, grupo]) => ({
       id: id as IdDeGrupo,
       rotulo: grupo.rotulo,
-      abertoPorPadrao: grupo.abertoPorPadrao,
       camadas: camadas.filter((c) => c.grupo === id),
     }))
     .filter((grupo) => grupo.camadas.length > 0);

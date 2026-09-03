@@ -10,8 +10,6 @@ import type { ItemDoAcervo } from "@/desenho/camadas";
 import { ErroDoAcervo } from "@/desenho/api";
 
 const grupos = agruparCamadas(camadas);
-const abertos = grupos.filter((g) => g.abertoPorPadrao);
-const fechados = grupos.filter((g) => !g.abertoPorPadrao);
 
 /** O acervo vazio e de pé: nem lista, nem erro. É o estado do cliente 1. */
 const semAcervo = {
@@ -38,6 +36,11 @@ function combo(rotulo: string) {
   return screen.getByRole("button", { name: new RegExp(rotulo, "i") });
 }
 
+/** Nasce tudo recolhido, então quase todo teste precisa abrir antes de olhar. */
+function abrir(rotulo: string) {
+  fireEvent.click(combo(rotulo));
+}
+
 describe("LayerPanel", () => {
   it("mostra um combo por grupo que tem camada", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
@@ -46,32 +49,43 @@ describe("LayerPanel", () => {
     }
   });
 
-  it("o combo aberto mostra as camadas dele; o fechado não", () => {
+  it("toda sessão começa com tudo recolhido", () => {
+    // Regra da casca desde 2026-09-02: quem entra vê os assuntos, não as camadas.
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
-    for (const c of abertos.flatMap((g) => g.camadas)) {
-      expect(screen.getByText(c.rotulo), `${c.id} deveria estar à vista`).toBeInTheDocument();
-    }
-    for (const c of fechados.flatMap((g) => g.camadas)) {
+    for (const c of grupos.flatMap((g) => g.camadas)) {
       expect(
         screen.queryByText(c.rotulo),
         `${c.id} deveria estar guardada`,
       ).not.toBeInTheDocument();
     }
+    expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 
-  it("clicar no combo fechado revela as camadas dele", () => {
+  it("clicar no combo revela as camadas dele, e só as dele", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
-    const grupo = fechados[0];
-    fireEvent.click(combo(grupo.rotulo));
-    for (const c of grupo.camadas) {
+    const [primeiro, segundo] = grupos;
+    abrir(primeiro.rotulo);
+    for (const c of primeiro.camadas) {
       expect(screen.getByText(c.rotulo)).toBeInTheDocument();
+    }
+    for (const c of segundo.camadas) {
+      expect(screen.queryByText(c.rotulo)).not.toBeInTheDocument();
     }
   });
 
+  it("clicar de novo recolhe", () => {
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    const [grupo] = grupos;
+    abrir(grupo.rotulo);
+    abrir(grupo.rotulo);
+    expect(screen.queryByText(grupo.camadas[0].rotulo)).not.toBeInTheDocument();
+  });
+
   it("reflete no interruptor a visibilidade recebida", () => {
-    const doGrupoAberto = abertos[0].camadas;
-    const visiveis = Object.fromEntries(doGrupoAberto.map((c, i) => [c.id, i === 0]));
+    const [grupo] = grupos;
+    const visiveis = Object.fromEntries(grupo.camadas.map((c, i) => [c.id, i === 0]));
     render(<LayerPanel visible={visiveis} onToggle={vi.fn()} {...semAcervo} />);
+    abrir(grupo.rotulo);
     const interruptores = screen.getAllByRole("switch");
     expect(interruptores[0]).toBeChecked();
     for (const outro of interruptores.slice(1)) {
@@ -81,9 +95,11 @@ describe("LayerPanel", () => {
 
   it("clicar no interruptor avisa qual camada", () => {
     const onToggle = vi.fn();
+    const [grupo] = grupos;
     render(<LayerPanel visible={{}} onToggle={onToggle} {...semAcervo} />);
+    abrir(grupo.rotulo);
     fireEvent.click(screen.getAllByRole("switch")[0]);
-    expect(onToggle).toHaveBeenCalledWith(abertos[0].camadas[0].id);
+    expect(onToggle).toHaveBeenCalledWith(grupo.camadas[0].id);
   });
 
   it("não repete a instrução que mora nos Atributos", () => {
@@ -100,6 +116,19 @@ describe("LayerPanel", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("o combo do acervo também nasce recolhido", () => {
+    render(
+      <LayerPanel
+        visible={{}}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        itens={[desenho("a", "Área A")]}
+      />,
+    );
+    expect(combo(configuracaoAcervo.rotulo)).toBeInTheDocument();
+    expect(screen.queryByText("Área A")).not.toBeInTheDocument();
+  });
+
   it("os desenhos são as FOLHAS do combo do acervo, sem degrau de categoria", () => {
     render(
       <LayerPanel
@@ -110,6 +139,7 @@ describe("LayerPanel", () => {
       />,
     );
     expect(combo(configuracaoAcervo.rotulo)).toBeInTheDocument();
+    abrir(configuracaoAcervo.rotulo);
     expect(screen.getByText("POTENCIAL INCORP SCS")).toBeInTheDocument();
     expect(screen.getByText("BASILAR CERAMICA 2")).toBeInTheDocument();
     // Nada entre o combo e os desenhos: com uma categoria só, aquele degrau era um
@@ -129,6 +159,7 @@ describe("LayerPanel", () => {
         onFocalizar={onFocalizar}
       />,
     );
+    abrir(configuracaoAcervo.rotulo);
     fireEvent.click(screen.getByText("POTENCIAL INCORP SCS"));
     expect(onFocalizar).toHaveBeenCalledWith(item);
   });
@@ -145,6 +176,7 @@ describe("LayerPanel", () => {
         onAlternarItem={onAlternarItem}
       />,
     );
+    abrir(configuracaoAcervo.rotulo);
     const interruptores = screen.getAllByRole("switch");
     const doAcervo = interruptores[interruptores.length - 1];
     expect(doAcervo).not.toBeChecked();
@@ -165,6 +197,7 @@ describe("LayerPanel", () => {
         onApagar={onApagar}
       />,
     );
+    abrir(configuracaoAcervo.rotulo);
     fireEvent.click(screen.getByRole("button", { name: /apagar área a/i }));
     expect(onApagar).not.toHaveBeenCalled();
 
@@ -183,6 +216,7 @@ describe("LayerPanel", () => {
         onApagar={onApagar}
       />,
     );
+    abrir(configuracaoAcervo.rotulo);
     fireEvent.click(screen.getByRole("button", { name: /apagar área a/i }));
     fireEvent.click(screen.getByRole("button", { name: /^não$/i }));
     expect(onApagar).not.toHaveBeenCalled();
@@ -203,6 +237,7 @@ describe("LayerPanel", () => {
       />,
     );
     expect(combo(configuracaoAcervo.rotulo)).toBeInTheDocument();
+    abrir(configuracaoAcervo.rotulo);
     expect(screen.getByText(/mapa continua funcionando/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /tentar de novo/i }));

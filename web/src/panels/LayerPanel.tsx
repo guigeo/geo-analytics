@@ -50,9 +50,11 @@ const ICONE_DA_LEGENDA: Record<string, LucideIcon> = {
  * painel nasce curto e cada assunto vira um lugar. O rodapé saiu porque a instrução
  * que ele dava já mora no estado vazio dos Atributos — que é o painel de que ela fala.
  *
- * O aberto/fechado é do componente e não da configuração: é preferência de quem está
- * usando naquele momento, não decisão de produto, e não sobrevive à sessão de
- * propósito — combo que "lembra" de fechado esconde camada de quem não a fechou.
+ * Toda sessão começa com TUDO recolhido e nenhuma camada ligada (decidido em
+ * 2026-09-02). O aberto/fechado é do componente e não da configuração: é preferência
+ * de quem está usando naquele momento, não decisão de produto, e não sobrevive à
+ * sessão de propósito — combo que "lembra" de aberto entrega a tela de ontem a quem
+ * abriu hoje.
  */
 export function LayerPanel({
   visible,
@@ -66,11 +68,12 @@ export function LayerPanel({
   onRecarregar,
 }: Props) {
   const grupos = useMemo(() => agruparCamadas(camadas), []);
-  const [fechados, setFechados] = useState<readonly string[]>(() =>
-    grupos.filter((g) => !g.abertoPorPadrao).map((g) => g.id),
-  );
+  // Guarda os ABERTOS, e começa vazio: toda sessão nasce com tudo recolhido. Guardar
+  // os fechados daria o mesmo desenho hoje e erraria no dia em que um combo novo
+  // aparecesse — ele nasceria aberto por não estar na lista.
+  const [abertos, setAbertos] = useState<readonly string[]>([]);
   const alternar = (id: string) =>
-    setFechados((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+    setAbertos((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
 
   return (
     <Secao className="border-r border-border bg-background">
@@ -82,7 +85,7 @@ export function LayerPanel({
             <Combo
               key={grupo.id}
               rotulo={grupo.rotulo}
-              aberto={!fechados.includes(grupo.id)}
+              aberto={abertos.includes(grupo.id)}
               onAlternar={() => alternar(grupo.id)}
             >
               {grupo.camadas.map((c) => (
@@ -108,7 +111,7 @@ export function LayerPanel({
           {(itens.length > 0 || erroDoAcervo) && (
             <Combo
               rotulo={configuracaoAcervo.rotulo}
-              aberto={!fechados.includes(CHAVE_DO_ACERVO)}
+              aberto={abertos.includes(CHAVE_DO_ACERVO)}
               onAlternar={() => alternar(CHAVE_DO_ACERVO)}
             >
               {erroDoAcervo ? (

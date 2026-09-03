@@ -71,7 +71,7 @@ describe("camadas do mapa", () => {
   it("nasce com a visibilidade que a camada declara", () => {
     const porId = new Map(camadasDoMapa().map((s) => [s.id, s]));
     for (const c of camadas) {
-      const esperada = c.visivelPorPadrao ? "visible" : "none";
+      const esperada = "none";
       expect(porId.get(c.id)?.layout?.visibility, `camada ${c.id}`).toBe(esperada);
     }
   });

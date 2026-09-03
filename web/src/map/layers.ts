@@ -142,7 +142,9 @@ export function camadasDoMapa(lista: DefinicaoCamada[] = camadas): LayerSpecific
   const base: LayerSpecification[] = [];
   const rotulos: LayerSpecification[] = [];
   for (const c of lista) {
-    const visibility = c.visivelPorPadrao ? "visible" : "none";
+    // Sempre `none`: o style nasce com tudo apagado e quem acende é o painel. Ver
+    // `visibilidadeInicial` no App — a regra é da casca, não do cliente.
+    const visibility = "none" as const;
     base.push(camadaBase(c, visibility));
     const contorno = camadaContorno(c, visibility);
     if (contorno) base.push(contorno);

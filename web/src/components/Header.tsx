@@ -1,4 +1,14 @@
-import { Globe2, Moon, Pentagon, Route, Ruler, Satellite, Sun } from "lucide-react";
+import {
+  Globe2,
+  Maximize2,
+  Minimize2,
+  Moon,
+  Pentagon,
+  Route,
+  Ruler,
+  Satellite,
+  Sun,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
@@ -29,6 +39,9 @@ interface Props {
   /** Desenho ativo, ou `null`. Mesmo gesto da medição — e por isso ficam lado a lado. */
   modoDesenho: ModoDesenho | null;
   onAlternarDesenho: (modo: ModoDesenho) => void;
+  /** Mapa ocupando tudo: os dois painéis somem, o cabeçalho fica. */
+  mapaCheio: boolean;
+  onAlternarMapaCheio: () => void;
 }
 
 export function Header({
@@ -44,6 +57,8 @@ export function Header({
   onAlternarMedicao,
   modoDesenho,
   onAlternarDesenho,
+  mapaCheio,
+  onAlternarMapaCheio,
 }: Props) {
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4">
@@ -148,6 +163,23 @@ export function Header({
             <TooltipContent>{satelliteOverlay ? "Só imagem" : "Mostrar vias"}</TooltipContent>
           </Tooltip>
         )}
+
+        {/* Some com os dois painéis de uma vez. Fica no grupo do fundo do mapa
+            porque é disso que se trata: quanto de tela o mapa ocupa. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={mapaCheio ? "secondary" : "ghost"}
+              size="icon"
+              onClick={onAlternarMapaCheio}
+              aria-label={mapaCheio ? "Mostrar os painéis" : "Mapa em tela cheia"}
+              aria-pressed={mapaCheio}
+            >
+              {mapaCheio ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{mapaCheio ? "Mostrar os painéis" : "Mapa em tela cheia"}</TooltipContent>
+        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>

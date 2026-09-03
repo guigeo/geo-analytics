@@ -28,6 +28,17 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "classe-social-2026-09",
+    data: "2026-09-03",
+    titulo: "Classe social, agora no chat",
+    texto:
+      "O chat agora estima a distribuição das classes A, B, C e DE em municípios, " +
+      "distritos, bairros e setores. É uma estimativa própria a partir do Censo 2022: " +
+      "o IBGE não publica essa classificação.",
+    pergunta: "Quais são os 10 municípios com maior porcentagem de domicílios na classe A?",
+    chip: "Top 10 classe A",
+  },
+  {
     id: "tela-cheia-2026-09",
     data: "2026-09-03",
     titulo: "Mais mapa, quando você quiser",

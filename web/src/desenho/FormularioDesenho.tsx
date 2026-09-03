@@ -1,7 +1,8 @@
 import { useId, useState, type FormEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SecaoCabecalho, SecaoCorpo } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
 import type { TipoDesenho } from "./geometria";
 
@@ -54,9 +55,15 @@ const ROTULO_DO_TIPO: Record<TipoDesenho, string> = {
  * bagunçar": lista fechada que ninguém mantém envelhece, e campo livre sem sugestão
  * vira "praça de pedágio", "Praça de Pedagio" e "pedágio" na mesma tabela.
  *
- * Ocupa o mesmo canto da barra de ferramentas, que se recolhe enquanto ele está
- * aberto: são dois passos do mesmo gesto, e mostrar os dois convidaria a trocar de
- * modo no meio de um salvamento.
+ * Ocupa a COLUNA DA ESQUERDA, no lugar da árvore de camadas, enquanto está aberto.
+ * Era a última peça que pousava sobre o mapa — e pousava justamente sobre o que se
+ * acabou de desenhar, que é o que se quer olhar ao decidir como chamá-lo. Aqui ele
+ * também nasce onde o desenho vai morar: fechar o formulário devolve a árvore, com a
+ * área nova dentro dela.
+ *
+ * A árvore some enquanto ele está aberto, e isso é de propósito: são dois passos do
+ * mesmo gesto, e deixar as duas à mão convidaria a mexer em camada no meio de um
+ * salvamento.
  */
 export function FormularioDesenho({
   tipo,
@@ -90,87 +97,93 @@ export function FormularioDesenho({
   return (
     <form
       onSubmit={enviar}
-      className="absolute right-4 top-4 z-10 w-[min(19rem,calc(100%-2rem))] rounded-lg border border-border bg-card/95 p-4 shadow-xl backdrop-blur"
+      className="flex h-full min-h-0 flex-col border-r border-border bg-background"
       aria-label={`Salvar ${ROTULO_DO_TIPO[tipo]}`}
     >
-      <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-primary">
-        Salvar {ROTULO_DO_TIPO[tipo]}
-      </p>
-      {area && <p className="mt-1 text-xs text-muted-foreground">Área aproximada: {area}</p>}
+      {/* Sem ✕ no cabeçalho: o rodapé já tem "Cancelar", e duas saídas para a mesma
+          porta é a redundância que este redesenho vem tirando das telas. */}
+      <SecaoCabecalho titulo={`Salvar ${ROTULO_DO_TIPO[tipo]}`} icone={Save} />
 
-      <label htmlFor={`${idBase}-nome`} className="mt-3 block text-xs font-medium">
-        Nome
-      </label>
-      <Input
-        id={`${idBase}-nome`}
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
-        maxLength={200}
-        required
-        autoFocus
-        placeholder="Ex.: Área de cobertura norte"
-        className="mt-1"
-      />
+      <SecaoCorpo>
+        {area && <p className="text-xs text-muted-foreground">Área aproximada: {area}</p>}
 
-      <label htmlFor={`${idBase}-categoria`} className="mt-3 block text-xs font-medium">
-        Categoria <span className="font-normal text-muted-foreground">(opcional)</span>
-      </label>
-      {/* `datalist` e não um combobox nosso: sugere sem impedir de digitar algo novo,
+        <label htmlFor={`${idBase}-nome`} className="mt-3 block text-xs font-medium">
+          Nome
+        </label>
+        <Input
+          id={`${idBase}-nome`}
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          maxLength={200}
+          required
+          autoFocus
+          placeholder="Ex.: Área de cobertura norte"
+          className="mt-1"
+        />
+
+        <label htmlFor={`${idBase}-categoria`} className="mt-3 block text-xs font-medium">
+          Categoria <span className="font-normal text-muted-foreground">(opcional)</span>
+        </label>
+        {/* `datalist` e não um combobox nosso: sugere sem impedir de digitar algo novo,
           que é exatamente o comportamento pedido — e é do navegador, sem dependência. */}
-      <Input
-        id={`${idBase}-categoria`}
-        list={idLista}
-        value={categoria}
-        onChange={(e) => setCategoria(e.target.value)}
-        maxLength={100}
-        placeholder="Ex.: praça de pedágio"
-        className="mt-1"
-      />
-      <datalist id={idLista}>
-        {categorias.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-
-      <fieldset className="mt-3">
-        <legend className="text-xs font-medium">Cor</legend>
-        <div className="mt-1.5 flex gap-1.5">
-          {PALETA.map((opcao) => (
-            <button
-              key={opcao}
-              type="button"
-              aria-label={`Cor ${opcao}`}
-              aria-pressed={cor === opcao}
-              onClick={() => setCor(opcao)}
-              style={{ background: opcao }}
-              className={cn(
-                "size-6 rounded-full ring-1 ring-black/10 transition-transform",
-                cor === opcao && "scale-110 ring-2 ring-foreground ring-offset-2 ring-offset-card",
-              )}
-            />
+        <Input
+          id={`${idBase}-categoria`}
+          list={idLista}
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value)}
+          maxLength={100}
+          placeholder="Ex.: praça de pedágio"
+          className="mt-1"
+        />
+        <datalist id={idLista}>
+          {categorias.map((c) => (
+            <option key={c} value={c} />
           ))}
-        </div>
-      </fieldset>
+        </datalist>
 
-      <label htmlFor={`${idBase}-observacao`} className="mt-3 block text-xs font-medium">
-        Observação <span className="font-normal text-muted-foreground">(opcional)</span>
-      </label>
-      <textarea
-        id={`${idBase}-observacao`}
-        value={observacao}
-        onChange={(e) => setObservacao(e.target.value)}
-        maxLength={2000}
-        rows={2}
-        className="mt-1 w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-      />
+        <fieldset className="mt-3">
+          <legend className="text-xs font-medium">Cor</legend>
+          <div className="mt-1.5 flex gap-1.5">
+            {PALETA.map((opcao) => (
+              <button
+                key={opcao}
+                type="button"
+                aria-label={`Cor ${opcao}`}
+                aria-pressed={cor === opcao}
+                onClick={() => setCor(opcao)}
+                style={{ background: opcao }}
+                className={cn(
+                  "size-6 rounded-full ring-1 ring-black/10 transition-transform",
+                  cor === opcao &&
+                    "scale-110 ring-2 ring-foreground ring-offset-2 ring-offset-card",
+                )}
+              />
+            ))}
+          </div>
+        </fieldset>
 
-      {erro && (
-        <p role="alert" className="mt-2 text-[0.6875rem] leading-4 text-destructive">
-          {erro}
-        </p>
-      )}
+        <label htmlFor={`${idBase}-observacao`} className="mt-3 block text-xs font-medium">
+          Observação <span className="font-normal text-muted-foreground">(opcional)</span>
+        </label>
+        <textarea
+          id={`${idBase}-observacao`}
+          value={observacao}
+          onChange={(e) => setObservacao(e.target.value)}
+          maxLength={2000}
+          rows={2}
+          className="mt-1 w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+        />
 
-      <div className="mt-3 flex gap-1.5">
+        {erro && (
+          <p role="alert" className="mt-2 text-[0.6875rem] leading-4 text-destructive">
+            {erro}
+          </p>
+        )}
+      </SecaoCorpo>
+
+      {/* Os botões ficam FORA da área de rolagem, como no chat: o que conclui a tarefa
+          não pode depender de a pessoa ter rolado até o fim para existir. */}
+      <div className="flex shrink-0 gap-1.5 border-t border-border p-3">
         <Button type="submit" size="sm" className="flex-1" disabled={!nomeLimpo || salvando}>
           {salvando && <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />}
           {salvando ? "Salvando…" : "Salvar"}

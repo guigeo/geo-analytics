@@ -229,24 +229,42 @@ export function App() {
               e os dois tinham o mesmo título, porque respondiam à mesma pergunta: o
               que está no mapa. Dois cabeçalhos para uma pergunta é o que fazia a
               coluna parecer cheia estando quase vazia. */}
+          {/* A esquerda mostra a árvore OU o formulário de salvar — nunca os dois.
+              O formulário era a última peça a pousar sobre o mapa, e pousava bem em
+              cima do que se acabou de desenhar, que é o que se quer olhar ao decidir
+              como chamá-lo. */}
           <div className="relative min-h-0">
-            <LayerPanel
-              visible={visible}
-              onToggle={toggleLayer}
-              itens={itens}
-              ocultos={desenhosOcultos}
-              onAlternarItem={(id) =>
-                setDesenhosOcultos((atual) =>
-                  atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
-                )
-              }
-              onFocalizar={focalizarDesenho}
-              onApagar={(item) => {
-                void acervo.apagar(item.id);
-              }}
-              erroDoAcervo={acervo.erro}
-              onRecarregar={acervo.recarregar}
-            />
+            {preenchendo && modoDesenho ? (
+              <FormularioDesenho
+                tipo={modoDesenho}
+                area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
+                categorias={acervo.categorias}
+                salvando={salvandoDesenho}
+                erro={erroAoSalvar}
+                onSalvar={(dados) => {
+                  void salvarDesenho(dados);
+                }}
+                onCancelar={() => setPreenchendo(false)}
+              />
+            ) : (
+              <LayerPanel
+                visible={visible}
+                onToggle={toggleLayer}
+                itens={itens}
+                ocultos={desenhosOcultos}
+                onAlternarItem={(id) =>
+                  setDesenhosOcultos((atual) =>
+                    atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+                  )
+                }
+                onFocalizar={focalizarDesenho}
+                onApagar={(item) => {
+                  void acervo.apagar(item.id);
+                }}
+                erroDoAcervo={acervo.erro}
+                onRecarregar={acervo.recarregar}
+              />
+            )}
             <Redimensionador
               largura={larguraEsquerda}
               onLargura={setLarguraEsquerda}
@@ -287,24 +305,6 @@ export function App() {
               onEncerrar={encerrarMedicao}
               onRecomecar={() => setVerticesMedicao([])}
             />
-            {/* O formulário é o único que ainda pousa sobre o mapa, e só no instante
-                de nomear: são quatro campos, que não cabem numa faixa de 44px sem
-                virar formulário espremido. Ele nasce colado ao canto de onde a faixa
-                do desenho fala, para a mão não atravessar a tela entre um passo e o
-                seguinte. */}
-            {preenchendo && modoDesenho && (
-              <FormularioDesenho
-                tipo={modoDesenho}
-                area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
-                categorias={acervo.categorias}
-                salvando={salvandoDesenho}
-                erro={erroAoSalvar}
-                onSalvar={(dados) => {
-                  void salvarDesenho(dados);
-                }}
-                onCancelar={() => setPreenchendo(false)}
-              />
-            )}
           </div>
           {/* A direita é só o chat, e ele vai do topo ao rodapé. Os atributos, que
               cobravam metade desta coluna para passar a sessão dizendo "clique numa

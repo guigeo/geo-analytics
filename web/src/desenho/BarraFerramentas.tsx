@@ -1,21 +1,10 @@
 import { Check, Circle, Hexagon, MapPin, Undo2, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { areaFormatada, MAX_RAIO_M, type ModoDesenho } from "./geometria";
 import { faltam, type EstadoDesenho } from "./estado";
-
-interface Props {
-  estado: EstadoDesenho;
-  /** Clicar no modo ativo desliga — o mesmo gesto da medição. */
-  onAlternarModo: (modo: ModoDesenho) => void;
-  onDesfazer: () => void;
-  onCancelar: () => void;
-  onSalvar: () => void;
-  onMudarRaio: (raioM: number | null) => void;
-  /** Acervo fora do ar. Desenhar segue possível; salvar, não — e a barra diz por quê. */
-  acervoIndisponivel?: boolean;
-}
 
 interface Ferramenta {
   modo: ModoDesenho;
@@ -41,162 +30,182 @@ const FERRAMENTAS: Ferramenta[] = [
 ];
 
 /**
- * A barra das ferramentas de desenho, flutuando sobre o mapa.
+ * As três ferramentas de desenho, no cabeçalho.
  *
- * Fica em cima à direita, e é o único canto livre: o controle de navegação ocupa o
- * alto à esquerda e o painel de medição o rodapé à esquerda. Desenhar e medir se
- * excluem (quem entra desliga o outro), mas os dois painéis coexistem na tela em
- * transição, e sobrepor um ao outro esconderia justamente o que se está encerrando.
+ * Ficavam num cartão flutuando sobre o mapa, no canto de cima à direita — e cartão
+ * sobre o mapa cobre justamente o que se quer olhar antes de desenhar. Aqui elas são
+ * irmãs dos botões de medição: mesmo tamanho, mesmo gesto (clicar no modo ativo
+ * desliga) e mesma leitura de estado. Desenhar e medir SÃO a mesma família de ação —
+ * anotar sobre o mapa —, e a barra passou a dizer isso.
  *
- * A barra não guarda estado nenhum: o traçado inteiro vive no `App`, derivado por
+ * O que não cabe aqui é o estado do traçado: para isso existe a `BarraDoDesenho`,
+ * logo abaixo do cabeçalho e só enquanto se desenha.
+ */
+export function FerramentasDeDesenho({
+  modo,
+  onAlternarModo,
+}: {
+  modo: ModoDesenho | null;
+  onAlternarModo: (modo: ModoDesenho) => void;
+}) {
+  return (
+    <>
+      {FERRAMENTAS.map(({ modo: dela, rotulo, icone: Icone }) => {
+        const ativo = modo === dela;
+        return (
+          <Tooltip key={dela}>
+            <TooltipTrigger asChild>
+              <Button
+                variant={ativo ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => onAlternarModo(dela)}
+                aria-label={`Desenhar ${rotulo.toLowerCase()}`}
+                aria-pressed={ativo}
+              >
+                <Icone className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {ativo ? "Encerrar desenho" : `Desenhar ${rotulo.toLowerCase()}`}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </>
+  );
+}
+
+interface Props {
+  estado: EstadoDesenho;
+  onDesfazer: () => void;
+  onCancelar: () => void;
+  onSalvar: () => void;
+  onMudarRaio: (raioM: number | null) => void;
+  /** Acervo fora do ar. Desenhar segue possível; salvar, não — e a barra diz por quê. */
+  acervoIndisponivel?: boolean;
+}
+
+/**
+ * A faixa que acompanha um traçado em andamento. Nasce sob o cabeçalho e some com ele.
+ *
+ * Faixa e não cartão, e sob a barra e não sobre o mapa: ela EMPURRA o mapa em vez de
+ * cobri-lo, então nada do que se está desenhando fica escondido atrás do painel que
+ * fala sobre o desenho. Existe só enquanto há traçado — barra permanente com botões
+ * apagados é ruído em todas as outras horas.
+ *
+ * Não guarda estado nenhum: o traçado inteiro vive no `App`, derivado por
  * `criarEstadoDesenho`, que é puro. Aqui só se lê e se dispara — o mesmo arranjo do
  * `PainelMedicao`, e pelo mesmo motivo: dá para conferir a regra sem subir navegador.
  */
-export function BarraFerramentas({
+export function BarraDoDesenho({
   estado,
-  onAlternarModo,
   onDesfazer,
   onCancelar,
   onSalvar,
   onMudarRaio,
   acervoIndisponivel = false,
 }: Props) {
-  const desenhando = estado.modo !== null;
+  if (estado.modo === null) return null;
+
   const vertices = estado.coordenadas.length;
   const restam = faltam(estado);
-  const area = estado.modo ? areaFormatada(estado.modo, estado.coordenadas, estado.raioM) : null;
+  const area = areaFormatada(estado.modo, estado.coordenadas, estado.raioM);
+  const ferramenta = FERRAMENTAS.find((f) => f.modo === estado.modo);
 
   return (
     <section
-      className="absolute right-4 top-4 z-10 w-[min(15rem,calc(100%-2rem))] rounded-lg border border-border bg-card/95 p-3 shadow-xl backdrop-blur"
-      aria-label="Ferramentas de desenho"
+      className="flex h-11 shrink-0 items-center gap-3 border-b border-border bg-muted/40 px-4"
+      aria-label="Desenho em andamento"
     >
-      <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-        Desenhar no mapa
+      <span className="flex shrink-0 items-center gap-2 text-xs font-semibold">
+        {ferramenta && <ferramenta.icone aria-hidden="true" className="size-4 text-primary" />}
+        {ferramenta?.rotulo}
+      </span>
+
+      {/* O raio aparece no modo buffer e em nenhum outro: é o único em que a geometria
+          não sai só dos cliques. */}
+      {estado.modo === "buffer" && (
+        <span className="flex shrink-0 items-center gap-1.5">
+          <label htmlFor="desenho-raio" className="text-xs text-muted-foreground">
+            Raio (m)
+          </label>
+          <Input
+            id="desenho-raio"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={MAX_RAIO_M}
+            value={estado.raioM ?? ""}
+            onChange={(e) => {
+              const valor = e.target.value.trim();
+              onMudarRaio(valor === "" ? null : Number(valor));
+            }}
+            placeholder="500"
+            className="h-7 w-24 text-sm"
+          />
+        </span>
+      )}
+
+      {/* aria-live: quem usa leitor de tela acompanha o traçado crescer. Sem isto, a
+          única saída da ferramenta enquanto se desenha seria visual.
+
+          Uma linha só para o estado. O impedimento É o estado enquanto não dá para
+          salvar, e a metade útil da recusa: "inválido" sozinho leva a pessoa a clicar
+          de novo do mesmo jeito (AT-009). */}
+      <p
+        className={cn(
+          "min-w-0 flex-1 truncate text-xs",
+          estado.completo
+            ? "font-medium tabular-nums"
+            : estado.impedimento
+              ? "font-medium text-destructive"
+              : "text-muted-foreground",
+        )}
+        aria-live="polite"
+      >
+        {restam > 0
+          ? `Marque mais ${restam} ponto${restam === 1 ? "" : "s"} — ${ferramenta?.dica ?? ""}`
+          : estado.completo
+            ? (area ?? "Pronto para salvar")
+            : (estado.impedimento ?? ferramenta?.dica)}
       </p>
 
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
-        {FERRAMENTAS.map(({ modo, rotulo, icone: Icone }) => {
-          const ativo = estado.modo === modo;
-          return (
-            <Button
-              key={modo}
-              type="button"
-              variant={ativo ? "secondary" : "outline"}
-              size="sm"
-              aria-pressed={ativo}
-              onClick={() => onAlternarModo(modo)}
-            >
-              <Icone aria-hidden="true" className="size-3.5" />
-              {rotulo}
-            </Button>
-          );
-        })}
-      </div>
-
-      {desenhando && (
-        <>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">
-            {FERRAMENTAS.find((f) => f.modo === estado.modo)?.dica} Esc cancela.
-          </p>
-
-          {/* O raio aparece no modo buffer e em nenhum outro: é o único em que a
-              geometria não sai só dos cliques. Fica ANTES do resumo porque é entrada,
-              e o resumo abaixo já reflete o que foi digitado. */}
-          {estado.modo === "buffer" && (
-            <div className="mt-2.5">
-              <label htmlFor="desenho-raio" className="block text-xs font-medium">
-                Raio em metros
-              </label>
-              <Input
-                id="desenho-raio"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={MAX_RAIO_M}
-                value={estado.raioM ?? ""}
-                onChange={(e) => {
-                  const valor = e.target.value.trim();
-                  onMudarRaio(valor === "" ? null : Number(valor));
-                }}
-                placeholder="500"
-                className="mt-1 h-8 text-sm"
-              />
-            </div>
-          )}
-
-          {/* aria-live: quem usa leitor de tela acompanha o traçado crescer. Sem
-              isto, a única saída da ferramenta enquanto se desenha seria visual. */}
-          <div className="mt-2.5 rounded-md bg-primary/10 px-3 py-2" aria-live="polite">
-            <p className="text-[0.6875rem] text-primary">
-              {estado.modo === "buffer"
-                ? vertices === 0
-                  ? "Sem centro"
-                  : "Centro marcado"
-                : `${vertices} ponto${vertices === 1 ? "" : "s"}`}
-            </p>
-            {/* Uma linha só para o estado, e não duas. O impedimento É o estado
-                enquanto não dá para salvar — mostrá-lo aqui e repeti-lo num alerta
-                embaixo faria a barra dizer a mesma coisa duas vezes. E ele é a metade
-                útil da recusa: "inválido" sozinho leva a pessoa a clicar de novo do
-                mesmo jeito (AT-009). Vermelho quando é recusa, normal quando é só
-                "ainda falta". */}
-            <p
-              className={cn(
-                "mt-0.5 text-sm font-semibold",
-                estado.completo && "tabular-nums",
-                !estado.completo && estado.impedimento && "text-destructive",
-              )}
-            >
-              {restam > 0
-                ? `Marque mais ${restam} ponto${restam === 1 ? "" : "s"}`
-                : estado.completo
-                  ? (area ?? "Pronto para salvar")
-                  : (estado.impedimento ?? "Traçado incompleto")}
-            </p>
-          </div>
-
-          {acervoIndisponivel && (
-            <p className="mt-2 text-[0.6875rem] leading-4 text-muted-foreground">
-              O acervo está fora do ar: dá para desenhar, mas não para salvar agora.
-            </p>
-          )}
-
-          <div className="mt-3 flex gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              disabled={vertices === 0}
-              onClick={onDesfazer}
-            >
-              <Undo2 aria-hidden="true" className="size-3.5" />
-              Desfazer
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Cancelar desenho"
-              onClick={onCancelar}
-            >
-              <X aria-hidden="true" className="size-4" />
-            </Button>
-          </div>
-
-          <Button
-            type="button"
-            size="sm"
-            className="mt-1.5 w-full"
-            disabled={!estado.completo || acervoIndisponivel}
-            onClick={onSalvar}
-          >
-            <Check aria-hidden="true" className="size-3.5" />
-            Salvar
-          </Button>
-        </>
+      {acervoIndisponivel && (
+        <span className="shrink-0 text-[0.6875rem] text-muted-foreground">
+          Acervo fora do ar: dá para desenhar, não para salvar.
+        </span>
       )}
+
+      <span className="flex shrink-0 items-center gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={vertices === 0}
+          onClick={onDesfazer}
+        >
+          <Undo2 aria-hidden="true" className="size-3.5" />
+          Desfazer
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!estado.completo || acervoIndisponivel}
+          onClick={onSalvar}
+        >
+          <Check aria-hidden="true" className="size-3.5" />
+          Salvar
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Cancelar desenho"
+          onClick={onCancelar}
+        >
+          <X aria-hidden="true" className="size-4" />
+        </Button>
+      </span>
     </section>
   );
 }

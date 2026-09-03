@@ -1,7 +1,10 @@
 import { Globe2, Moon, Pentagon, Route, Ruler, Satellite, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 import { Novidades } from "@/components/Novidades";
+import { FerramentasDeDesenho } from "@/desenho/BarraFerramentas";
+import type { ModoDesenho } from "@/desenho/geometria";
 import { SearchBox } from "@/components/SearchBox";
 import type { SearchHit } from "@/search";
 import type { Theme } from "@/hooks/use-theme";
@@ -23,6 +26,9 @@ interface Props {
   /** Medição ativa, ou `null`. Clicar no modo ativo desliga. */
   modoMedicao: ModoMedicao | null;
   onAlternarMedicao: (modo: ModoMedicao) => void;
+  /** Desenho ativo, ou `null`. Mesmo gesto da medição — e por isso ficam lado a lado. */
+  modoDesenho: ModoDesenho | null;
+  onAlternarDesenho: (modo: ModoDesenho) => void;
 }
 
 export function Header({
@@ -36,6 +42,8 @@ export function Header({
   onPerguntar,
   modoMedicao,
   onAlternarMedicao,
+  modoDesenho,
+  onAlternarDesenho,
 }: Props) {
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4">
@@ -60,8 +68,18 @@ export function Header({
 
       <SearchBox onSelect={onSearchSelect} />
 
+      {/* Os ícones em GRUPOS separados, e não numa fileira só de oito. Anotar
+          (desenhar), medir e trocar o fundo do mapa são três assuntos, e sem os
+          traços eles viram uma tira indistinta em que se procura pelo desenho do
+          ícone. O desenho vem antes da medição porque cria; a medição só consulta. */}
       <div className="ml-auto flex items-center gap-1">
         <Novidades onPerguntar={onPerguntar} />
+
+        <Separator orientation="vertical" className="mx-1 h-6" />
+
+        <FerramentasDeDesenho modo={modoDesenho} onAlternarModo={onAlternarDesenho} />
+
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* As duas ferramentas de medição. Ficam antes do satélite porque medir
             terreno costuma ser feito sobre a imagem, e a mão vai de uma à outra. */}
@@ -98,6 +116,8 @@ export function Header({
             {modoMedicao === "area" ? "Encerrar medição" : "Medir área"}
           </TooltipContent>
         </Tooltip>
+
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         <Tooltip>
           <TooltipTrigger asChild>

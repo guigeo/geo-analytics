@@ -12,7 +12,7 @@ import type { ContextoMapa } from "@/chat/api";
 import { useTheme } from "@/hooks/use-theme";
 import { PainelMedicao } from "@/components/PainelMedicao";
 import { criarEstadoMedicao, type Coordenada, type ModoMedicao } from "@/map/medicao";
-import { BarraFerramentas } from "@/desenho/BarraFerramentas";
+import { BarraDoDesenho } from "@/desenho/BarraFerramentas";
 import { FormularioDesenho, type DadosDoFormulario } from "@/desenho/FormularioDesenho";
 import { useAcervo } from "@/desenho/useAcervo";
 import { itensDoAcervo, type ItemDoAcervo } from "@/desenho/camadas";
@@ -190,6 +190,19 @@ export function App() {
           onPerguntar={(texto) => setPergunta({ texto, key: Date.now() })}
           modoMedicao={modoMedicao}
           onAlternarMedicao={alternarMedicao}
+          modoDesenho={modoDesenho}
+          onAlternarDesenho={alternarDesenho}
+        />
+
+        {/* A faixa do traçado nasce SOB o cabeçalho e empurra o mapa, em vez de
+            cobri-lo. Enquanto ela não existe, não ocupa altura nenhuma. */}
+        <BarraDoDesenho
+          estado={desenho}
+          onDesfazer={() => setVerticesDesenho(semUltimoVertice(desenho).coordenadas)}
+          onCancelar={cancelarDesenho}
+          onSalvar={() => setPreenchendo(true)}
+          onMudarRaio={setRaioDesenho}
+          acervoIndisponivel={acervo.erro?.indisponivel ?? false}
         />
         <div
           className="grid min-h-0 flex-1"
@@ -256,10 +269,12 @@ export function App() {
               onEncerrar={encerrarMedicao}
               onRecomecar={() => setVerticesMedicao([])}
             />
-            {/* Barra e formulário dividem o mesmo canto: são dois passos do mesmo
-                gesto, e mostrar os dois convidaria a trocar de modo no meio de um
-                salvamento — o que jogaria fora o traçado que está sendo nomeado. */}
-            {preenchendo && modoDesenho ? (
+            {/* O formulário é o único que ainda pousa sobre o mapa, e só no instante
+                de nomear: são quatro campos, que não cabem numa faixa de 44px sem
+                virar formulário espremido. Ele nasce colado ao canto de onde a faixa
+                do desenho fala, para a mão não atravessar a tela entre um passo e o
+                seguinte. */}
+            {preenchendo && modoDesenho && (
               <FormularioDesenho
                 tipo={modoDesenho}
                 area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
@@ -270,16 +285,6 @@ export function App() {
                   void salvarDesenho(dados);
                 }}
                 onCancelar={() => setPreenchendo(false)}
-              />
-            ) : (
-              <BarraFerramentas
-                estado={desenho}
-                onAlternarModo={alternarDesenho}
-                onDesfazer={() => setVerticesDesenho(semUltimoVertice(desenho).coordenadas)}
-                onCancelar={cancelarDesenho}
-                onSalvar={() => setPreenchendo(true)}
-                onMudarRaio={setRaioDesenho}
-                acervoIndisponivel={acervo.erro?.indisponivel ?? false}
               />
             )}
           </div>

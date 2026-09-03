@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState } from "react";
+import { Bot, PanelRightOpen } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { MapView, type MapFocus, type SelectedFeature, type Viewport } from "@/map/MapView";
 import type { SearchHit } from "@/search";
 import { LayerPanel } from "@/panels/LayerPanel";
-import { AttributePanel } from "@/panels/AttributePanel";
 import { ChatPanel, type PerguntaExterna } from "@/chat/ChatPanel";
 import { camadas } from "@/configuracao";
 import type { Destaques } from "@/map/highlight";
@@ -36,8 +36,11 @@ const visibilidadeInicial = Object.fromEntries(camadas.map((c) => [c.id, false])
   boolean
 >;
 
-/** Largura inicial do painel esquerdo, e para onde o duplo clique na alça volta. */
+/** Larguras iniciais das colunas, e para onde o duplo clique na alça volta. */
 const LARGURA_PADRAO = 268;
+const LARGURA_CHAT_PADRAO = 340;
+/** A coluna do chat recolhida: só a aba com o ícone, o resto vira mapa. */
+const LARGURA_ABA = 44;
 
 export function App() {
   const { theme, toggle } = useTheme();
@@ -67,6 +70,10 @@ export function App() {
   // Largura do painel esquerdo. Mora aqui e não no painel porque quem a aplica é a
   // grade das três colunas — o painel não tem como se alargar sozinho.
   const [larguraEsquerda, setLarguraEsquerda] = useState(LARGURA_PADRAO);
+  const [larguraChat, setLarguraChat] = useState(LARGURA_CHAT_PADRAO);
+  // O chat nasce aberto: é o que a aplicação tem de diferente, e escondê-lo por
+  // padrão obrigaria a descobri-lo. Recolher é um clique, e devolve a largura ao mapa.
+  const [chatRecolhido, setChatRecolhido] = useState(false);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -212,7 +219,11 @@ export function App() {
         />
         <div
           className="grid min-h-0 flex-1"
-          style={{ gridTemplateColumns: `${larguraEsquerda}px 1fr 340px` }}
+          style={{
+            gridTemplateColumns: `${larguraEsquerda}px 1fr ${
+              chatRecolhido ? LARGURA_ABA : larguraChat
+            }px`,
+          }}
         >
           {/* Uma coluna, um painel. Eram dois — camadas em cima, desenhos embaixo —,
               e os dois tinham o mesmo título, porque respondiam à mesma pergunta: o
@@ -253,6 +264,7 @@ export function App() {
               satellite={satellite}
               satelliteOverlay={satelliteOverlay}
               onSelect={setSelected}
+              selected={selected}
               highlights={destaques}
               focus={focus}
               onViewportChange={(v) => {
@@ -294,14 +306,42 @@ export function App() {
               />
             )}
           </div>
-          {/* A direita segue a mesma regra da esquerda, e é isso que faz as duas
-              colunas parecerem o mesmo produto: atributos ocupam o que têm — quase
-              nada enquanto ninguém clicou — e o chat, que é a superfície mais
-              trabalhada, fica com o resto. */}
-          <div className="grid min-h-0 grid-rows-[fit-content(45%)_minmax(0,1fr)] border-l border-border bg-background">
-            <AttributePanel selected={selected} />
-            <ChatPanel onDestaques={setDestaques} getContexto={getContexto} pergunta={pergunta} />
-          </div>
+          {/* A direita é só o chat, e ele vai do topo ao rodapé. Os atributos, que
+              cobravam metade desta coluna para passar a sessão dizendo "clique numa
+              feição", viraram popup ancorado na feição — `map/PopupAtributos.tsx`.
+
+              Recolhida, a coluna vira uma aba de 44px e o resto vira mapa: barra
+              estática é área cobrada o tempo todo por algo que nem sempre se usa. */}
+          {chatRecolhido ? (
+            <button
+              type="button"
+              onClick={() => setChatRecolhido(false)}
+              aria-label="Abrir o chat"
+              aria-expanded={false}
+              className="flex flex-col items-center gap-2 border-l border-border bg-background py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <PanelRightOpen aria-hidden="true" className="size-4" />
+              <Bot aria-hidden="true" className="size-5 text-primary" />
+            </button>
+          ) : (
+            <div className="relative min-h-0 border-l border-border bg-background">
+              <ChatPanel
+                onDestaques={setDestaques}
+                getContexto={getContexto}
+                pergunta={pergunta}
+                onRecolher={() => setChatRecolhido(true)}
+              />
+              <Redimensionador
+                largura={larguraChat}
+                onLargura={setLarguraChat}
+                minima={280}
+                maxima={640}
+                padrao={LARGURA_CHAT_PADRAO}
+                rotulo="Redimensionar o chat"
+                lado="esquerda"
+              />
+            </div>
+          )}
         </div>
       </div>
     </TooltipProvider>

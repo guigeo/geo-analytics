@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, SendHorizonal } from "lucide-react";
+import { Bot, PanelRightClose, SendHorizonal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Secao, SecaoCabecalho, SecaoCorpo } from "@/components/PainelSecao";
@@ -28,6 +28,8 @@ interface Props {
   getContexto: () => ContextoMapa | null;
   /** Pergunta vinda do painel de novidades; dispara sozinha ao chegar. */
   pergunta?: PerguntaExterna | null;
+  /** Recolhe a coluna para a aba fina, devolvendo a largura ao mapa. */
+  onRecolher: () => void;
 }
 
 // As sugestões são do cliente, não do produto: cada aplicação derivada pergunta
@@ -51,7 +53,7 @@ const CHIPS: Chip[] = [
   ...SUGESTOES.map((s) => ({ rotulo: s, pergunta: s })),
 ];
 
-export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
+export function ChatPanel({ onDestaques, getContexto, pergunta, onRecolher }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,7 +99,22 @@ export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
 
   return (
     <Secao className="border-t border-border">
-      <SecaoCabecalho titulo="Chat IA — Censo 2022" icone={Bot} />
+      <SecaoCabecalho
+        titulo="Chat IA — Censo 2022"
+        icone={Bot}
+        acao={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Recolher o chat"
+            aria-expanded
+            onClick={onRecolher}
+          >
+            <PanelRightClose aria-hidden="true" />
+          </Button>
+        }
+      />
 
       <SecaoCorpo>
         {messages.length === 0 ? (

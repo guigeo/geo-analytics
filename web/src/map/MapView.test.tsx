@@ -100,6 +100,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
       onEncerrarDesenho={onEncerrarDesenho}
       desenhos={COLECAO_VAZIA}
       desenhosOcultos={[]}
+      selected={null}
       {...props}
     />,
   );
@@ -163,6 +164,7 @@ describe("MapView e a medição", () => {
         onEncerrarDesenho={vi.fn()}
         desenhos={COLECAO_VAZIA}
         desenhosOcultos={[]}
+        selected={null}
       />,
     );
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -423,6 +425,8 @@ describe("MapView e o clique no desenho", () => {
     expect(onSelect).toHaveBeenCalledWith({
       layerId: "desenhos",
       properties: FEICAO.properties,
+      // O ponto do clique viaja junto: é o que ancora o popup na feição.
+      lngLat: PONTO,
     });
     mapaDublado.queryRenderedFeatures = (() => []) as never;
   });

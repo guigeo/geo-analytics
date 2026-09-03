@@ -118,3 +118,15 @@
 .maplibregl-ctrl-group {
   @apply rounded-lg border border-border shadow-sm;
 }
+
+/* O popup dos atributos usa a moldura do tema, e não a branca padrão do MapLibre.
+   O `padding: 0` é o que deixa o cabeçalho do conteúdo encostar na borda — sem ele
+   sobra uma faixa branca em volta que denuncia o popup como peça de fora. */
+.popup-atributos .maplibregl-popup-content {
+  @apply overflow-hidden rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl;
+}
+
+.popup-atributos .maplibregl-popup-tip {
+  border-top-color: var(--card);
+  border-bottom-color: var(--card);
+}

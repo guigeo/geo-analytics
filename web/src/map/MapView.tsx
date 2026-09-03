@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { registerPMTiles } from "../lib/pmtiles";
 import type { BasemapTheme } from "./basemap";
@@ -6,6 +6,8 @@ import { IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
 import { montarEstilo } from "./estilo";
 import { camadas, configuracaoMapa } from "@/configuracao";
 import { EMPTY_SELECTION, SELECTION_SOURCE_ID } from "./selection";
+import { PopupAtributos } from "./PopupAtributos";
+import { Atributos } from "@/components/Atributos";
 import { applyHighlights, type Destaques } from "./highlight";
 import { ensureIcon, loadIcons } from "./icons";
 import {
@@ -61,6 +63,13 @@ function escreverNaFonte(map: maplibregl.Map, id: string, dados: GeoJSON.Feature
 export interface SelectedFeature {
   layerId: string;
   properties: Record<string, unknown>;
+  /**
+   * Onde o clique caiu. É o que permite o popup nascer ANCORADO na feição.
+   *
+   * Atributo é sobre um lugar; enquanto ele morava numa barra a 340px dali, o olho
+   * atravessava a tela para ler três linhas sobre o que a mão acabou de apontar.
+   */
+  lngLat: [number, number];
 }
 
 export interface Viewport {
@@ -118,6 +127,8 @@ interface Props {
   desenhos: GeoJSON.FeatureCollection;
   /** Ids dos desenhos escondidos. Um por vez, como o painel de camadas faz por camada. */
   desenhosOcultos: readonly string[];
+  /** A feição selecionada. O MapView a recebe de volta porque é ele quem ancora o popup. */
+  selected: SelectedFeature | null;
 }
 
 export function MapView({
@@ -138,6 +149,7 @@ export function MapView({
   onEncerrarDesenho,
   desenhos,
   desenhosOcultos,
+  selected,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -167,6 +179,7 @@ export function MapView({
   onEncerrarDesenhoRef.current = onEncerrarDesenho;
   const desenhosRef = useRef(desenhos);
   desenhosRef.current = desenhos;
+  const [mapa, setMapa] = useState<maplibregl.Map | null>(null);
   const desenhosOcultosRef = useRef(desenhosOcultos);
   desenhosOcultosRef.current = desenhosOcultos;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
@@ -191,6 +204,9 @@ export function MapView({
     });
     map.addControl(new maplibregl.NavigationControl({}), "top-left");
     mapRef.current = map;
+    // Estado, e não só ref: o popup dos atributos é React e precisa RE-RENDERIZAR
+    // quando o mapa existir. Ref não avisa ninguém.
+    setMapa(map);
 
     // Ícones das camadas de ponto (antena/escola/saúde): rasteriza uma vez e
     // (re)registra sempre que o style pedir. `styleimagemissing` cobre a carga
@@ -235,7 +251,11 @@ export function MapView({
         .at(0);
       if (doAcervo) {
         selection()?.setData({ type: "Feature", geometry: doAcervo.geometry, properties: {} });
-        onSelect({ layerId: DESENHOS_SOURCE_ID, properties: doAcervo.properties ?? {} });
+        onSelect({
+          layerId: DESENHOS_SOURCE_ID,
+          properties: doAcervo.properties ?? {},
+          lngLat: [e.lngLat.lng, e.lngLat.lat],
+        });
         return;
       }
 
@@ -244,7 +264,11 @@ export function MapView({
       if (hits.length) {
         const f = hits[0];
         selection()?.setData({ type: "Feature", geometry: f.geometry, properties: {} });
-        onSelect({ layerId: f.layer.id, properties: f.properties ?? {} });
+        onSelect({
+          layerId: f.layer.id,
+          properties: f.properties ?? {},
+          lngLat: [e.lngLat.lng, e.lngLat.lat],
+        });
       } else {
         selection()?.setData(EMPTY_SELECTION);
         onSelect(null);
@@ -306,6 +330,7 @@ export function MapView({
       document.removeEventListener("keydown", aoTeclar);
       map.remove();
       mapRef.current = null;
+      setMapa(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -399,6 +424,20 @@ export function MapView({
     });
   }, [desenhosOcultos]);
 
+  // Limpar a seleção pelo ✕ do popup também apaga o destaque no mapa. Sem isto,
+  // sumiria o texto e ficaria a feição pintada, sem nada explicando por quê.
+  useEffect(() => {
+    if (selected) return;
+    const map = mapRef.current;
+    if (!map) return;
+    assimQuePuder(map, () => {
+      const fonte = map.getSource(SELECTION_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      if (!fonte) return false;
+      fonte.setData(EMPTY_SELECTION);
+      return true;
+    });
+  }, [selected]);
+
   useEffect(() => {
     highlightsRef.current = highlights ?? null;
     const map = mapRef.current;
@@ -448,7 +487,19 @@ export function MapView({
     });
   }, [theme, satellite, satelliteOverlay]);
 
-  return <div ref={containerRef} className="map" />;
+  return (
+    <>
+      <div ref={containerRef} className="map" />
+      {/* O popup vive aqui, e não no App, porque quem tem o mapa é este componente —
+          a regra da casa é que só `map/` fala com o MapLibre. O App segue dono do
+          ESTADO da seleção; daqui sai só o pedido de limpá-la. */}
+      {mapa && selected && (
+        <PopupAtributos map={mapa} lngLat={selected.lngLat}>
+          <Atributos selected={selected} onFechar={() => onSelect(null)} />
+        </PopupAtributos>
+      )}
+    </>
+  );
 }
 
 /**

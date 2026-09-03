@@ -1,43 +1,50 @@
 # CLAUDE.md
 
-> **É AQUI que se starta a sessão.** Regra única, decidida em 2026-08-31: todo
-> trabalho começa neste repositório, seja ele feature, correção ou dúvida. É onde
-> mora o código, o framework SDD e os comandos `/brainstorm`, `/define`, `/design`,
-> `/build` e `/ship` — que **não existem** nos outros dois repositórios. Os outros
-> são alcançáveis daqui pelo disco (`../webgis`, `../servidor-dados-gis`).
+> **É AQUI que se starta a sessão.** Regra única, decidida em 2026-08-31: todo trabalho
+> começa neste repositório, seja ele feature, correção ou dúvida. É onde mora o código, o
+> framework SDD e os comandos `/brainstorm`, `/define`, `/design`, `/build` e `/ship` — que
+> **não existem** nos outros dois repositórios. Os outros são alcançáveis daqui pelo disco
+> (`../webgis`, `../servidor-dados-gis`).
 
-**Primeiro passo de toda sessão, antes de propor qualquer coisa:** se a tarefa toca
-decisão, arquitetura, infraestrutura, deploy ou produção, **leia `../webgis/CLAUDE.md`
-e o ADR-0001 de lá**. Este arquivo descreve o código; o `webgis` é a sede das decisões,
-e nenhuma sessão iniciada aqui carrega o conteúdo de lá automaticamente. Não decidir
-arquitetura sem ter lido — foi assim que o recorte do Censo ficou quatro dias errado.
+**Primeiro passo de toda sessão, antes de propor qualquer coisa:** se a tarefa toca decisão,
+arquitetura, infraestrutura, deploy ou produção, **leia `../webgis/CLAUDE.md` e o ADR-0001 de
+lá**. Este arquivo descreve o código; o `webgis` é a sede das decisões, e nenhuma sessão
+iniciada aqui carrega o conteúdo de lá automaticamente. Não decidir arquitetura sem ter lido
+— foi assim que o recorte do Censo ficou quatro dias errado.
 
-**Decisão que muda o que outro repositório faz não se resolve na sessão da feature.**
-Anote no artefato do SDD que existe decisão pendente e trate dela como emenda no
-ADR-0001 do `webgis` — lendo antes o `CLAUDE.md` de lá. Ver a memória `arquitetura-webgis`.
+**Decisão que muda o que outro repositório faz não se resolve na sessão da feature.** Anote
+no artefato do SDD que existe decisão pendente e trate dela como emenda no ADR-0001 do
+`webgis` — lendo antes o `CLAUDE.md` de lá.
 
-Guia prático do código para o Claude Code. Para contexto de produto e workflow SDD,
-ver [`.claude/CLAUDE.md`](.claude/CLAUDE.md) e [`.claude/sdd/archive/`](.claude/sdd/archive/).
+Este arquivo guarda **instrução**: linha que, se faltasse, faria o agente errar. O histórico
+das decisões está em [`docs/DECISOES.md`](docs/DECISOES.md), e o registro por feature em
+[`.claude/sdd/archive/`](.claude/sdd/archive/).
 
 ## O que é
 
-Mapa web estático (MapLibre) + ETL geoespacial em Docker + **chat com agente de IA**
-(Fase 2, local). Pipeline: `shp/gpkg/csv → GeoParquet (canônico) → PMTiles → MapLibre`.
-O chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (PostGIS)` —
-o agente responde em texto e o mapa pinta os códigos retornados pelas tools.
-**No ar:** https://geo-intelligence.averisen.com (VPS Hetzner + Caddy; ver `deploy/`) —
-mapa + satélite + busca (município/UF/endereço) + chat (fase 2.1): o agente roda na VPS
-como serviço systemd `geo-agent` (uv/python 3.12 em `~/projects/geo`, só 127.0.0.1:8000;
-Caddy expõe `/api`). Parquets do agente na VPS em `~/projects/geo/data/processed` — o
-`setor.parquet` de lá é ENXUTO (só CD_SETOR + geom_bbox, 6,5 MB vs 1 GB; gerado no
-`deploy.sh data`). Rate limit por IP no backend protege a chave OpenAI (30 perguntas/10 min
-no chat) e o proxy de geocoding (20/60s no `/api/geocode`).
+Mapa web (MapLibre) + ETL geoespacial em Docker + **chat com agente de IA**.
+Pipeline: `shp/gpkg/csv → GeoParquet (canônico) → PMTiles → MapLibre`.
+Chat: `web (React) → agent/ (FastAPI + OpenAI function calling) → query/ (PostGIS)` — o
+agente responde em texto e o mapa pinta os códigos retornados pelas tools.
 
-**Desde 2026-09-02 o app também ESCREVE.** O usuário desenha ponto, área e raio sobre o
-mapa, e isso vai para o **`app_clientes`** — outro banco, com schema e papel por cliente.
-É o primeiro dado do sistema que é do cliente e não do IBGE, e o primeiro em que "refaço
-do zero" deixou de ser rede de segurança. Ver a feature `DESENHO_NO_MAPA` no arquivo do
-SDD, e a emenda de 2026-08-31 à regra 4 do ADR-0001 do `webgis`.
+**No ar, dois clientes** (VPS Hetzner + Caddy compartilhado, portão basic auth nos dois):
+
+| Cliente | Domínio | Serviço systemd |
+|---|---|---|
+| 1 — `geo-analytics` | `geo-intelligence.averisen.com` | `geo-agent` |
+| 2 — `eb-prime` | `app.ebprime.com.br` | `eb-prime-agent` |
+
+O agente roda na VPS via systemd (uv/python 3.12 em `~/projects/geo`, só `127.0.0.1:8000`;
+o Caddy expõe `/api`). Parquets em `~/projects/geo/data/processed` — o `setor.parquet` de lá
+é ENXUTO (só `CD_SETOR` + `geom_bbox`, 6,5 MB vs 1 GB; gerado no `deploy.sh data`).
+Rate limit por IP no backend protege a chave OpenAI (30 perguntas/10 min no chat) e o proxy
+de geocoding (20/60s no `/api/geocode`).
+
+**O app também ESCREVE.** O usuário desenha ponto, área e raio sobre o mapa, e isso vai para
+o **`app_clientes`** — outro banco, com schema e papel por cliente. É o primeiro dado do
+sistema que é do cliente e não do IBGE, e o primeiro em que "refaço do zero" deixou de ser
+rede de segurança: **rodar `servidor-dados-gis/scripts/backup-acervo.sh --origem vps` antes
+de qualquer publish que toque o acervo.**
 
 ## Fluxo (Makefile — porta de entrada única)
 
@@ -56,22 +63,24 @@ make help       # lista todos os alvos
 ```
 
 `dev` é rápido mas difere da produção; **antes de `ship`, valide com `preview`** (mesmo
-Caddy, mesma config de Range/compressão dos tiles). **O preview pede credencial desde
-2026-08-30** — usuário `previa`, senha `previa-local`, no `deploy/Caddyfile.local` — e
-passou a entregar `/api` ao agente nativo, como a VPS faz: é o portão da fase 5 sendo
-exercitado antes de existir em produção (§8 do ADR-0001 do `webgis`, emenda de 29/08). `ship*` usam `deploy/deploy.sh`
-(rsync via atalho `hetzner-gramos` do `~/.ssh/config`).
+Caddy, mesma config de Range/compressão dos tiles). **O preview pede credencial** — usuário
+`previa`, senha `previa-local`, no `deploy/Caddyfile.local` — e entrega `/api` ao agente
+nativo, como a VPS faz. `ship*` usam `deploy/deploy.sh` (rsync via atalho `hetzner-gramos`
+do `~/.ssh/config`).
 
-**O deploy é por cliente desde 2026-08-30** (fase 6): domínio, caminhos, unit do
-systemd, porta e portão saem de `deploy/clientes/<id>.env`, e `deploy/renderizar.sh`
-gera o bloco do Caddy e o unit a partir de modelos versionados. O render do cliente 1
-reproduz o que está em produção diretiva por diretiva — é o que garante que a fase não
-mexeu no ar. **`make ensaio` faz o caminho inteiro contra `/tmp`**: nada sai da máquina,
-e todo comando que iria por ssh é impresso. Publicar continua sendo passo do Guilherme.
+**O deploy é por cliente:** domínio, caminhos, unit do systemd, porta e portão saem de
+`deploy/clientes/<id>.env`, e `deploy/renderizar.sh` gera o bloco do Caddy e o unit a partir
+de modelos versionados. **`make ensaio` faz o caminho inteiro contra `/tmp`** — nada sai da
+máquina, e todo comando que iria por ssh é impresso. Publicar é passo do Guilherme.
 
-**Os tiles não moram mais neste repositório.** Vivem num host compartilhado, servido
-para todas as aplicações derivadas do `webgis` — uma cópia só, em vez de uma por app
-(passo 1 do ADR-0001 de lá). O caminho vem de `TILES_DIR` no `.env` da raiz
+**`make ship-app` NÃO toca o agente.** Antes de um `ship-app` puro, confira se há rota nova
+esperada pelo frontend: um `ship-app` de rotina já pôs UI no ar contra um agente velho, e
+todo `/api/desenhos` voltou **404 do FastAPI** (rota inexistente), não 503/422. Diagnóstico:
+`curl -u <portão> .../api/<rota>` — 404 é deploy de agente atrasado; 503/422 vem de dentro
+da rota.
+
+**Os tiles não moram neste repositório.** Vivem num host compartilhado, servido para todas
+as aplicações derivadas do `webgis`. O caminho vem de `TILES_DIR` no `.env` da raiz
 (`cp .env.example .env`); em dev, `web/.env.local` aponta o front para o host com
 `VITE_TILES_BASE_URL`. Ver `../webgis/docs/LOCAL.md`.
 
@@ -97,15 +106,15 @@ docker compose exec web npm run typecheck
 # Testes/lint do ETL (lógica pura roda nativa com uv)
 cd pipeline && uv sync --group dev && uv run pytest && uv run ruff check .
 
-# Camada de consulta (Fase 2 — roda nativa com uv, precisa dos parquets em data/processed)
+# Camada de consulta (roda nativa com uv, precisa dos parquets em data/processed)
 cd query && uv sync --group dev && uv run pytest && uv run ruff check .
 
-# Agente de IA (Fase 2 — nativo com uv; testes rodam OFFLINE, benchmark chama a OpenAI)
+# Agente de IA (nativo com uv; testes rodam OFFLINE, benchmark chama a OpenAI)
 cd agent && uv sync --group dev && uv run pytest && uv run ruff check .
 CLIENTE=eb-prime uv run uvicorn geo_agent.main:app --port 8001   # o agente do cliente 2
 cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env; ~17 chamadas)
 
-# Acervo do cliente (fase DESENHO_NO_MAPA) — banco `app_clientes`, no servidor-dados-gis
+# Acervo do cliente — banco `app_clientes`, no servidor-dados-gis
 ../servidor-dados-gis/cargas/app_clientes.sh <cliente> '<senha>'   # cria schema, papel e tabela
 ../servidor-dados-gis/cargas/kmz_para_acervo.sh <cliente> arq.kmz  # carga administrativa de KMZ
 #   Os testes do acervo pulam sem ACERVO_DSN no agent/.env — sem erro, com a instrução.
@@ -117,13 +126,8 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   (registry declarativo: 1 entrada por camada → adicionar dataset = editar YAML, sem refactor).
   - `convert.py` usa **`ogr2ogr` (streaming)** p/ converter arquivos grandes sem OOM (reprojeta a EPSG:4326).
   - `antennas.py` parseia CSV de pontos. `tiles.py` chama `tippecanoe`. `basemap.py` extrai recorte Protomaps.
-  - **A curadoria do Censo não mora mais aqui.** O `census.py` (DuckDB sobre CSV) foi
-    removido no passo 4 do roteiro, em 2026-08-20: as camadas passaram a sair do `geodata`
-    por consulta declarada no `datasets.yaml`, e `data/` deixou de guardar fonte bruta. A
-    escolha de variáveis vive num lugar só — `servidor-dados-gis/cargas/censo_nomes.tsv`,
-    41 variáveis, conferidas contra o banco em 2026-08-22 (41 distintas no formato longo).
-    Acrescentar variável é uma linha lá, não um dict aqui. Era a pendência 3 do
-    `webgis/docs/HERANCA.md`, e ela fecha por não existir mais o segundo dono.
+  - **A curadoria do Censo não mora aqui.** Acrescentar variável do Censo é uma linha em
+    `servidor-dados-gis/cargas/censo_nomes.tsv`, não um dict aqui. Ver `docs/DECISOES.md`.
   - venv fica em `/opt/venv` no container (fora do bind mount) — ver `Dockerfile`.
 - **`web/`** — React/Vite/TS. **`configuracao/` é a fronteira de cliente**: o esquema Zod
   (`configuracao/esquema.ts`) valida no boot o que difere entre aplicações derivadas —
@@ -131,20 +135,19 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   Quem precisa de camada importa de `@/configuracao`, não conhece cliente pelo nome.
   **`configuracao/catalogo.ts` guarda as camadas do dado universal**, iguais para todos;
   o cliente escolhe quais enxerga, e `com()` ajusta uma sem tocar no catálogo.
-  **Qual cliente é o build vem de `VITE_CLIENTE`** (padrão `geo-analytics`), resolvido
-  pelo alias `cliente-ativo` no `vite.config.ts` — composição de build, §8 do ADR-0001.
-  Um bundle por cliente, e o de um não contém a configuração do outro.
-  Duas de pé ao mesmo tempo: `make dev-lado-a-lado`.
+  **Qual cliente é o build vem de `VITE_CLIENTE`** (padrão `geo-analytics`), resolvido pelo
+  alias `cliente-ativo` no `vite.config.ts` — composição de build, §8 do ADR-0001. Um bundle
+  por cliente, e o de um não contém a configuração do outro. Duas de pé ao mesmo tempo:
+  `make dev-lado-a-lado`.
   `map/layers.ts` **não define mais as camadas**: ele só traduz camada configurada para
   especificação do MapLibre, e o snapshot em `map/layers.test.ts` congela essa saída.
-  `map/basemap.ts` monta o `map/basemap.ts`
-  basemap vetorial (Protomaps) e o satélite (raster XYZ Esri World Imagery, sem API key) —
-  toggle no header; `basemapOverlayLayers()` filtra só `line`/`symbol` do basemap (vias,
-  limites, rótulos, POIs) pra manter por cima do raster em modo híbrido (segundo toggle,
-  opcional, só aparece com satélite ligado). `map/MapView.tsx` monta o style (basemap/satélite
-  + camadas + seleção + destaques) e trata clique; `map/selection.ts` faz o highlight do
-  CLIQUE via fonte GeoJSON. `map/highlight.ts` pinta os destaques do AGENTE por código
-  (`setFilter` com `CD_MUN`/`CD_SETOR` nas próprias fontes PMTiles — funciona fora do
+  `map/basemap.ts` monta o basemap vetorial (Protomaps) e o satélite (raster XYZ Esri World
+  Imagery, sem API key) — toggle no header; `basemapOverlayLayers()` filtra só `line`/`symbol`
+  do basemap (vias, limites, rótulos, POIs) pra manter por cima do raster em modo híbrido
+  (segundo toggle, opcional, só aparece com satélite ligado). `map/MapView.tsx` monta o style
+  (basemap/satélite + camadas + seleção + destaques) e trata clique; `map/selection.ts` faz o
+  highlight do CLIQUE via fonte GeoJSON. `map/highlight.ts` pinta os destaques do AGENTE por
+  código (`setFilter` com `CD_MUN`/`CD_SETOR` nas próprias fontes PMTiles — funciona fora do
   viewport, independe do toggle). `chat/ChatPanel.tsx` + `chat/api.ts` = UI e client do chat;
   em dev o Vite faz proxy `/api → host.docker.internal:8000` (agente nativo; sem CORS).
   `components/SearchBox.tsx` combina a busca local de município/UF (`search/index.ts`,
@@ -152,10 +155,10 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   (`search/geocode.ts`, debounce 400ms a partir de 4 chars) via `/api/geocode` — proxy do
   agente pro Nominatim/OSM (que não manda CORS, por isso não dá pra chamar direto do
   navegador); endereço aproxima no zoom de rua (17) e não ganha destaque (sem código IBGE).
-  `map/tileHost.ts` decide DE ONDE vêm os `.pmtiles`: sem `VITE_TILES_BASE_URL`, de
-  `/tiles` na própria origem (o que a VPS serve hoje pelo Caddy); com ela, do HOST DE
-  TILES COMPARTILHADO — em dev é o único caminho, porque **este repositório não guarda
-  mais tile nenhum**. Ver `../webgis/docs/LOCAL.md`.
+  `map/tileHost.ts` decide DE ONDE vêm os `.pmtiles`: sem `VITE_TILES_BASE_URL`, de `/tiles`
+  na própria origem (o que a VPS serve hoje pelo Caddy); com ela, do HOST DE TILES
+  COMPARTILHADO — em dev é o único caminho, porque **este repositório não guarda mais tile
+  nenhum**. Ver `../webgis/docs/LOCAL.md`.
   `lib/novidades.ts` é o anúncio de feature nova, e é **dado, não JSX**: a lista mora ali e
   `components/Novidades.tsx` só renderiza — com a casca sendo derivada por cliente, changelog
   escrito em componente é conteúdo de um cliente dentro de código compartilhado. Cada novidade
@@ -163,154 +166,110 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   `{texto, key}` do `MapFocus`) e o `chip` que entra na frente das sugestões do estado vazio:
   anunciar e DEMONSTRAR no mesmo clique. A pergunta precisa ser específica — medido: sem
   "porcentagem" e "top 10" o agente pede esclarecimento em vez de pintar o mapa.
-- **`query/`** — projeto `uv` (Fase 2). Camada de consulta PostGIS sobre o geodata central —
+- **`query/`** — projeto `uv`. Camada de consulta PostGIS sobre o geodata central —
   **backend de dados do chat**. `db.py` abre a conexão (`GEODATA_DSN`, papel `geo_reader`,
   `autocommit`); `queries.py` expõe `GeoQuery` (lookups, `busca_municipios` nome→código,
   `ranking_municipios`, `setor_no_ponto`, `setores_proximos`, `setores_no_ponto`). Geometria
   exata vive nos PMTiles **e no banco**; o backend devolve `cd_setor`/`cd_mun` e o mapa pinta.
   Espacial é **exato**: `ST_DWithin`/`ST_Distance` sobre o polígono real, em metros. Métrica
-  tem dois caminhos — resumo materializado quando a coluna existe lá, formato longo quando não
-  (medido; ver `webgis/docs/HERANCA.md` §7.4).
-- **`agent/`** — projeto `uv` (Fase 2). Backend do chat: FastAPI + SDK `openai` PURO (sem
-  framework de agente — decisão de aprendizado). `tools.py` = 15 tools (args Pydantic →
-  JSON Schema; `TOOL_REGISTRY` despacha p/ o `GeoQuery`); `agent.py` = loop de tool-calling
-  explícito (teto 6 iterações; erro de tool volta ao LLM p/ autocorreção 1x) + sessões em
-  memória (TTL 1 h). **Grounding:** `destaques`/`dados` da resposta saem das rows das tools
-  (determinístico), o LLM só escreve o texto. Config via `agent/.env`
-  (`OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5-mini`). Benchmark de 30 casos em `benchmark.yaml`.
-  **`cliente.py` é a fronteira de cliente do backend** (fase 5, 2026-08-30), irmã do
-  `web/src/configuracao/`: a **persona** — nome, descrição e para quem responde — mora em
-  `geo_agent/clientes/<id>.toml`, validada por Pydantic no boot, e `CLIENTE` escolhe qual
-  (padrão `geo-analytics`). **TOML e não `.py` de propósito:** persona é texto do cliente, e
-  o critério de saída da fase é literal — nenhum `.py` cita cliente, e `test_cliente.py`
-  guarda isso. Um processo serve um cliente só; `/api/health` diz qual, porque com dois
-  agentes de pé "está vivo" deixa de bastar. O `geocode.py` também se identifica ao
-  Nominatim com o domínio do cliente, e não mais com o do cliente 1 em qualquer caso.
+  tem dois caminhos — resumo materializado quando a coluna existe lá, formato longo quando
+  não (medido; ver `webgis/docs/HERANCA.md` §7.4).
+- **`agent/`** — projeto `uv`. Backend do chat: FastAPI + SDK `openai` PURO (sem framework de
+  agente — decisão de aprendizado). `tools.py` = 15 tools (args Pydantic → JSON Schema;
+  `TOOL_REGISTRY` despacha p/ o `GeoQuery`); `agent.py` = loop de tool-calling explícito
+  (teto 6 iterações; erro de tool volta ao LLM p/ autocorreção 1x) + sessões em memória
+  (TTL 1 h). **Grounding:** `destaques`/`dados` da resposta saem das rows das tools
+  (determinístico), o LLM só escreve o texto. Config via `agent/.env` (`OPENAI_API_KEY`,
+  `OPENAI_MODEL=gpt-5-mini`). Benchmark de 30 casos em `benchmark.yaml`.
+  **`cliente.py` é a fronteira de cliente do backend**, irmã do `web/src/configuracao/`: a
+  **persona** — nome, descrição e para quem responde — mora em `geo_agent/clientes/<id>.toml`,
+  validada por Pydantic no boot, e `CLIENTE` escolhe qual (padrão `geo-analytics`). **Nenhum
+  `.py` cita cliente** — `test_cliente.py` guarda isso. Um processo serve um cliente só;
+  `/api/health` diz qual, porque com dois agentes de pé "está vivo" deixa de bastar. O
+  `geocode.py` também se identifica ao Nominatim com o domínio do cliente.
   **`prompts.py`** define o escopo em prosa (que temas existem, o que é fora de escopo) — ao
   adicionar um tema no censo, atualizar aqui também, senão o agente recusa dado que já existe
   no banco (aconteceu com renda: dado chegou, mas o prompt ainda mandava recusar).
-  **As classes são A / B / C / DE — quatro, não cinco.** Os cortes foram calibrados para a
-  distribuição nacional reproduzir a do Critério Brasil 2024 (A 3,1%, B 21,5%, C 47,0%,
-  DE 28,4%), e a ABEP não separa D de E. Diga "na mesma régua do Critério Brasil", nunca
-  "segundo a ABEP": o método é outro — eles classificam por posse e instrução, aqui é
-  renda domiciliar estimada.
-  **Classe social é a única métrica aqui que o IBGE NÃO publica** (estimativa do
-  `servidor-dados-gis`, schema `indicadores`, desde 2026-08-27). Três coisas garantem que
-  ela não passe por dado oficial, e são três porque uma só cai: o rótulo diz "(estimada)",
+  **As classes são A / B / C / DE — quatro, não cinco.** Diga "na mesma régua do Critério
+  Brasil", nunca "segundo a ABEP": o método é outro — eles classificam por posse e instrução,
+  aqui é renda domiciliar estimada.
+  **Classe social é a única métrica aqui que o IBGE NÃO publica.** O rótulo diz "(estimada)",
   a regra 8 do system prompt manda declarar, e `_avisos_classe_social()` devolve o aviso
-  **junto da linha** — que é a regra 8 do ADR-0001 (o que muda o sentido do número é dado,
-  não instrução de prompt). O aviso da tool só existe hoje na cascata `info_local`, porque
-  é lá que o canal de `avisos` existe; nas outras `info_*` a marca viaja só pelo rótulo.
-  As **regras são da casca, a persona é do cliente**: dois clientes com regras diferentes
-  sobre o mesmo número seriam dois produtos, não duas aplicações da mesma casca. Com
-  `publico` vazio o prompt montado é caractere por caractere o que estava cravado no
-  `prompts.py` até 2026-08-30 — é assim que se sabe que o cliente 1 não mudou.
+  **junto da linha** — o que muda o sentido do número é dado, não instrução de prompt
+  (regra 8 do ADR-0001). Ver `docs/DECISOES.md`.
+  As **regras são da casca, a persona é do cliente.**
   `tools.py` também guarda `METRIC_LABELS` (coluna → rótulo PT-BR das colunas curadas do
-  Censo) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna
-  na resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve
+  Censo) — embutido no fim do system prompt pra o LLM NUNCA devolver nome cru de coluna na
+  resposta (ex.: "pop_total" vira "população total"); `listar_metricas` devolve
   `{campo, rotulo}`. Além do loop de chat, `main.py` expõe `GET /api/geocode` — proxy pro
   Nominatim/OSM pra busca de endereço do front (rate limit próprio por IP, separado do chat).
-- **`agent/…/acervo.py`** — a fachada que **ESCREVE**, e a única. Irmã do `query/`, oposta
-  a ele: aquele lê o `geodata` (universal, reconstruível), este escreve o `app_clientes`
-  (do cliente, insubstituível). **Leitura tem retomada, escrita não** — repetir um SELECT
-  é seguro, repetir um INSERT cria dois desenhos, e a assimetria mora na assinatura de
-  dois métodos irmãos. O isolamento entre clientes é do **Postgres**, não da aplicação: o
-  papel de um não tem `USAGE` no schema do outro, e o banco recusa em vez de misturar.
+- **`agent/…/acervo.py`** — a fachada que **ESCREVE**, e a única. Irmã do `query/`, oposta a
+  ele: aquele lê o `geodata` (universal, reconstruível), este escreve o `app_clientes` (do
+  cliente, insubstituível). **Leitura tem retomada, escrita não** — repetir um SELECT é
+  seguro, repetir um INSERT cria dois desenhos, e a assimetria mora na assinatura de dois
+  métodos irmãos. O isolamento entre clientes é do **Postgres**, não da aplicação: o papel de
+  um não tem `USAGE` no schema do outro, e o banco recusa em vez de misturar.
   `rotas_desenhos.py` expõe o CRUD em `/api/desenhos`; toda falha vira 503 ou 422.
-  `tools.py:info_area_desenhada` lê a geometria aqui em WKB e a manda como **parâmetro**
-  da consulta no `geodata` — sem `postgres_fdw`, sem JOIN entre bancos. O cruzamento é
+  `tools.py:info_area_desenhada` lê a geometria aqui em WKB e a manda como **parâmetro** da
+  consulta no `geodata` — sem `postgres_fdw`, sem JOIN entre bancos. O cruzamento é
   `query/queries.py:cruzamento_por_geometria`, com **rateio areal** na borda: os avisos
-  (quanto veio de rateio; se a área cabe dentro de um setor só) saem da ROW, não do
-  prompt — regra 8 do ADR. `ACERVO_DSN` vazio NÃO impede o boot: cai uma tool, não o chat.
+  (quanto veio de rateio; se a área cabe dentro de um setor só) saem da ROW, não do prompt —
+  regra 8 do ADR. `ACERVO_DSN` vazio NÃO impede o boot: cai uma tool, não o chat.
 - **`web/src/desenho/`** — geometria e estado **puros** (fora do React e do MapLibre, como
-  `map/medicao.ts`), fontes GeoJSON, cliente REST e os três componentes. **O buffer manda
-  o CENTRO, não o círculo:** quem gera o polígono é o `ST_Buffer` sobre `geography`, com
-  64 lados dos dois lados — o navegador não tem elipsoide, e o círculo dele só
-  pré-visualiza. **Esconder desenho é FILTRO por id**, não `visibility`: a visibilidade é
-  da camada, e as três camadas do acervo servem todos os desenhos.
-- **Saídas** (não versionadas): `data/processed/*.parquet` e os `*.pmtiles`, que o
-  pipeline escreve direto no host de tiles compartilhado (`TILES_DIR` no `.env` →
-  `GEO_TILES_DIR=/tiles` no container). Sem `TILES_DIR`, `docker compose` e
-  `deploy.sh tiles` param com mensagem em vez de recriar a cópia por app.
+  `map/medicao.ts`), fontes GeoJSON, cliente REST e os três componentes. **O buffer manda o
+  CENTRO, não o círculo:** quem gera o polígono é o `ST_Buffer` sobre `geography`, com 64
+  lados dos dois lados — o navegador não tem elipsoide, e o círculo dele só pré-visualiza.
+  **Esconder desenho é FILTRO por id**, não `visibility`: a visibilidade é da camada, e as
+  três camadas do acervo servem todos os desenhos.
+- **Saídas** (não versionadas): `data/processed/*.parquet` e os `*.pmtiles`, que o pipeline
+  escreve direto no host de tiles compartilhado (`TILES_DIR` no `.env` → `GEO_TILES_DIR=/tiles`
+  no container). Sem `TILES_DIR`, `docker compose` e `deploy.sh tiles` param com mensagem em
+  vez de recriar a cópia por app.
 
 ## Convenções
 
 - **Python: sempre `uv`** (nunca pip/venv global). Type hints obrigatórios. Ruff + pytest.
-- **Frontend tem portão desde 2026-08-29**: `npm run format:check`, `lint`, `typecheck`,
-  `test` e `build` — o mesmo que o CI roda, em Node 20 (a imagem do build de produção).
-  Rodar o portão antes de dizer que terminou.
+- **Frontend tem portão**: `npm run format:check`, `lint`, `typecheck`, `test` e `build` — o
+  mesmo que o CI roda, em Node 20 (a imagem do build de produção). Rodar o portão antes de
+  dizer que terminou.
 - **`data/` é gitignored** (fontes grandes/reproduzíveis) — só `data/README.md` é versionado.
 - **Dados crus nunca lidos em runtime** — convertidos uma vez para GeoParquet.
 - Camada pesada (setor ~473k) → tuning no `tippecanoe`; tilagem é o gargalo, não a conversão.
-- **Idioma: português em tudo** — prosa, commits e também **código**. Decidido em
-  2026-08-29 (`webgis/docs/HERANCA.md`, §7, pendência 2): fronteira de idioma dentro do
-  código cobra pedágio de atenção em toda mudança. Sobrou inglês de antes desta decisão;
-  ele se traduz quando o arquivo for tocado, não numa varredura só.
+- **Idioma: português em tudo** — prosa, commits e também **código**. Fronteira de idioma
+  dentro do código cobra pedágio de atenção em toda mudança. Sobrou inglês de antes desta
+  decisão; ele se traduz quando o arquivo for tocado, não numa varredura só.
 
 ## KBs locais (`.claude/kb/`)
 
-`maplibre` · `pmtiles-tippecanoe` · `geospatial-etl` — padrões reaproveitáveis já destilados.
+`maplibre` · `pmtiles-tippecanoe` · `geospatial-etl` · `agentes-llm`
 
-## Próximo passo
+## Estado atual
 
-Fase 2 shipada (benchmark 16/16), fase 2.1 no ar (agente + busca de município/UF/endereço)
-e o tema **renda do responsável pelo domicílio** em produção (2026-08-08, commit
-`95b6358`) — primeiro dado econômico do app, puxado direto do IBGE fora do release
-padrão de setores censitários. Redeploy do agente: `make ship-ia [CLIENTE=<id>]` + `ssh -t
-hetzner-gramos 'sudo systemctl restart <SERVICO do cliente>'` (o restart pede senha — só
-roda num terminal de verdade, não pelo Claude Code). **Atenção ao redeploy do agente:** o
-`.env` (chave OpenAI) às vezes é editado direto na VPS e fica mais novo que o local —
-antes de rodar `deploy.sh agent`/`ship-ia`, comparar mtimes pra não sobrescrever a
-chave certa com uma desatualizada. A instalação do agente na VPS é **editable** (aponta
-pro código-fonte, não copia pra `site-packages`) — `uv sync` sem mudança de dependências
-não precisa de `--reinstall-package`, mas o processo do systemd só pega o código novo
-depois do `restart`.
+**Tudo que está pronto está no ar**, nos dois clientes, desde 2026-09-03 — inclusive o
+`DESENHO_NO_MAPA` (ponto, área e raio guardados no `app_clientes`, com o agente cruzando a
+área desenhada com o Censo por rateio areal). Nenhuma pendência de acervo ou desenho.
 
-Shipado em 2026-08-09: agente/dados movidos na VPS pra `~/projects/geo` (organização,
-junto dos outros projetos ali); **toggle de satélite** no mapa (raster Esri, modo
-híbrido com vias/limites/rótulos por cima — opcional, dá pra ver só a imagem); **busca
-de endereço/rua** no header via `/api/geocode` (proxy do agente pro Nominatim, que não
-manda CORS); **glossário de métricas** no agente (`METRIC_LABELS`) — o LLM parou de
-vazar nome cru de coluna (`pop_total`) na resposta.
+**Redeploy do agente:** `make ship-ia [CLIENTE=<id>]` + `ssh -t hetzner-gramos 'sudo
+systemctl restart <SERVICO do cliente>'`. O restart pede senha — **só roda num terminal de
+verdade do Guilherme, nunca pelo Claude Code.** A instalação na VPS é **editable**: `uv sync`
+sem mudança de dependências não precisa de `--reinstall-package`, mas o processo do systemd
+só pega o código novo depois do `restart`.
 
-**Arquivada em 2026-09-02, ainda NÃO publicada: `DESENHO_NO_MAPA`.** Ponto, área e raio
-desenhados no mapa, guardados no `app_clientes`, com o agente respondendo sobre a área
-desenhada. Código completo e exercitado localmente nos dois clientes. O que falta é
-decisão e execução do Guilherme, nesta ordem:
+**Atenção ao redeploy do agente:** o `.env` (chave OpenAI, credencial do portão) às vezes é
+editado direto na VPS e fica mais novo que o local — antes de `deploy.sh agent`/`ship-ia`,
+comparar mtimes pra não sobrescrever a chave certa com uma desatualizada. Já derrubou o
+portão de um cliente uma vez.
 
-1. **Backup do `app_clientes` antes de publicar.** É o primeiro dado do sistema em que
-   "refaço do zero" não é rede de segurança. Nada disso deve ir ao ar antes.
-2. **`ACERVO_DSN` do papel `app_eb_prime`** — no agente do cliente 2, aqui e na VPS. O
-   schema dele existe e já tem as duas primeiras áreas reais de cliente (carregadas de
-   KMZ em 2026-09-02); nenhum processo tem como lê-las.
-3. **Na VPS:** rodar `cargas/app_clientes.sh` lá, pôr o DSN no `.env` do agente
-   (comparando mtimes, pra não sobrescrever a chave da OpenAI), `make ship-ia` +
-   `restart`, `make ship-app`. O portão já cobre `/api/desenhos`: o `basicauth` é
-   diretiva de site inteiro, e os dois clientes têm `PORTAO_USUARIO`.
-4. **Remedir na VPS (A-001).** Os tempos do cruzamento foram medidos neste Mac; lá a
-   memória é menor. A primeira execução **fria** de uma área grande custou 3,9 s aqui,
-   contra 640 ms com cache quente.
-5. **Só para o cliente 2 ir ao ar:** DNS e a allowlist de CORS do host de tiles, que
-   libera `*.averisen.com` — `app.ebprime.com.br` é domínio próprio.
+### Em aberto
 
-**Achado de segurança em aberto:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a
-`PUBLIC`, então qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e
-deixado no central de propósito — endurecer banco em produção não é coisa de fazer de
-passagem dentro de uma feature.
+- **Remedir o cruzamento na VPS (A-001).** Os tempos foram medidos neste Mac; lá a memória é
+  menor. A primeira execução **fria** de uma área grande custou 3,9 s aqui, contra 640 ms
+  com cache quente.
+- **Achado de segurança:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a `PUBLIC`, então
+  qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
+  de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma
+  feature.
+- **Espaço na VPS:** 3,9 GB livres de 38 GB (90% usado), medido em 2026-08-31. É o que barra
+  o eixo de ruas nacional (OSM).
 
-Ideias em aberto, **revisadas em 2026-08-31** — metade da lista anterior já tinha sido
-entregue e o parágrafo seguia descrevendo o mundo de antes do passo 4 do ADR:
-
-- ~~operações geoespaciais reais (buffer, distância), que exigiriam WKB porque "hoje é
-  GEOARROW e só dá centroide aproximado"~~ — **feito**: o `query/` roda sobre PostGIS
-  desde 2026-08-20, com distância exata do polígono e `setor_que_contem` por
-  `ST_Contains`. Não há DuckDB nem GeoArrow no código.
-- ~~"novas tools se as perguntas extrapolarem as 7 atuais"~~ — são **15** hoje, com os
-  níveis bairro, distrito e a cascata `info_local`.
-- ~~"desenho no mapa, com os dados do cliente"~~ — **feito**: `DESENHO_NO_MAPA`, acima.
-- **Segue em aberto:** Atlas do Desenvolvimento Humano/IDHM por município; POIs via
-  OSM/Geofabrik com ANAC para aeroportos; streaming se a latência do chat doer; um caso
-  de área desenhada no `benchmark.yaml` (o ambiente já recebe o acervo).
-- **Segue barrado por espaço:** eixo de ruas nacional (OSM). A VPS tem **3,9 GB livres
-  de 38 GB (90% usado)**, medido em 2026-08-31 — não os ~6 GB que este parágrafo dizia.
-  Hetzner Volume continua sendo a rota mais barata, e não upgrade de plano.
+Roadmap e ideias em aberto: [`docs/DECISOES.md`](docs/DECISOES.md).

@@ -154,6 +154,11 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   Quem precisa de camada importa de `@/configuracao`, não conhece cliente pelo nome.
   **`configuracao/catalogo.ts` guarda as camadas do dado universal**, iguais para todos;
   o cliente escolhe quais enxerga, e `com()` ajusta uma sem tocar no catálogo.
+  **Camada nova: pergunte onde ela NÃO existe.** Cobertura parcial mente por omissão —
+  ligada, pintando nada, sem erro. Já acontece: o `bairro` do IBGE existe em 895 dos
+  5.571 municípios, e **São Paulo tem zero**. Se a camada não é nacional, a cobertura é
+  parte dela, e a declaração é dado, não texto num componente (emenda de 2026-09-03 à
+  regra 8 do ADR-0001).
   **Qual cliente é o build vem de `VITE_CLIENTE`** (padrão `geo-analytics`), resolvido pelo
   alias `cliente-ativo` no `vite.config.ts` — composição de build, §8 do ADR-0001. Um bundle
   por cliente, e o de um não contém a configuração do outro. Duas de pé ao mesmo tempo:

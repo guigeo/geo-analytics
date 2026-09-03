@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
-import { agruparCamadas, ligadasNoGrupo } from "./grupos";
+import { agruparCamadas } from "./grupos";
 
 interface Props {
   visible: Record<string, boolean>;
@@ -72,12 +72,9 @@ export function LayerPanel({
   const alternar = (id: string) =>
     setFechados((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
 
-  const acervoLigados = itens.filter((i) => !ocultos.includes(i.id)).length;
-  const noMapa = camadas.filter((c) => visible[c.id]).length + acervoLigados;
-
   return (
     <Secao className="border-r border-border bg-background">
-      <SecaoCabecalho titulo="Camadas" icone={Layers} contagem={noMapa} />
+      <SecaoCabecalho titulo="Camadas" icone={Layers} />
 
       <SecaoCorpo>
         <div className="flex flex-col gap-1">
@@ -85,8 +82,6 @@ export function LayerPanel({
             <Combo
               key={grupo.id}
               rotulo={grupo.rotulo}
-              ligadas={ligadasNoGrupo(grupo, visible)}
-              total={grupo.camadas.length}
               aberto={!fechados.includes(grupo.id)}
               onAlternar={() => alternar(grupo.id)}
             >
@@ -113,8 +108,6 @@ export function LayerPanel({
           {(itens.length > 0 || erroDoAcervo) && (
             <Combo
               rotulo={configuracaoAcervo.rotulo}
-              ligadas={acervoLigados}
-              total={itens.length}
               aberto={!fechados.includes(CHAVE_DO_ACERVO)}
               onAlternar={() => alternar(CHAVE_DO_ACERVO)}
             >
@@ -157,21 +150,14 @@ export function LayerPanel({
 /** O acervo não é um `IdDeGrupo`; a chave é daqui, e o prefixo evita colidir com um. */
 const CHAVE_DO_ACERVO = "@acervo";
 
-/**
- * Um combo. Fechado, ele precisa dizer o que esconde — daí a contagem no cabeçalho:
- * sem ela, gaveta fechada vira camada esquecida.
- */
+/** Um combo: o título, a seta e o que ele guarda. */
 function Combo({
   rotulo,
-  ligadas,
-  total,
   aberto,
   onAlternar,
   children,
 }: {
   rotulo: string;
-  ligadas: number;
-  total: number;
   aberto: boolean;
   onAlternar: () => void;
   children: React.ReactNode;
@@ -187,14 +173,6 @@ function Combo({
           )}
         />
         <span className="min-w-0 flex-1 truncate text-xs font-medium">{rotulo}</span>
-        <span
-          className={cn(
-            "shrink-0 text-[0.625rem] tabular-nums",
-            ligadas > 0 ? "font-medium text-primary" : "text-muted-foreground",
-          )}
-        >
-          {ligadas > 0 ? `${ligadas}/${total}` : total}
-        </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-col gap-0.5 pb-1 pl-2 pt-0.5">{children}</div>
@@ -207,13 +185,11 @@ function Combo({
 function Linha({
   rotulo,
   amostra,
-  sufixo,
   ligada,
   onAlternar,
 }: {
   rotulo: string;
   amostra: React.ReactNode;
-  sufixo?: number;
   ligada: boolean;
   onAlternar: () => void;
 }) {
@@ -224,11 +200,6 @@ function Linha({
     >
       {amostra}
       <span className="min-w-0 flex-1 truncate text-sm">{rotulo}</span>
-      {sufixo !== undefined && (
-        <span className="shrink-0 text-[0.625rem] tabular-nums text-muted-foreground">
-          {sufixo}
-        </span>
-      )}
       <Switch className="shrink-0" checked={ligada} onCheckedChange={onAlternar} />
     </label>
   );

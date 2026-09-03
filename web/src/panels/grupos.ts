@@ -35,8 +35,3 @@ export function agruparCamadas(camadas: readonly DefinicaoCamada[]): GrupoDeCama
     }))
     .filter((grupo) => grupo.camadas.length > 0);
 }
-
-/** Quantas camadas do grupo estão ligadas — o que o combo fechado precisa dizer. */
-export function ligadasNoGrupo(grupo: GrupoDeCamadas, visiveis: Record<string, boolean>): number {
-  return grupo.camadas.filter((c) => visiveis[c.id]).length;
-}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparCamadas, ligadasNoGrupo } from "./grupos";
+import { agruparCamadas } from "./grupos";
 import { CATALOGO } from "@/configuracao/catalogo";
 
 describe("agruparCamadas", () => {
@@ -31,19 +31,5 @@ describe("agruparCamadas", () => {
 
   it("acervo vazio de camadas devolve nenhum combo", () => {
     expect(agruparCamadas([])).toEqual([]);
-  });
-});
-
-describe("ligadasNoGrupo", () => {
-  it("conta só as do próprio grupo", () => {
-    const [ibge, infra] = agruparCamadas(Object.values(CATALOGO));
-    const visiveis = { uf: true, setor: true, rodovias: true };
-    expect(ligadasNoGrupo(ibge, visiveis)).toBe(2);
-    expect(ligadasNoGrupo(infra, visiveis)).toBe(1);
-  });
-
-  it("sem nada ligado, zero", () => {
-    const [ibge] = agruparCamadas(Object.values(CATALOGO));
-    expect(ligadasNoGrupo(ibge, {})).toBe(0);
   });
 });

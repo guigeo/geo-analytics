@@ -1,6 +1,6 @@
 // O painel de camadas é onde a configuração do cliente aparece para quem usa. Desde
-// os combos, ele também é onde se vê o que está LIGADO sem abrir nada — a contagem do
-// combo fechado é o que impede a gaveta de virar camada esquecida.
+// os combos, ele também é a árvore do acervo: os desenhos do cliente são folhas, com
+// o que se faz com eles na própria linha.
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { LayerPanel } from "./LayerPanel";
@@ -66,15 +66,6 @@ describe("LayerPanel", () => {
     for (const c of grupo.camadas) {
       expect(screen.getByText(c.rotulo)).toBeInTheDocument();
     }
-  });
-
-  it("o combo fechado diz quantas estão ligadas", () => {
-    // É o que substitui ver a lista: sem a contagem, fechar o combo esconderia uma
-    // camada acesa e o mapa passaria a mostrar algo que o painel não explica.
-    const grupo = fechados[0];
-    const [primeira] = grupo.camadas;
-    render(<LayerPanel visible={{ [primeira.id]: true }} onToggle={vi.fn()} {...semAcervo} />);
-    expect(combo(grupo.rotulo)).toHaveTextContent(`1/${grupo.camadas.length}`);
   });
 
   it("reflete no interruptor a visibilidade recebida", () => {

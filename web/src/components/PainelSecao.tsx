@@ -3,8 +3,8 @@
  *
  * Existe porque a bagunça não estava em nenhum painel: estava entre eles. Os quatro
  * tinham cabeçalho quase igual e nenhum idêntico — `pt-4` contra `pt-3`, `px-3` contra
- * `px-4`, `aside` contra `section`, um com contagem e outro sem. Quatro variações da
- * mesma coisa não leem como quatro decisões; leem como nenhuma decisão.
+ * `px-4`, `aside` contra `section`, um com número à direita e outro sem. Quatro
+ * variações da mesma coisa não leem como quatro decisões; leem como nenhuma decisão.
  *
  * Aqui a decisão é uma só e mora num lugar só: quem quiser mudar o ritmo dos painéis
  * muda este arquivo, e os quatro andam juntos. É o que faz a coluna da esquerda e a da
@@ -21,19 +21,15 @@ export function Secao({ className, children }: { className?: string; children: R
 }
 
 /**
- * O cabeçalho. Título à esquerda, e à direita o que aquele painel tiver a dizer de si
- * — uma contagem, um botão. `acao` fica depois de `contagem` porque o número é leitura
- * e o botão é ação: ler antes de agir é a ordem em que a mão vai.
+ * O cabeçalho: título à esquerda e, à direita, o que aquele painel tiver a oferecer.
  */
 export function SecaoCabecalho({
   titulo,
   icone: Icone,
-  contagem,
   acao,
 }: {
   titulo: string;
   icone?: LucideIcon;
-  contagem?: number;
   acao?: React.ReactNode;
 }) {
   return (
@@ -46,11 +42,6 @@ export function SecaoCabecalho({
       <h2 className="min-w-0 flex-1 truncate text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
         {titulo}
       </h2>
-      {contagem !== undefined && contagem > 0 && (
-        <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums text-muted-foreground">
-          {contagem}
-        </span>
-      )}
       {acao}
     </div>
   );

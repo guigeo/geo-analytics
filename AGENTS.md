@@ -8,6 +8,19 @@
 > o framework SDD. Os outros dois são alcançáveis daqui pelo disco (`../webgis`,
 > `../servidor-dados-gis`), e o contrário também.
 
+**Este repositório é um de três**, e os papéis se contradizem de propósito — o que vale
+aqui não vale no vizinho:
+
+| Repositório | Papel | O que se faz lá |
+|---|---|---|
+| `geo-analytics` (aqui) | **primeira aplicação derivada** — config e dado de cliente, e o agente | frontend, pipeline de tiles, agente, features |
+| `../webgis` | a casca, a infraestrutura compartilhada e **o registro das decisões** | ADR, host de tiles, vigias, publicação de tiles |
+| `../servidor-dados-gis` | dono do **dado universal** — cargas re-executáveis do IBGE/Censo | carga, schema do banco, e o `app_clientes` do acervo |
+
+A contradição é literal e importa: no `servidor-dados-gis` **toda carga tem de ser
+reexecutável**; o `app_clientes`, que o agente daqui escreve, existe exatamente para **não**
+ser. Antes de tratar um como o outro, ver a emenda de 2026-08-31 à regra 4 do ADR-0001.
+
 **Primeiro passo de toda sessão, antes de propor qualquer coisa:** se a tarefa toca
 decisão, arquitetura, infraestrutura, deploy ou produção, **leia `../webgis/AGENTS.md` e o
 ADR-0001 de lá**. Este arquivo descreve o código; o `webgis` é a sede das decisões, e

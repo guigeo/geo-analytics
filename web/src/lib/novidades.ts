@@ -9,10 +9,10 @@
  * A ORDEM IMPORTA: o primeiro item é o mais recente, e é o `id` dele que decide
  * se existe algo não lido.
  *
- * Cidade de exemplo vem da configuração do cliente: cravar uma aqui seria pôr o
- * conteúdo de um cliente dentro do código que todos compartilham.
+ * Quando uma novidade precisar de cidade de exemplo na `pergunta`, ela vem de
+ * `configuracao.cidadeExemplo` — cravar uma aqui seria pôr o conteúdo de um cliente
+ * dentro do código que todos compartilham. Nenhuma das entradas atuais precisa.
  */
-import { configuracao } from "@/configuracao";
 export interface Novidade {
   /** Estável e único. É o que fica guardado como "já lido" — nunca reaproveitar. */
   id: string;
@@ -28,37 +28,37 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
-    id: "medicao-2026-08",
-    data: "2026-08-31",
-    titulo: "Medir distância e área no mapa",
-    // "Estimativa sobre o mapa" repete o que o painel diz em tela, e pelo mesmo
-    // motivo: o cálculo é esférico e fica de 0,1% a 0,5% do elipsoide. Alguém vai
-    // comparar com uma matrícula, e a ressalva precisa chegar antes.
+    id: "acervo-camadas-2026-09",
+    data: "2026-09-03",
+    titulo: "Suas áreas viram camadas do mapa",
     texto:
-      "Os dois botões novos no topo: a régua mede distância ao longo de uma " +
-      "linha, o pentágono mede a área de um contorno. Clique no mapa para marcar " +
-      "vértices e Esc encerra. É estimativa sobre o mapa, não vale como " +
-      "levantamento.",
-    // Sem `pergunta`: é ferramenta de mapa, e o agente não a executa. Prometer
-    // demonstração no chat seria mandar a pessoa para o lugar errado.
+      "O que você desenha — e o que já estiver no seu acervo — aparece agora no " +
+      "menu de camadas, num grupo com o seu nome. Cada área tem a própria chave " +
+      "para mostrar ou esconder, e clicar no nome voa até ela. O agente também " +
+      "responde sobre uma área: pergunte pelo nome dela e ele cruza com o Censo.",
+    // Sem `pergunta`: a demonstração exigiria o nome de uma área que existe, e ele
+    // muda de cliente para cliente — num acervo vazio o chip responderia "não achei",
+    // que é o oposto de demonstrar. O mesmo motivo da medição, por outro caminho.
   },
   {
-    id: "classe-social-2026-08",
-    data: "2026-08-27",
-    titulo: "Classe social por bairro, distrito e setor",
-    // "Estimativa" não é modéstia, é a mesma ressalva que a tool devolve em toda
-    // resposta (`agent/.../tools.py`, `_avisos_classe_social`). Anunciar sem ela
-    // é preparar o desmentido de quem comparar com a ABEP.
+    id: "painel-arvore-2026-09",
+    data: "2026-09-03",
+    titulo: "O menu de camadas virou árvore",
     texto:
-      "Pergunte quanto de cada classe (A, B, C e D/E) existe num recorte. É " +
-      "estimativa nossa a partir do Censo 2022, calibrada pela PNAD — não é " +
-      "número publicado pelo IBGE, e o agente repete essa ressalva na resposta.",
-    // A pergunta é PRECISA de propósito ("porcentagem", "top 10"). Medido em
-    // 2026-08-27: sem isso o agente devolve uma pergunta de esclarecimento
-    // ("absoluto ou percentual? quantos itens?") em vez do mapa — e um chip de
-    // demonstração que responde com interrogatório não demonstra nada.
-    pergunta: `Top 10 bairros de ${configuracao.cidadeExemplo} por porcentagem de domicílios na classe A`,
-    chip: `Top 10 bairros de ${configuracao.cidadeExemplo} por classe A`,
+      "As camadas agora ficam agrupadas por tema, e tudo começa recolhido e " +
+      "desligado: você abre só o assunto que quer. O painel também anda — arraste " +
+      "a borda dele sobre o mapa, ou dê um duplo clique para voltar ao tamanho " +
+      "de origem.",
+  },
+  {
+    id: "mapa-livre-2026-09",
+    data: "2026-09-03",
+    titulo: "O mapa ficou livre",
+    texto:
+      "Nada mais fica pousado por cima dele. Os atributos aparecem num balão na " +
+      "própria feição que você clicou, as ferramentas de desenho foram para a " +
+      "barra de cima, e o chat recolhe num clique quando você quiser a tela " +
+      "inteira para o mapa.",
   },
 ];
 

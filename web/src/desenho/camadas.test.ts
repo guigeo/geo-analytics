@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { camadasDoAcervo, SEM_CATEGORIA } from "./camadas";
+import { itensDoAcervo } from "./camadas";
 
-function feicao(categoria: string | null, cor = "#111111"): GeoJSON.Feature {
+function feicao(props: Record<string, unknown>, geometria?: GeoJSON.Geometry): GeoJSON.Feature {
   return {
     type: "Feature",
-    geometry: { type: "Point", coordinates: [0, 0] },
-    properties: { id: Math.random().toString(36), categoria, cor },
+    geometry: geometria ?? { type: "Point", coordinates: [0, 0] },
+    properties: props,
   };
 }
 
@@ -13,51 +13,35 @@ function colecao(...features: GeoJSON.Feature[]): GeoJSON.FeatureCollection {
   return { type: "FeatureCollection", features };
 }
 
-describe("camadasDoAcervo", () => {
-  it("acervo vazio não inventa camada", () => {
-    expect(camadasDoAcervo(colecao())).toEqual([]);
+describe("itensDoAcervo", () => {
+  it("acervo vazio não inventa item", () => {
+    expect(itensDoAcervo(colecao())).toEqual([]);
   });
 
-  it("uma camada por categoria, com a contagem", () => {
-    const camadas = camadasDoAcervo(
-      colecao(feicao("terrenos"), feicao("terrenos"), feicao("prédios")),
+  it("traz o que o painel precisa de cada desenho", () => {
+    const [item] = itensDoAcervo(
+      colecao(feicao({ id: "abc", nome: "Área 1", cor: "#16a34a", tipo: "poligono" })),
     );
-    expect(camadas.map((c) => [c.id, c.quantidade])).toEqual([
-      ["terrenos", 2],
-      ["prédios", 1],
-    ]);
+    expect(item).toMatchObject({ id: "abc", nome: "Área 1", cor: "#16a34a", tipo: "poligono" });
+    expect(item.geometria.type).toBe("Point");
   });
 
-  it("ordena por frequência, e desempata pelo nome", () => {
-    const camadas = camadasDoAcervo(colecao(feicao("zeta"), feicao("alfa")));
-    expect(camadas.map((c) => c.id)).toEqual(["alfa", "zeta"]);
-  });
-
-  it("sem categoria vira um balde só, e ele fica por último", () => {
-    // Nulo, ausente e string vazia são a mesma coisa para quem olha o painel; se
-    // caíssem em baldes diferentes, o painel mostraria três camadas anônimas.
-    const semNada: GeoJSON.Feature = {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [0, 0] },
-      properties: { cor: "#222222" },
-    };
-    const camadas = camadasDoAcervo(
-      colecao(feicao(null), feicao("  "), semNada, feicao("terrenos")),
+  it("preserva a ordem do servidor", () => {
+    const itens = itensDoAcervo(
+      colecao(feicao({ id: "1", nome: "Primeiro" }), feicao({ id: "2", nome: "Segundo" })),
     );
-    expect(camadas.map((c) => c.id)).toEqual(["terrenos", SEM_CATEGORIA]);
-    expect(camadas[1]).toMatchObject({ rotulo: "Sem categoria", quantidade: 3 });
+    expect(itens.map((i) => i.nome)).toEqual(["Primeiro", "Segundo"]);
   });
 
-  it("a amostra usa a cor mais frequente da categoria", () => {
-    const camadas = camadasDoAcervo(
-      colecao(feicao("lotes", "#aaaaaa"), feicao("lotes", "#bbbbbb"), feicao("lotes", "#bbbbbb")),
-    );
-    expect(camadas[0].cor).toBe("#bbbbbb");
+  it("feição sem id não entra", () => {
+    // Sem id não há como esconder nem apagar: seria uma linha morta no painel.
+    expect(itensDoAcervo(colecao(feicao({ nome: "órfã" })))).toEqual([]);
   });
 
-  it("categoria é aparada antes de agrupar", () => {
-    const camadas = camadasDoAcervo(colecao(feicao("lotes"), feicao(" lotes ")));
-    expect(camadas).toHaveLength(1);
-    expect(camadas[0].quantidade).toBe(2);
+  it("nome e cor têm queda, para a linha nunca sair em branco", () => {
+    const [item] = itensDoAcervo(colecao(feicao({ id: "x" })));
+    expect(item.nome).toBe("(sem nome)");
+    expect(item.cor).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(item.tipo).toBe("poligono");
   });
 });

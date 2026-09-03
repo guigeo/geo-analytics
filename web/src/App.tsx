@@ -14,10 +14,10 @@ import { PainelMedicao } from "@/components/PainelMedicao";
 import { criarEstadoMedicao, type Coordenada, type ModoMedicao } from "@/map/medicao";
 import { BarraFerramentas } from "@/desenho/BarraFerramentas";
 import { FormularioDesenho, type DadosDoFormulario } from "@/desenho/FormularioDesenho";
-import { PainelDesenhos } from "@/desenho/PainelDesenhos";
 import { useAcervo } from "@/desenho/useAcervo";
-import { camadasDoAcervo } from "@/desenho/camadas";
-import { areaFormatada, bboxDe, type Desenho, type ModoDesenho } from "@/desenho/geometria";
+import { itensDoAcervo, type ItemDoAcervo } from "@/desenho/camadas";
+import { Redimensionador } from "@/components/Redimensionador";
+import { areaFormatada, bboxDe, type ModoDesenho } from "@/desenho/geometria";
 import {
   comVertice,
   criarEstadoDesenho,
@@ -29,6 +29,9 @@ import { ErroDoAcervo } from "@/desenho/api";
 const visibilidadeInicial = Object.fromEntries(
   camadas.map((c) => [c.id, c.visivelPorPadrao]),
 ) as Record<string, boolean>;
+
+/** Largura inicial do painel esquerdo, e para onde o duplo clique na alça volta. */
+const LARGURA_PADRAO = 268;
 
 export function App() {
   const { theme, toggle } = useTheme();
@@ -55,9 +58,9 @@ export function App() {
   // Quem está ESCONDIDO, e não quem está visível: desenho novo nasce visível, e uma
   // lista de visíveis obrigaria a lembrar de acrescentar cada um que chega.
   const [desenhosOcultos, setDesenhosOcultos] = useState<string[]>([]);
-  // As categorias desligadas no painel de camadas. Separada de `desenhosOcultos` de
-  // propósito: uma é a camada, a outra é a feição dentro dela — ver `filtroDoAcervo`.
-  const [categoriasOcultas, setCategoriasOcultas] = useState<string[]>([]);
+  // Largura do painel esquerdo. Mora aqui e não no painel porque quem a aplica é a
+  // grade das três colunas — o painel não tem como se alargar sozinho.
+  const [larguraEsquerda, setLarguraEsquerda] = useState(LARGURA_PADRAO);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -67,10 +70,9 @@ export function App() {
   visibleRef.current = visible;
 
   const acervo = useAcervo();
-  // A lista de camadas do cliente sai do próprio acervo: categoria nova aparece
-  // sozinha, e categoria que ficou sem desenho some. Memoizada porque a coleção só
-  // muda quando alguém grava ou apaga, e o painel repinta a cada clique no mapa.
-  const camadasDoCliente = useMemo(() => camadasDoAcervo(acervo.desenhos), [acervo.desenhos]);
+  // Os desenhos do cliente saem da MESMA coleção que o mapa consome. Memoizado porque
+  // ela só muda quando alguém grava ou apaga, e o painel repinta a cada clique no mapa.
+  const itens = useMemo(() => itensDoAcervo(acervo.desenhos), [acervo.desenhos]);
 
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -152,7 +154,7 @@ export function App() {
     }
   };
 
-  const focalizarDesenho = (d: Desenho) => {
+  const focalizarDesenho = (d: ItemDoAcervo) => {
     const bbox = bboxDe(d.geometria);
     // Um ponto tem caixa degenerada, e o `maxZoom` é quem decide o enquadramento;
     // numa área, o `fitBounds` já faz o trabalho.
@@ -189,51 +191,39 @@ export function App() {
           modoMedicao={modoMedicao}
           onAlternarMedicao={alternarMedicao}
         />
-        <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
-          {/* Grid, e não flex, nas duas colunas: os itens de grid esticam até a
-              altura da linha sozinhos, e é isso que dá altura DEFINIDA à área de
-              rolagem de cada painel sem alterar nenhum deles.
-
-              `fit-content(55%)` é o que enxugou a coluna: com os combos fechados o
-              painel de camadas ocupa o que precisa e devolve o resto para a lista de
-              baixo; quando tudo está aberto, ele para nos 55% e passa a rolar por
-              dentro em vez de espremer o vizinho. Antes eram proporções fixas
-              (1fr/1.2fr), que reservavam a mesma altura tendo ou não conteúdo. */}
-          <div className="grid min-h-0 grid-rows-[fit-content(55%)_minmax(0,1fr)]">
+        <div
+          className="grid min-h-0 flex-1"
+          style={{ gridTemplateColumns: `${larguraEsquerda}px 1fr 340px` }}
+        >
+          {/* Uma coluna, um painel. Eram dois — camadas em cima, desenhos embaixo —,
+              e os dois tinham o mesmo título, porque respondiam à mesma pergunta: o
+              que está no mapa. Dois cabeçalhos para uma pergunta é o que fazia a
+              coluna parecer cheia estando quase vazia. */}
+          <div className="relative min-h-0">
             <LayerPanel
               visible={visible}
               onToggle={toggleLayer}
-              camadasDoAcervo={camadasDoCliente}
-              categoriasOcultas={categoriasOcultas}
-              onAlternarCategoria={(categoria) =>
-                setCategoriasOcultas((atual) =>
-                  atual.includes(categoria)
-                    ? atual.filter((x) => x !== categoria)
-                    : [...atual, categoria],
-                )
-              }
-            />
-            <PainelDesenhos
-              pagina={acervo.pagina}
-              categorias={acervo.categorias}
-              carregando={acervo.carregando}
-              erro={acervo.erro}
-              busca={acervo.busca}
-              onBuscar={acervo.buscar}
-              categoria={acervo.categoria}
-              onFiltrarCategoria={acervo.filtrarCategoria}
-              onIrParaPagina={acervo.irParaPagina}
-              onFocalizar={focalizarDesenho}
-              onApagar={(d) => {
-                void acervo.apagar(d.id);
-              }}
-              onRecarregar={acervo.recarregar}
+              itens={itens}
               ocultos={desenhosOcultos}
-              onAlternarVisibilidade={(id) =>
+              onAlternarItem={(id) =>
                 setDesenhosOcultos((atual) =>
                   atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
                 )
               }
+              onFocalizar={focalizarDesenho}
+              onApagar={(item) => {
+                void acervo.apagar(item.id);
+              }}
+              erroDoAcervo={acervo.erro}
+              onRecarregar={acervo.recarregar}
+            />
+            <Redimensionador
+              largura={larguraEsquerda}
+              onLargura={setLarguraEsquerda}
+              minima={200}
+              maxima={560}
+              padrao={LARGURA_PADRAO}
+              rotulo="Redimensionar o painel de camadas"
             />
           </div>
           {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
@@ -260,7 +250,6 @@ export function App() {
               onEncerrarDesenho={encerrarDesenho}
               desenhos={acervo.desenhos}
               desenhosOcultos={desenhosOcultos}
-              categoriasOcultas={categoriasOcultas}
             />
             <PainelMedicao
               medicao={medicao}

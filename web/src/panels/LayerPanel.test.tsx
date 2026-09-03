@@ -6,17 +6,33 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { LayerPanel } from "./LayerPanel";
 import { agruparCamadas } from "./grupos";
 import { camadas, configuracaoAcervo } from "@/configuracao";
-import { SEM_CATEGORIA, type CamadaDoAcervo } from "@/desenho/camadas";
+import type { ItemDoAcervo } from "@/desenho/camadas";
+import { ErroDoAcervo } from "@/desenho/api";
 
 const grupos = agruparCamadas(camadas);
 const abertos = grupos.filter((g) => g.abertoPorPadrao);
 const fechados = grupos.filter((g) => !g.abertoPorPadrao);
 
+/** O acervo vazio e de pé: nem lista, nem erro. É o estado do cliente 1. */
 const semAcervo = {
-  camadasDoAcervo: [] as CamadaDoAcervo[],
-  categoriasOcultas: [] as string[],
-  onAlternarCategoria: vi.fn(),
+  itens: [] as ItemDoAcervo[],
+  ocultos: [] as string[],
+  onAlternarItem: vi.fn(),
+  onFocalizar: vi.fn(),
+  onApagar: vi.fn(),
+  erroDoAcervo: null,
+  onRecarregar: vi.fn(),
 };
+
+function desenho(id: string, nome: string, tipo = "poligono"): ItemDoAcervo {
+  return {
+    id,
+    nome,
+    tipo,
+    cor: "#16a34a",
+    geometria: { type: "Point", coordinates: [0, 0] },
+  };
+}
 
 function combo(rotulo: string) {
   return screen.getByRole("button", { name: new RegExp(rotulo, "i") });
@@ -93,33 +109,49 @@ describe("LayerPanel", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("o acervo vira um combo com o nome que o cliente dá a ele", () => {
+  it("os desenhos são as FOLHAS do combo do acervo, sem degrau de categoria", () => {
     render(
       <LayerPanel
         visible={{}}
         onToggle={vi.fn()}
-        categoriasOcultas={[]}
-        onAlternarCategoria={vi.fn()}
-        camadasDoAcervo={[
-          { id: "áreas do cliente", rotulo: "áreas do cliente", cor: "#16a34a", quantidade: 2 },
-          { id: SEM_CATEGORIA, rotulo: "Sem categoria", cor: "#2563eb", quantidade: 1 },
-        ]}
+        {...semAcervo}
+        itens={[desenho("a", "POTENCIAL INCORP SCS"), desenho("b", "BASILAR CERAMICA 2")]}
       />,
     );
     expect(combo(configuracaoAcervo.rotulo)).toBeInTheDocument();
-    expect(screen.getByText("áreas do cliente")).toBeInTheDocument();
-    expect(screen.getByText("Sem categoria")).toBeInTheDocument();
+    expect(screen.getByText("POTENCIAL INCORP SCS")).toBeInTheDocument();
+    expect(screen.getByText("BASILAR CERAMICA 2")).toBeInTheDocument();
+    // Nada entre o combo e os desenhos: com uma categoria só, aquele degrau era um
+    // clique a mais para chegar no mesmo lugar.
+    expect(screen.queryByText("áreas do cliente")).not.toBeInTheDocument();
   });
 
-  it("categoria oculta aparece desligada, e o clique avisa qual", () => {
-    const onAlternarCategoria = vi.fn();
+  it("clicar no nome pede para focalizar aquele desenho", () => {
+    const onFocalizar = vi.fn();
+    const item = desenho("a", "POTENCIAL INCORP SCS");
     render(
       <LayerPanel
         visible={{}}
         onToggle={vi.fn()}
-        categoriasOcultas={["lotes"]}
-        onAlternarCategoria={onAlternarCategoria}
-        camadasDoAcervo={[{ id: "lotes", rotulo: "lotes", cor: "#16a34a", quantidade: 3 }]}
+        {...semAcervo}
+        itens={[item]}
+        onFocalizar={onFocalizar}
+      />,
+    );
+    fireEvent.click(screen.getByText("POTENCIAL INCORP SCS"));
+    expect(onFocalizar).toHaveBeenCalledWith(item);
+  });
+
+  it("desenho oculto aparece desligado, e o clique avisa qual", () => {
+    const onAlternarItem = vi.fn();
+    render(
+      <LayerPanel
+        visible={{}}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        itens={[desenho("a", "Área A")]}
+        ocultos={["a"]}
+        onAlternarItem={onAlternarItem}
       />,
     );
     const interruptores = screen.getAllByRole("switch");
@@ -127,6 +159,62 @@ describe("LayerPanel", () => {
     expect(doAcervo).not.toBeChecked();
 
     fireEvent.click(doAcervo);
-    expect(onAlternarCategoria).toHaveBeenCalledWith("lotes");
+    expect(onAlternarItem).toHaveBeenCalledWith("a");
+  });
+
+  it("apagar pede confirmação na própria linha antes de apagar", () => {
+    const onApagar = vi.fn();
+    const item = desenho("a", "Área A");
+    render(
+      <LayerPanel
+        visible={{}}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        itens={[item]}
+        onApagar={onApagar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /apagar área a/i }));
+    expect(onApagar).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /^apagar$/i }));
+    expect(onApagar).toHaveBeenCalledWith(item);
+  });
+
+  it("desistir da confirmação não apaga", () => {
+    const onApagar = vi.fn();
+    render(
+      <LayerPanel
+        visible={{}}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        itens={[desenho("a", "Área A")]}
+        onApagar={onApagar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /apagar área a/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^não$/i }));
+    expect(onApagar).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /apagar área a/i })).toBeInTheDocument();
+  });
+
+  it("acervo fora do ar não é acervo vazio: o combo aparece dizendo isso", () => {
+    // AT-012. Sumir calado faria "não deu para perguntar" parecer "não há nada", que
+    // é a única diferença capaz de decidir se vale tentar de novo.
+    const onRecarregar = vi.fn();
+    render(
+      <LayerPanel
+        visible={{}}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        erroDoAcervo={new ErroDoAcervo("caiu", 503)}
+        onRecarregar={onRecarregar}
+      />,
+    );
+    expect(combo(configuracaoAcervo.rotulo)).toBeInTheDocument();
+    expect(screen.getByText(/mapa continua funcionando/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /tentar de novo/i }));
+    expect(onRecarregar).toHaveBeenCalledOnce();
   });
 });

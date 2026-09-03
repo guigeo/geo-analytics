@@ -1,11 +1,21 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Layers, RadioTower, type LucideIcon } from "lucide-react";
+import {
+  ChevronRight,
+  CloudOff,
+  Layers,
+  RadioTower,
+  RotateCcw,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { camadas, configuracaoAcervo, type DefinicaoCamada } from "@/configuracao";
-import type { CamadaDoAcervo } from "@/desenho/camadas";
+import type { ItemDoAcervo } from "@/desenho/camadas";
+import type { ErroDoAcervo } from "@/desenho/api";
+import { Button } from "@/components/ui/button";
 import { ANTENNA_ICON } from "@/map/icons";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Secao, SecaoCabecalho, SecaoCorpo } from "@/components/PainelSecao";
+import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
 import { agruparCamadas, ligadasNoGrupo } from "./grupos";
 
@@ -13,14 +23,18 @@ interface Props {
   visible: Record<string, boolean>;
   onToggle: (id: string) => void;
   /**
-   * As camadas do acervo — uma por categoria, derivadas do dado (`desenho/camadas.ts`).
-   *
-   * Chegam prontas em vez de serem calculadas aqui porque a mesma coleção alimenta o
-   * mapa, e duas derivações da mesma lista divergiriam no dia em que uma mudasse.
+   * Os desenhos do cliente, folhas do último combo. Vêm da mesma coleção que o mapa
+   * consome — se viessem de uma lista própria, painel e mapa poderiam discordar.
    */
-  camadasDoAcervo: readonly CamadaDoAcervo[];
-  categoriasOcultas: readonly string[];
-  onAlternarCategoria: (categoria: string) => void;
+  itens: readonly ItemDoAcervo[];
+  ocultos: readonly string[];
+  onAlternarItem: (id: string) => void;
+  /** Voa até o desenho. É o que o nome faz quando clicado. */
+  onFocalizar: (item: ItemDoAcervo) => void;
+  onApagar: (item: ItemDoAcervo) => void;
+  /** Acervo fora do ar não é acervo vazio (AT-012): são estados diferentes na tela. */
+  erroDoAcervo: ErroDoAcervo | null;
+  onRecarregar: () => void;
 }
 
 // Ícone da legenda por id de ícone do mapa (mantém painel e marcador em sintonia).
@@ -43,9 +57,13 @@ const ICONE_DA_LEGENDA: Record<string, LucideIcon> = {
 export function LayerPanel({
   visible,
   onToggle,
-  camadasDoAcervo,
-  categoriasOcultas,
-  onAlternarCategoria,
+  itens,
+  ocultos,
+  onAlternarItem,
+  onFocalizar,
+  onApagar,
+  erroDoAcervo,
+  onRecarregar,
 }: Props) {
   const grupos = useMemo(() => agruparCamadas(camadas), []);
   const [fechados, setFechados] = useState<readonly string[]>(() =>
@@ -54,8 +72,8 @@ export function LayerPanel({
   const alternar = (id: string) =>
     setFechados((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
 
-  const acervoLigadas = camadasDoAcervo.filter((c) => !categoriasOcultas.includes(c.id)).length;
-  const noMapa = camadas.filter((c) => visible[c.id]).length + acervoLigadas;
+  const acervoLigados = itens.filter((i) => !ocultos.includes(i.id)).length;
+  const noMapa = camadas.filter((c) => visible[c.id]).length + acervoLigados;
 
   return (
     <Secao className="border-r border-border bg-background">
@@ -85,32 +103,49 @@ export function LayerPanel({
           ))}
 
           {/* O acervo do cliente, no último combo e com o nome que ele dá a ele.
-              Some inteiro quando não há nada: combo vazio sugere que algo não
-              carregou, e o painel de baixo já conta essa história direito. */}
-          {camadasDoAcervo.length > 0 && (
+              Os desenhos são as FOLHAS: com uma categoria só, um degrau "categoria"
+              no meio era um clique a mais para chegar no mesmo lugar.
+
+              Aparece também quando o acervo FALHOU, e é por isso que a condição não
+              é só `itens.length`: sumir calado faria "não deu para perguntar" parecer
+              "não há nada", que é a única diferença capaz de decidir se vale tentar
+              de novo. */}
+          {(itens.length > 0 || erroDoAcervo) && (
             <Combo
               rotulo={configuracaoAcervo.rotulo}
-              ligadas={acervoLigadas}
-              total={camadasDoAcervo.length}
+              ligadas={acervoLigados}
+              total={itens.length}
               aberto={!fechados.includes(CHAVE_DO_ACERVO)}
               onAlternar={() => alternar(CHAVE_DO_ACERVO)}
             >
-              {camadasDoAcervo.map((c) => (
-                <Linha
-                  key={c.id}
-                  rotulo={c.rotulo}
-                  sufixo={c.quantidade}
-                  amostra={
-                    <span
-                      aria-hidden="true"
-                      className="size-3 shrink-0 rounded-sm ring-1 ring-black/5"
-                      style={{ background: c.cor }}
-                    />
-                  }
-                  ligada={!categoriasOcultas.includes(c.id)}
-                  onAlternar={() => onAlternarCategoria(c.id)}
-                />
-              ))}
+              {erroDoAcervo ? (
+                <EstadoVazio icone={CloudOff}>
+                  {erroDoAcervo.indisponivel
+                    ? "Não foi possível carregar agora. O mapa continua funcionando."
+                    : erroDoAcervo.message}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={onRecarregar}
+                  >
+                    <RotateCcw aria-hidden="true" className="size-3.5" />
+                    Tentar de novo
+                  </Button>
+                </EstadoVazio>
+              ) : (
+                itens.map((item) => (
+                  <LinhaDoAcervo
+                    key={item.id}
+                    item={item}
+                    ligada={!ocultos.includes(item.id)}
+                    onAlternar={() => onAlternarItem(item.id)}
+                    onFocalizar={() => onFocalizar(item)}
+                    onApagar={() => onApagar(item)}
+                  />
+                ))
+              )}
             </Combo>
           )}
         </div>
@@ -196,6 +231,93 @@ function Linha({
       )}
       <Switch className="shrink-0" checked={ligada} onCheckedChange={onAlternar} />
     </label>
+  );
+}
+
+/**
+ * Um desenho do cliente. Tem mais coisa que uma camada porque ele é dado do cliente:
+ * dá para ir até ele, escondê-lo e apagá-lo.
+ *
+ * A lixeira só aparece no hover (e ao receber foco pelo teclado, senão ela sumiria
+ * para quem não usa mouse). Numa lista de dado insubstituível, botão de apagar sempre
+ * visível em toda linha é convite; escondido atrás do gesto de mirar a linha, não.
+ */
+function LinhaDoAcervo({
+  item,
+  ligada,
+  onAlternar,
+  onFocalizar,
+  onApagar,
+}: {
+  item: ItemDoAcervo;
+  ligada: boolean;
+  onAlternar: () => void;
+  onFocalizar: () => void;
+  onApagar: () => void;
+}) {
+  // Um booleano por linha, e não um id no pai: a confirmação é estado da linha, e
+  // guardá-la em cima faria abrir numa linha abrir em todas.
+  const [confirmando, setConfirmando] = useState(false);
+
+  return (
+    <div className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-3 shrink-0 ring-1 ring-black/10",
+          item.tipo === "ponto" ? "rounded-full" : "rounded-sm",
+        )}
+        style={{ background: item.cor }}
+      />
+      <button
+        type="button"
+        onClick={onFocalizar}
+        className="min-w-0 flex-1 truncate text-left text-sm"
+        title={item.nome}
+      >
+        {item.nome}
+      </button>
+
+      {confirmando ? (
+        // Confirmar na própria linha, e não num diálogo: quem apaga precisa continuar
+        // vendo QUAL desenho está apagando.
+        <span className="flex shrink-0 gap-1">
+          <Button
+            type="button"
+            variant="destructive"
+            size="xs"
+            onClick={() => {
+              setConfirmando(false);
+              onApagar();
+            }}
+          >
+            Apagar
+          </Button>
+          <Button type="button" variant="ghost" size="xs" onClick={() => setConfirmando(false)}>
+            Não
+          </Button>
+        </span>
+      ) : (
+        <>
+          <Switch
+            className="shrink-0"
+            checked={ligada}
+            onCheckedChange={onAlternar}
+            aria-label={`Mostrar ${item.nome} no mapa`}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Apagar ${item.nome}`}
+            className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+            onClick={() => setConfirmando(true)}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
+        </>
+      )}
+    </div>
   );
 }
 

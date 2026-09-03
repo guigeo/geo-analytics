@@ -1,9 +1,7 @@
-// As duas dimensões do filtro do acervo. Elas se parecem — as duas escondem coisa —
-// e por isso o teste é sobre a diferença: uma esconde a CAMADA, a outra a FEIÇÃO, e
-// as duas ligadas ao mesmo tempo têm de valer juntas.
+// Esconder desenho é por FILTRO, e o filtro guarda a geometria da camada na frente:
+// sem ela, a camada de área pintaria ponto e a de ponto pintaria polígono.
 import { describe, expect, it } from "vitest";
 import { filtroDoAcervo } from "./fonte";
-import { SEM_CATEGORIA } from "./camadas";
 
 /** As cláusulas de um filtro `["all", …]`, ou o filtro sozinho quando não há `all`. */
 function clausulas(filtro: unknown): unknown[] {
@@ -16,37 +14,17 @@ describe("filtroDoAcervo", () => {
     expect(filtroDoAcervo("desenhos-ponto")).toEqual(["==", ["geometry-type"], "Point"]);
   });
 
-  it("a geometria continua na frente quando algo é escondido", () => {
-    // Sem ela, a camada de área pintaria ponto e a de ponto pintaria polígono.
-    const filtro = filtroDoAcervo("desenhos-contorno", ["um-id"], ["uma-categoria"]);
+  it("com ids escondidos, a geometria continua na frente", () => {
+    const filtro = filtroDoAcervo("desenhos-contorno", ["um-id"]);
     expect(clausulas(filtro)[0]).toEqual(["==", ["geometry-type"], "Polygon"]);
-  });
-
-  it("id escondido não arrasta a categoria junto", () => {
-    const filtro = filtroDoAcervo("desenhos-area", ["um-id"]);
     expect(clausulas(filtro)).toHaveLength(2);
     expect(JSON.stringify(filtro)).toContain("um-id");
-    expect(JSON.stringify(filtro)).not.toContain("categoria");
   });
 
-  it("categoria escondida não vira lista de ids", () => {
-    const filtro = filtroDoAcervo("desenhos-area", [], ["lotes"]);
-    expect(clausulas(filtro)).toHaveLength(2);
-    expect(JSON.stringify(filtro)).toContain("categoria");
-    expect(JSON.stringify(filtro)).toContain("lotes");
-  });
-
-  it("as duas juntas somam cláusulas, e não substituem uma à outra", () => {
-    const filtro = filtroDoAcervo("desenhos-area", ["um-id"], ["lotes"]);
-    expect(clausulas(filtro)).toHaveLength(3);
-  });
-
-  it("o balde de quem não tem categoria é comparável como qualquer outro", () => {
-    // O `coalesce`+`case` do filtro é o que faz nulo e vazio virarem SEM_CATEGORIA:
-    // sem ele, desligar "Sem categoria" no painel não apagaria nada no mapa.
-    const filtro = filtroDoAcervo("desenhos-ponto", [], [SEM_CATEGORIA]);
-    const texto = JSON.stringify(filtro);
-    expect(texto).toContain(SEM_CATEGORIA);
-    expect(texto).toContain("coalesce");
+  it("esconder é por id, e não por índice ou ordem", () => {
+    // O id vem de `properties.id`, que o servidor põe em cada feição — é o que faz o
+    // liga/desliga sobreviver a uma recarga que mude a ordem.
+    const filtro = filtroDoAcervo("desenhos-area", ["a", "b"]);
+    expect(JSON.stringify(filtro)).toContain('["get","id"]');
   });
 });

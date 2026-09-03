@@ -118,8 +118,6 @@ interface Props {
   desenhos: GeoJSON.FeatureCollection;
   /** Ids dos desenhos escondidos. Um por vez, como o painel de camadas faz por camada. */
   desenhosOcultos: readonly string[];
-  /** Categorias desligadas no painel de camadas. A outra dimensão do mesmo filtro. */
-  categoriasOcultas: readonly string[];
 }
 
 export function MapView({
@@ -140,7 +138,6 @@ export function MapView({
   onEncerrarDesenho,
   desenhos,
   desenhosOcultos,
-  categoriasOcultas,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -172,8 +169,6 @@ export function MapView({
   desenhosRef.current = desenhos;
   const desenhosOcultosRef = useRef(desenhosOcultos);
   desenhosOcultosRef.current = desenhosOcultos;
-  const categoriasOcultasRef = useRef(categoriasOcultas);
-  categoriasOcultasRef.current = categoriasOcultas;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
   const initialThemeRef = useRef(theme);
   const initialSatelliteRef = useRef(satellite);
@@ -399,12 +394,10 @@ export function MapView({
     if (!map) return;
     assimQuePuder(map, () => {
       if (!map.getLayer(IDS_CAMADAS_DESENHOS[0])) return false;
-      for (const id of IDS_CAMADAS_DESENHOS) {
-        map.setFilter(id, filtroDoAcervo(id, desenhosOcultos, categoriasOcultas));
-      }
+      for (const id of IDS_CAMADAS_DESENHOS) map.setFilter(id, filtroDoAcervo(id, desenhosOcultos));
       return true;
     });
-  }, [desenhosOcultos, categoriasOcultas]);
+  }, [desenhosOcultos]);
 
   useEffect(() => {
     highlightsRef.current = highlights ?? null;
@@ -450,12 +443,7 @@ export function MapView({
       // O style novo nasce sem filtro: sem isto, trocar o tema faria reaparecer os
       // desenhos que a pessoa tinha escondido.
       for (const id of IDS_CAMADAS_DESENHOS) {
-        if (map.getLayer(id)) {
-          map.setFilter(
-            id,
-            filtroDoAcervo(id, desenhosOcultosRef.current, categoriasOcultasRef.current),
-          );
-        }
+        if (map.getLayer(id)) map.setFilter(id, filtroDoAcervo(id, desenhosOcultosRef.current));
       }
     });
   }, [theme, satellite, satelliteOverlay]);

@@ -100,7 +100,6 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
       onEncerrarDesenho={onEncerrarDesenho}
       desenhos={COLECAO_VAZIA}
       desenhosOcultos={[]}
-      categoriasOcultas={[]}
       {...props}
     />,
   );
@@ -164,7 +163,6 @@ describe("MapView e a medição", () => {
         onEncerrarDesenho={vi.fn()}
         desenhos={COLECAO_VAZIA}
         desenhosOcultos={[]}
-        categoriasOcultas={[]}
       />,
     );
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));

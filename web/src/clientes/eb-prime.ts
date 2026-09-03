@@ -86,6 +86,11 @@ export const cliente: ConfiguracaoCliente = {
     zoomInicial: 3.5,
   },
 
+  // As áreas do cliente vieram por carga de KMZ, e para ele não são "desenhos": são
+  // o acervo dele. Cada categoria dentro dele vira uma camada no painel, e essa lista
+  // sai do dado — não há o que declarar aqui.
+  acervo: { rotulo: "Áreas EB Prime" },
+
   chat: {
     habilitado: true,
     // A cidade da primeira sugestão é decisão do Gui em 2026-08-30. Ela é o que

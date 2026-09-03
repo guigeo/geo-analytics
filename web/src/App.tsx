@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { MapView, type MapFocus, type SelectedFeature, type Viewport } from "@/map/MapView";
@@ -16,6 +16,7 @@ import { BarraFerramentas } from "@/desenho/BarraFerramentas";
 import { FormularioDesenho, type DadosDoFormulario } from "@/desenho/FormularioDesenho";
 import { PainelDesenhos } from "@/desenho/PainelDesenhos";
 import { useAcervo } from "@/desenho/useAcervo";
+import { camadasDoAcervo } from "@/desenho/camadas";
 import { areaFormatada, bboxDe, type Desenho, type ModoDesenho } from "@/desenho/geometria";
 import {
   comVertice,
@@ -54,6 +55,9 @@ export function App() {
   // Quem está ESCONDIDO, e não quem está visível: desenho novo nasce visível, e uma
   // lista de visíveis obrigaria a lembrar de acrescentar cada um que chega.
   const [desenhosOcultos, setDesenhosOcultos] = useState<string[]>([]);
+  // As categorias desligadas no painel de camadas. Separada de `desenhosOcultos` de
+  // propósito: uma é a camada, a outra é a feição dentro dela — ver `filtroDoAcervo`.
+  const [categoriasOcultas, setCategoriasOcultas] = useState<string[]>([]);
   const [preenchendo, setPreenchendo] = useState(false);
   const [salvandoDesenho, setSalvandoDesenho] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
@@ -63,6 +67,10 @@ export function App() {
   visibleRef.current = visible;
 
   const acervo = useAcervo();
+  // A lista de camadas do cliente sai do próprio acervo: categoria nova aparece
+  // sozinha, e categoria que ficou sem desenho some. Memoizada porque a coleção só
+  // muda quando alguém grava ou apaga, e o painel repinta a cada clique no mapa.
+  const camadasDoCliente = useMemo(() => camadasDoAcervo(acervo.desenhos), [acervo.desenhos]);
 
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -186,7 +194,19 @@ export function App() {
               esticam até a altura da linha sozinhos, e é isso que faz a área de
               rolagem de cada painel ter altura definida sem alterar nenhum deles. */}
           <div className="grid min-h-0 grid-rows-[1fr_1.2fr]">
-            <LayerPanel visible={visible} onToggle={toggleLayer} />
+            <LayerPanel
+              visible={visible}
+              onToggle={toggleLayer}
+              camadasDoAcervo={camadasDoCliente}
+              categoriasOcultas={categoriasOcultas}
+              onAlternarCategoria={(categoria) =>
+                setCategoriasOcultas((atual) =>
+                  atual.includes(categoria)
+                    ? atual.filter((x) => x !== categoria)
+                    : [...atual, categoria],
+                )
+              }
+            />
             <PainelDesenhos
               pagina={acervo.pagina}
               categorias={acervo.categorias}
@@ -234,6 +254,7 @@ export function App() {
               onEncerrarDesenho={encerrarDesenho}
               desenhos={acervo.desenhos}
               desenhosOcultos={desenhosOcultos}
+              categoriasOcultas={categoriasOcultas}
             />
             <PainelMedicao
               medicao={medicao}

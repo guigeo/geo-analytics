@@ -243,6 +243,21 @@ export const EsquemaChat = z.object({
   sugestoes: z.array(z.string().min(1)),
 });
 
+/**
+ * Como o cliente chama o que ELE desenhou.
+ *
+ * "Desenhos" descreve o gesto; para quem contratou, aquilo são as *áreas dele* — e o
+ * nome que a casca daria não serve porque o conteúdo é do cliente, não da casa. É a
+ * regra 1 do ADR-0001 pelo lado que ela cobra: nome de conteúdo de cliente dentro de
+ * `.tsx` compartilhado é o cliente vazando para a casca.
+ *
+ * Obrigatório, como `identidade` e `chat`: um default escondido faria o cliente que
+ * esqueceu de nomear o próprio acervo passar despercebido até alguém abrir a tela.
+ */
+export const EsquemaAcervo = z.object({
+  rotulo: z.string().min(1),
+});
+
 export const EsquemaCliente = z
   .object({
     /** Identificador do cliente. Vira nome de arquivo e valor de VITE_CLIENTE. */
@@ -265,6 +280,7 @@ export const EsquemaCliente = z
     tema: EsquemaTema,
     mapa: EsquemaMapa,
     camadas: z.array(EsquemaCamada).min(1, "aplicação sem camada nenhuma não tem o que mostrar"),
+    acervo: EsquemaAcervo,
     chat: EsquemaChat,
   })
   .superRefine((cliente, ctx) => {
@@ -279,6 +295,7 @@ export const EsquemaCliente = z
     }
   });
 
+export type ConfiguracaoAcervo = z.infer<typeof EsquemaAcervo>;
 export type Atributo = z.infer<typeof EsquemaAtributo>;
 export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;

@@ -1,5 +1,6 @@
 import { MousePointerClick, RadioTower, type LucideIcon } from "lucide-react";
-import { camadas, type DefinicaoCamada } from "@/configuracao";
+import { camadas, configuracaoAcervo, type DefinicaoCamada } from "@/configuracao";
+import type { CamadaDoAcervo } from "@/desenho/camadas";
 import { ANTENNA_ICON } from "@/map/icons";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,6 +8,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface Props {
   visible: Record<string, boolean>;
   onToggle: (id: string) => void;
+  /**
+   * As camadas do acervo — uma por categoria, derivadas do dado (`desenho/camadas.ts`).
+   *
+   * Chegam prontas em vez de serem calculadas aqui porque a mesma coleção alimenta o
+   * mapa, e duas derivações da mesma lista divergiriam no dia em que uma mudasse.
+   */
+  camadasDoAcervo: readonly CamadaDoAcervo[];
+  categoriasOcultas: readonly string[];
+  onAlternarCategoria: (categoria: string) => void;
 }
 
 // Ícone da legenda por id de ícone do mapa (mantém painel e marcador em sintonia).
@@ -14,7 +24,13 @@ const ICONE_DA_LEGENDA: Record<string, LucideIcon> = {
   [ANTENNA_ICON]: RadioTower,
 };
 
-export function LayerPanel({ visible, onToggle }: Props) {
+export function LayerPanel({
+  visible,
+  onToggle,
+  camadasDoAcervo,
+  categoriasOcultas,
+  onAlternarCategoria,
+}: Props) {
   return (
     <aside className="flex min-h-0 flex-col border-r border-border bg-background">
       <div className="px-4 pb-2 pt-4">
@@ -40,6 +56,44 @@ export function LayerPanel({ visible, onToggle }: Props) {
               </li>
             );
           })}
+
+          {/* As camadas do cliente, na mesma lista e depois das universais.
+              Mesma lista porque a pergunta é uma só — o que está no mapa —, e o
+              rótulo do grupo diz de quem é o que vem abaixo. Some inteiro quando o
+              acervo está vazio ou fora do ar: cabeçalho sobre lista vazia sugere
+              que algo se perdeu. */}
+          {camadasDoAcervo.length > 0 && (
+            <>
+              <li
+                aria-hidden="true"
+                className="mt-2 border-t border-border px-2.5 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                {configuracaoAcervo.rotulo}
+              </li>
+              {camadasDoAcervo.map((c) => {
+                const on = !categoriasOcultas.includes(c.id);
+                return (
+                  <li key={c.id}>
+                    <label
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-accent"
+                      data-active={on}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="size-3 shrink-0 rounded-sm ring-1 ring-black/5"
+                        style={{ background: c.cor }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm">{c.rotulo}</span>
+                      <span className="shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground">
+                        {c.quantidade}
+                      </span>
+                      <Switch checked={on} onCheckedChange={() => onAlternarCategoria(c.id)} />
+                    </label>
+                  </li>
+                );
+              })}
+            </>
+          )}
         </ul>
       </ScrollArea>
 

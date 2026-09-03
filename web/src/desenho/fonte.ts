@@ -14,10 +14,13 @@
  * coleção — e a de baixo, a do servidor, é a que o `properties` das camadas espera.
  */
 import type {
+  ExpressionSpecification,
   FilterSpecification,
   GeoJSONSourceSpecification,
   LayerSpecification,
 } from "maplibre-gl";
+
+import { SEM_CATEGORIA } from "./camadas";
 
 export const DESENHOS_SOURCE_ID = "desenhos";
 export const TRACADO_SOURCE_ID = "desenho-tracado";
@@ -58,19 +61,50 @@ export const IDS_CAMADAS_DESENHOS = Object.keys(
 ) as (keyof typeof GEOMETRIA_DA_CAMADA)[];
 
 /**
- * O filtro de uma camada do acervo, escondendo os ids pedidos.
+ * A categoria de uma feição, com nulo e vazio caindo no mesmo balde.
+ *
+ * É a mesma regra do `categoriaDe` em `camadas.ts`, dita outra vez em expressão do
+ * MapLibre porque é aqui que ela precisa valer. As duas têm de concordar: se o painel
+ * agrupasse um desenho sem categoria e o mapa não, desligar "Sem categoria" deixaria o
+ * desenho aceso — e o painel estaria mentindo sobre o mapa.
+ *
+ * O `coalesce` troca nulo por vazio, e o `case` manda os dois para o mesmo lugar.
+ */
+const CATEGORIA_DA_FEICAO: ExpressionSpecification = [
+  "case",
+  ["==", ["coalesce", ["get", "categoria"], ""], ""],
+  SEM_CATEGORIA,
+  ["get", "categoria"],
+];
+
+/**
+ * O filtro de uma camada do acervo, escondendo o que foi pedido.
  *
  * Esconder por FILTRO e não por `visibility` é o que torna o liga/desliga unitário: a
  * visibilidade é da camada inteira, e as três camadas servem os quinhentos desenhos.
  * O id vem de `properties.id`, que o servidor põe em cada feição.
+ *
+ * São DUAS dimensões, e de propósito não viram uma: a categoria é a *camada*, o id é a
+ * *feição* dentro dela. Traduzir categoria escondida para uma lista de ids daria a
+ * mesma tela e perderia a distinção — religar a camada teria de adivinhar quais ids a
+ * pessoa havia escondido um a um antes de desligá-la.
  */
 export function filtroDoAcervo(
   camada: keyof typeof GEOMETRIA_DA_CAMADA,
   ocultos: readonly string[] = [],
+  categoriasOcultas: readonly string[] = [],
 ): FilterSpecification {
-  const base: FilterSpecification = ["==", ["geometry-type"], GEOMETRIA_DA_CAMADA[camada]];
-  if (ocultos.length === 0) return base;
-  return ["all", base, ["!", ["in", ["get", "id"], ["literal", [...ocultos]]]]];
+  // `ExpressionSpecification` e não `FilterSpecification`: o segundo ainda inclui as
+  // formas antigas (`["!has", …]`), que o `all` não aceita como operando.
+  const base: ExpressionSpecification = ["==", ["geometry-type"], GEOMETRIA_DA_CAMADA[camada]];
+  const clausulas: ExpressionSpecification[] = [base];
+  if (ocultos.length > 0) {
+    clausulas.push(["!", ["in", ["get", "id"], ["literal", [...ocultos]]]]);
+  }
+  if (categoriasOcultas.length > 0) {
+    clausulas.push(["!", ["in", CATEGORIA_DA_FEICAO, ["literal", [...categoriasOcultas]]]]);
+  }
+  return clausulas.length === 1 ? base : ["all", ...clausulas];
 }
 
 export const camadasDesenhos: LayerSpecification[] = [

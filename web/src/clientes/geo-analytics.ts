@@ -40,6 +40,10 @@ export const cliente: ConfiguracaoCliente = {
     zoomInicial: 3.5,
   },
 
+  // A aplicação da casa não tem "acervo do cliente": quem desenha aqui é quem
+  // desenvolve, e "Desenhos" descreve exatamente isso.
+  acervo: { rotulo: "Desenhos" },
+
   chat: {
     habilitado: true,
     sugestoes: [

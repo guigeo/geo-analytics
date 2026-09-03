@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { configuracaoAcervo } from "@/configuracao";
 import { cn } from "@/lib/utils";
 import type { Desenho, ErroDoAcervo, PaginaDeDesenhos } from "./api";
 
@@ -69,7 +70,7 @@ export function PainelDesenhos({
     <aside className="flex min-h-0 flex-col border-r border-t border-border bg-background">
       <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Desenhos
+          {configuracaoAcervo.rotulo}
         </h2>
         {total > 0 && (
           <span className="text-[0.6875rem] tabular-nums text-muted-foreground">{total}</span>

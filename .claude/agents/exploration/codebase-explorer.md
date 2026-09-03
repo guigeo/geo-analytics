@@ -126,7 +126,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `.claude/CLAUDE.md` | Always recommended | Task is trivial |
+| `CLAUDE.md` | Always recommended | Task is trivial |
 | `package.json` / `pyproject.toml` | Understanding dependencies | Already known |
 | `git log --oneline -10` | Understanding recent changes | New repo / first run |
 | README files | Getting project overview | Deep dive requested |

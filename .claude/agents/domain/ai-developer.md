@@ -36,7 +36,7 @@ das respostas. Garante que o agente responda ancorado no que está de fato no ma
 ## Padrões principais
 
 Carregar antes de agir:
-- `.claude/CLAUDE.md` — convenções do projeto
+- `CLAUDE.md` — convenções do projeto
 - KBs de IA: **ainda não criadas**. Serão geradas no `/brainstorm` via `/create-kb`
   (candidatas: `claude-api`, `padroes-rag`, `engenharia-de-prompts`).
 

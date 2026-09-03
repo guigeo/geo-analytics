@@ -35,7 +35,7 @@ mapa mostra). Responsável pela escolha da biblioteca de mapas e pelos padrões 
 ## Padrões principais
 
 Carregar antes de agir:
-- `.claude/CLAUDE.md` — convenções do projeto
+- `CLAUDE.md` — convenções do projeto
 - KBs de frontend/mapas: **ainda não criadas**. Serão geradas no `/brainstorm` via
   `/create-kb` (candidata: a biblioteca de mapas escolhida — ex.: `maplibre`, `leaflet`, `deckgl`).
 

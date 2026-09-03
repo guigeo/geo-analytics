@@ -127,7 +127,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `.claude/CLAUDE.md` | Always recommended | Task is trivial |
+| `CLAUDE.md` | Always recommended | Task is trivial |
 | `.claude/kb/genai/` | Architecture work | Not AI-related |
 | Existing agents | Modifying system | Greenfield project |
 | Integration configs | Workflow work | Isolated design |

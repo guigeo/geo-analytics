@@ -33,7 +33,7 @@ description: Kickstart interativo do projeto — coleta contexto do stack, insta
 ### Passo 1: Ler estado atual
 
 ```text
-Read(.claude/CLAUDE.md)           # Verifica o que já foi preenchido
+Read(CLAUDE.md)           # Verifica o que já foi preenchido
 Read(.claude/kb/_index.yaml)      # Verifica KBs existentes
 Glob(.claude/agents/domain/*.md)  # Verifica agentes de domínio existentes
 ```
@@ -289,7 +289,7 @@ color: blue
 Carregar antes de agir — usar os caminhos exatos dos KBs criados no Passo 5:
 {Para cada KB relevante criado no Passo 5, listar o caminho real:}
 - `.claude/kb/{kb-criado-no-passo5}/quick-reference.md`
-- `.claude/CLAUDE.md` — convenções do projeto
+- `CLAUDE.md` — convenções do projeto
 
 ## Referência de Stack
 
@@ -412,7 +412,7 @@ Para Diretrizes de Uso dos Agentes, adicionar os agentes de domínio na linha da
 Antes do relatório, commitar tudo que foi criado:
 
 ```bash
-git add .claude/kb/ .claude/agents/domain/ .claude/CLAUDE.md
+git add .claude/kb/ .claude/agents/domain/ CLAUDE.md
 git commit -m "chore: project-init — KBs, domain agents e CLAUDE.md configurados"
 ```
 

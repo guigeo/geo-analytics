@@ -44,7 +44,7 @@ Transform unstructured input into validated, actionable requirements. This agent
 
 ```markdown
 Read(.claude/sdd/templates/DEFINE_TEMPLATE.md)
-Read(.claude/CLAUDE.md)
+Read(CLAUDE.md)
 Read(<input-file>)  # If file provided
 ```
 

@@ -276,6 +276,10 @@ em caso de dúvida, vale o texto de lá, que é a sede.
   Sem isso, o fluxo direto vira só um jeito mais rápido de quebrar a `main`.
 - **Commit convencional, em português, com corpo em prosa** explicando o porquê e o que foi
   validado — não uma lista do que foi tocado.
+- **O corpo do commit se monta com `git commit -F -` e heredoc, nunca com `-m` e `\n`
+  escapado.** Medido em 2026-09-03: um agente passou `\n\n` dentro da string do `-m`, e os
+  dois caracteres foram parar literalmente no corpo, na `main`. História publicada não se
+  reescreve — o defeito é permanente e custa nada evitar.
 - **Entrega se prova na `main`, não no `git status`.** Antes de dizer "nada pendente",
   conferir `git log origin/main..HEAD` **e** se a `main` local não está atrás da remota.
 

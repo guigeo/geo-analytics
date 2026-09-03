@@ -37,6 +37,7 @@ export const camadas = configuracao.camadas;
 export const configuracaoAcervo = configuracao.acervo;
 export const configuracaoChat = configuracao.chat;
 
+export { GRUPOS_DE_CAMADA } from "./esquema";
 export { aplicarTema } from "./tema";
 export { aplicarIdentidade } from "./identidade";
 
@@ -47,6 +48,7 @@ export type {
   ConfiguracaoMapa,
   ConfiguracaoTema,
   DefinicaoCamada,
+  IdDeGrupo,
   Identidade,
   Simbolo,
 } from "./esquema";

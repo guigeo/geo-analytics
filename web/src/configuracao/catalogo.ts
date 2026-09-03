@@ -29,6 +29,7 @@ export const CATALOGO = {
   uf: {
     id: "uf",
     rotulo: "UF",
+    grupo: "ibge",
     camadaFonte: "uf",
     geometria: "poligono",
     cor: "#3a5a8c",
@@ -45,6 +46,7 @@ export const CATALOGO = {
   municipio: {
     id: "municipio",
     rotulo: "Município",
+    grupo: "ibge",
     camadaFonte: "municipio",
     geometria: "poligono",
     cor: "#2e8b6f",
@@ -61,6 +63,7 @@ export const CATALOGO = {
   distrito: {
     id: "distrito",
     rotulo: "Distrito",
+    grupo: "ibge",
     camadaFonte: "distrito",
     geometria: "poligono",
     cor: "#b8577d",
@@ -76,6 +79,7 @@ export const CATALOGO = {
   bairro: {
     id: "bairro",
     rotulo: "Bairro",
+    grupo: "ibge",
     camadaFonte: "bairro",
     geometria: "poligono",
     cor: "#8e5bd0",
@@ -91,6 +95,7 @@ export const CATALOGO = {
   setor: {
     id: "setor",
     rotulo: "Setor censitário",
+    grupo: "ibge",
     camadaFonte: "setor",
     geometria: "poligono",
     cor: "#e08a3c",
@@ -106,6 +111,7 @@ export const CATALOGO = {
   antenas: {
     id: "antenas",
     rotulo: "Antenas de telefonia",
+    grupo: "infraestrutura",
     camadaFonte: "antenas",
     geometria: "ponto",
     cor: "#d7263d",
@@ -122,6 +128,7 @@ export const CATALOGO = {
   rodovias: {
     id: "rodovias",
     rotulo: "Rodovias",
+    grupo: "infraestrutura",
     camadaFonte: "rodovias",
     geometria: "linha",
     cor: "#c2410c",
@@ -137,6 +144,7 @@ export const CATALOGO = {
   ferrovias: {
     id: "ferrovias",
     rotulo: "Ferrovias",
+    grupo: "infraestrutura",
     camadaFonte: "ferrovias",
     geometria: "linha",
     cor: "#4b5563",

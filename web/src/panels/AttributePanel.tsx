@@ -1,10 +1,10 @@
-import { MousePointerSquareDashed } from "lucide-react";
+import { Info, MousePointerSquareDashed } from "lucide-react";
 import type { SelectedFeature } from "@/map/MapView";
 import { camadas } from "@/configuracao";
 import { DESENHOS_SOURCE_ID } from "@/desenho/fonte";
 import { descreverDesenho } from "@/desenho/atributos";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 
 interface Props {
   selected: SelectedFeature | null;
@@ -27,19 +27,14 @@ export function AttributePanel({ selected }: Props) {
   const titulo = desenho ? String(desenho.properties.nome ?? "Desenho") : camada?.rotulo;
 
   return (
-    <aside className="flex h-full min-h-0 flex-col bg-background">
-      <div className="px-4 pb-2 pt-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Atributos
-        </h2>
-      </div>
+    <Secao className="bg-background">
+      <SecaoCabecalho titulo="Atributos" icone={Info} />
 
-      <ScrollArea className="min-h-0 flex-1 px-4">
+      <SecaoCorpo>
         {!titulo ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <MousePointerSquareDashed className="size-5 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Clique em uma feição no mapa.</p>
-          </div>
+          <EstadoVazio icone={MousePointerSquareDashed}>
+            Clique numa feição do mapa para destacá-la e ver os atributos.
+          </EstadoVazio>
         ) : (
           <Card className="gap-0 overflow-hidden p-0">
             <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
@@ -65,8 +60,8 @@ export function AttributePanel({ selected }: Props) {
             </dl>
           </Card>
         )}
-      </ScrollArea>
-    </aside>
+      </SecaoCorpo>
+    </Secao>
   );
 }
 

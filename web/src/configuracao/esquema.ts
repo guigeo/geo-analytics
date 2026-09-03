@@ -66,6 +66,28 @@ export const EsquemaContorno = z.object({
 export const GEOMETRIAS = ["poligono", "linha", "ponto"] as const;
 export const ANCORAS_ICONE = ["centro", "base"] as const;
 
+/**
+ * Os temas em que o painel agrupa as camadas.
+ *
+ * Grupo é propriedade da CAMADA, não escolha do cliente: "UF" é do IBGE em qualquer
+ * aplicação, e deixar cada cliente arrumar as mesmas oito camadas seria criar chave
+ * para errar — a emenda de 2026-08-31 à regra 1 do ADR-0001. O cliente escolhe QUAIS
+ * enxerga; o grupo vem junto com a camada, e grupo que ficou sem camada nenhuma
+ * simplesmente não aparece.
+ *
+ * `abertoPorPadrao` é o que faz o painel nascer curto: nenhuma camada começa ligada,
+ * então abrir tudo mostraria oito interruptores desligados e nada mais. O IBGE abre
+ * porque é o assunto da aplicação; infraestrutura fica a um clique, com a contagem à
+ * vista para não virar gaveta escondida.
+ */
+export const GRUPOS_DE_CAMADA = {
+  ibge: { rotulo: "Informações IBGE", abertoPorPadrao: true },
+  infraestrutura: { rotulo: "Infraestrutura", abertoPorPadrao: false },
+} as const;
+
+export const IDS_DE_GRUPO = Object.keys(GRUPOS_DE_CAMADA) as [IdDeGrupo, ...IdDeGrupo[]];
+export type IdDeGrupo = keyof typeof GRUPOS_DE_CAMADA;
+
 export const EsquemaCamada = z
   .object({
     /** Id da camada. Vira id de fonte e de camada no MapLibre, e nome do .pmtiles. */
@@ -76,6 +98,8 @@ export const EsquemaCamada = z
         "id de camada aceita minúsculas, dígitos e _, começando por letra",
       ),
     rotulo: z.string().min(1),
+    /** Em que combo do painel ela aparece. Ver `GRUPOS_DE_CAMADA`. */
+    grupo: z.enum(IDS_DE_GRUPO),
     /** Camada dentro do vector tile (o `source-layer` do MapLibre). */
     camadaFonte: z.string().min(1),
     geometria: z.enum(GEOMETRIAS),

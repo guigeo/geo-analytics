@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, RotateCcw, Search, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CloudOff,
+  RotateCcw,
+  Search,
+  Shapes,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { configuracaoAcervo } from "@/configuracao";
 import { cn } from "@/lib/utils";
 import type { Desenho, ErroDoAcervo, PaginaDeDesenhos } from "./api";
@@ -67,17 +75,10 @@ export function PainelDesenhos({
   const filtrando = busca.trim() !== "" || categoria !== null;
 
   return (
-    <aside className="flex min-h-0 flex-col border-r border-t border-border bg-background">
-      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {configuracaoAcervo.rotulo}
-        </h2>
-        {total > 0 && (
-          <span className="text-[0.6875rem] tabular-nums text-muted-foreground">{total}</span>
-        )}
-      </div>
+    <Secao className="border-r border-t border-border bg-background">
+      <SecaoCabecalho titulo={configuracaoAcervo.rotulo} icone={Shapes} contagem={total} />
 
-      <div className="px-3 pb-2">
+      <div className="shrink-0 px-3 pb-1 pt-2">
         <div className="relative">
           <Search
             aria-hidden="true"
@@ -106,36 +107,34 @@ export function PainelDesenhos({
         )}
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-3">
+      <SecaoCorpo className="pt-0">
         {/* O acervo fora do ar é um estado, não uma lista vazia (AT-012): o mapa
             continua de pé, e a diferença entre "não há desenho" e "não deu para
             perguntar" é a única coisa que decide se vale tentar de novo. */}
         {erro ? (
-          <div className="rounded-lg border border-dashed border-border p-3">
-            <p className="text-xs leading-5 text-muted-foreground">
-              {erro.indisponivel
-                ? "Não foi possível carregar os desenhos agora. O mapa continua funcionando."
-                : erro.message}
-            </p>
+          <EstadoVazio icone={CloudOff}>
+            {erro.indisponivel
+              ? "Não foi possível carregar agora. O mapa continua funcionando."
+              : erro.message}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="mt-2 w-full"
+              className="mt-3 w-full"
               onClick={onRecarregar}
             >
               <RotateCcw aria-hidden="true" className="size-3.5" />
               Tentar de novo
             </Button>
-          </div>
+          </EstadoVazio>
         ) : carregando && itens.length === 0 ? (
-          <p className="px-1 text-xs text-muted-foreground">Carregando…</p>
+          <p className="px-1 py-2 text-xs text-muted-foreground">Carregando…</p>
         ) : itens.length === 0 ? (
-          <p className="px-1 text-xs leading-5 text-muted-foreground">
+          <EstadoVazio icone={Shapes}>
             {filtrando
-              ? "Nenhum desenho corresponde ao filtro."
-              : "Nada desenhado ainda. Use as ferramentas no canto do mapa."}
-          </p>
+              ? "Nenhum resultado para este filtro."
+              : "Nada aqui ainda. Use as ferramentas no canto do mapa."}
+          </EstadoVazio>
         ) : (
           <ul className="flex flex-col gap-1 pb-3">
             {itens.map((d) => (
@@ -213,7 +212,7 @@ export function PainelDesenhos({
             ))}
           </ul>
         )}
-      </ScrollArea>
+      </SecaoCorpo>
 
       {ultima > 1 && !erro && (
         <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
@@ -242,7 +241,7 @@ export function PainelDesenhos({
           </Button>
         </div>
       )}
-    </aside>
+    </Secao>
   );
 }
 

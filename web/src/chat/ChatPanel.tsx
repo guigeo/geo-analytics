@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, SendHorizonal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Secao, SecaoCabecalho, SecaoCorpo } from "@/components/PainelSecao";
 import type { Destaques } from "@/map/highlight";
 import { sendChat, type ContextoMapa } from "./api";
 import { NOVIDADES } from "@/lib/novidades";
@@ -96,17 +96,10 @@ export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col border-t border-border">
-      <div className="flex items-center gap-2 px-4 pb-2 pt-3">
-        <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-          <Bot className="size-3.5" />
-        </span>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Chat IA — Censo 2022
-        </h2>
-      </div>
+    <Secao className="border-t border-border">
+      <SecaoCabecalho titulo="Chat IA — Censo 2022" icone={Bot} />
 
-      <ScrollArea className="min-h-0 flex-1 px-4">
+      <SecaoCorpo>
         {messages.length === 0 ? (
           <div className="flex flex-col gap-2 pb-3">
             <p className="text-xs text-muted-foreground">
@@ -159,7 +152,7 @@ export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
             <div ref={bottomRef} />
           </ul>
         )}
-      </ScrollArea>
+      </SecaoCorpo>
 
       <form
         className="flex gap-2 border-t border-border p-3"
@@ -179,6 +172,6 @@ export function ChatPanel({ onDestaques, getContexto, pergunta }: Props) {
           <SendHorizonal className="size-4" />
         </Button>
       </form>
-    </section>
+    </Secao>
   );
 }

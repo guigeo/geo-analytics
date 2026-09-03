@@ -1,9 +1,13 @@
-import { MousePointerClick, RadioTower, type LucideIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronRight, Layers, RadioTower, type LucideIcon } from "lucide-react";
 import { camadas, configuracaoAcervo, type DefinicaoCamada } from "@/configuracao";
 import type { CamadaDoAcervo } from "@/desenho/camadas";
 import { ANTENNA_ICON } from "@/map/icons";
 import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Secao, SecaoCabecalho, SecaoCorpo } from "@/components/PainelSecao";
+import { cn } from "@/lib/utils";
+import { agruparCamadas, ligadasNoGrupo } from "./grupos";
 
 interface Props {
   visible: Record<string, boolean>;
@@ -24,6 +28,18 @@ const ICONE_DA_LEGENDA: Record<string, LucideIcon> = {
   [ANTENNA_ICON]: RadioTower,
 };
 
+/**
+ * O painel de camadas: um combo por tema, e o acervo do cliente no último.
+ *
+ * Antes era uma lista corrida de oito interruptores, todos desligados, mais um rodapé
+ * explicando o painel do lado. Combo por tema resolve as duas coisas de uma vez: o
+ * painel nasce curto e cada assunto vira um lugar. O rodapé saiu porque a instrução
+ * que ele dava já mora no estado vazio dos Atributos — que é o painel de que ela fala.
+ *
+ * O aberto/fechado é do componente e não da configuração: é preferência de quem está
+ * usando naquele momento, não decisão de produto, e não sobrevive à sessão de
+ * propósito — combo que "lembra" de fechado esconde camada de quem não a fechou.
+ */
 export function LayerPanel({
   visible,
   onToggle,
@@ -31,79 +47,155 @@ export function LayerPanel({
   categoriasOcultas,
   onAlternarCategoria,
 }: Props) {
+  const grupos = useMemo(() => agruparCamadas(camadas), []);
+  const [fechados, setFechados] = useState<readonly string[]>(() =>
+    grupos.filter((g) => !g.abertoPorPadrao).map((g) => g.id),
+  );
+  const alternar = (id: string) =>
+    setFechados((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+
+  const acervoLigadas = camadasDoAcervo.filter((c) => !categoriasOcultas.includes(c.id)).length;
+  const noMapa = camadas.filter((c) => visible[c.id]).length + acervoLigadas;
+
   return (
-    <aside className="flex min-h-0 flex-col border-r border-border bg-background">
-      <div className="px-4 pb-2 pt-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Camadas
-        </h2>
-      </div>
+    <Secao className="border-r border-border bg-background">
+      <SecaoCabecalho titulo="Camadas" icone={Layers} contagem={noMapa} />
 
-      <ScrollArea className="min-h-0 flex-1 px-3">
-        <ul className="flex flex-col gap-1.5 pb-3">
-          {camadas.map((c) => {
-            const on = !!visible[c.id];
-            return (
-              <li key={c.id}>
-                <label
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-accent"
-                  data-active={on}
-                >
-                  <Amostra camada={c} />
-                  <span className="flex-1 text-sm">{c.rotulo}</span>
-                  <Switch checked={on} onCheckedChange={() => onToggle(c.id)} />
-                </label>
-              </li>
-            );
-          })}
+      <SecaoCorpo>
+        <div className="flex flex-col gap-1">
+          {grupos.map((grupo) => (
+            <Combo
+              key={grupo.id}
+              rotulo={grupo.rotulo}
+              ligadas={ligadasNoGrupo(grupo, visible)}
+              total={grupo.camadas.length}
+              aberto={!fechados.includes(grupo.id)}
+              onAlternar={() => alternar(grupo.id)}
+            >
+              {grupo.camadas.map((c) => (
+                <Linha
+                  key={c.id}
+                  rotulo={c.rotulo}
+                  amostra={<Amostra camada={c} />}
+                  ligada={!!visible[c.id]}
+                  onAlternar={() => onToggle(c.id)}
+                />
+              ))}
+            </Combo>
+          ))}
 
-          {/* As camadas do cliente, na mesma lista e depois das universais.
-              Mesma lista porque a pergunta é uma só — o que está no mapa —, e o
-              rótulo do grupo diz de quem é o que vem abaixo. Some inteiro quando o
-              acervo está vazio ou fora do ar: cabeçalho sobre lista vazia sugere
-              que algo se perdeu. */}
+          {/* O acervo do cliente, no último combo e com o nome que ele dá a ele.
+              Some inteiro quando não há nada: combo vazio sugere que algo não
+              carregou, e o painel de baixo já conta essa história direito. */}
           {camadasDoAcervo.length > 0 && (
-            <>
-              <li
-                aria-hidden="true"
-                className="mt-2 border-t border-border px-2.5 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground"
-              >
-                {configuracaoAcervo.rotulo}
-              </li>
-              {camadasDoAcervo.map((c) => {
-                const on = !categoriasOcultas.includes(c.id);
-                return (
-                  <li key={c.id}>
-                    <label
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-accent"
-                      data-active={on}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="size-3 shrink-0 rounded-sm ring-1 ring-black/5"
-                        style={{ background: c.cor }}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm">{c.rotulo}</span>
-                      <span className="shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground">
-                        {c.quantidade}
-                      </span>
-                      <Switch checked={on} onCheckedChange={() => onAlternarCategoria(c.id)} />
-                    </label>
-                  </li>
-                );
-              })}
-            </>
+            <Combo
+              rotulo={configuracaoAcervo.rotulo}
+              ligadas={acervoLigadas}
+              total={camadasDoAcervo.length}
+              aberto={!fechados.includes(CHAVE_DO_ACERVO)}
+              onAlternar={() => alternar(CHAVE_DO_ACERVO)}
+            >
+              {camadasDoAcervo.map((c) => (
+                <Linha
+                  key={c.id}
+                  rotulo={c.rotulo}
+                  sufixo={c.quantidade}
+                  amostra={
+                    <span
+                      aria-hidden="true"
+                      className="size-3 shrink-0 rounded-sm ring-1 ring-black/5"
+                      style={{ background: c.cor }}
+                    />
+                  }
+                  ligada={!categoriasOcultas.includes(c.id)}
+                  onAlternar={() => onAlternarCategoria(c.id)}
+                />
+              ))}
+            </Combo>
           )}
-        </ul>
-      </ScrollArea>
+        </div>
+      </SecaoCorpo>
+    </Secao>
+  );
+}
 
-      <div className="border-t border-border p-4">
-        <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-          <MousePointerClick className="mt-0.5 size-3.5 shrink-0" />
-          Clique numa feição para destacá-la e ver os atributos.
-        </p>
-      </div>
-    </aside>
+/** O acervo não é um `IdDeGrupo`; a chave é daqui, e o prefixo evita colidir com um. */
+const CHAVE_DO_ACERVO = "@acervo";
+
+/**
+ * Um combo. Fechado, ele precisa dizer o que esconde — daí a contagem no cabeçalho:
+ * sem ela, gaveta fechada vira camada esquecida.
+ */
+function Combo({
+  rotulo,
+  ligadas,
+  total,
+  aberto,
+  onAlternar,
+  children,
+}: {
+  rotulo: string;
+  ligadas: number;
+  total: number;
+  aberto: boolean;
+  onAlternar: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Collapsible open={aberto} onOpenChange={onAlternar}>
+      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent">
+        <ChevronRight
+          aria-hidden="true"
+          className={cn(
+            "size-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
+            aberto && "rotate-90",
+          )}
+        />
+        <span className="min-w-0 flex-1 truncate text-xs font-medium">{rotulo}</span>
+        <span
+          className={cn(
+            "shrink-0 text-[0.625rem] tabular-nums",
+            ligadas > 0 ? "font-medium text-primary" : "text-muted-foreground",
+          )}
+        >
+          {ligadas > 0 ? `${ligadas}/${total}` : total}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="flex flex-col gap-0.5 pb-1 pl-2 pt-0.5">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/** Uma camada. O rótulo trunca e o interruptor não encolhe: é ele que se procura. */
+function Linha({
+  rotulo,
+  amostra,
+  sufixo,
+  ligada,
+  onAlternar,
+}: {
+  rotulo: string;
+  amostra: React.ReactNode;
+  sufixo?: number;
+  ligada: boolean;
+  onAlternar: () => void;
+}) {
+  return (
+    <label
+      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent"
+      data-active={ligada}
+    >
+      {amostra}
+      <span className="min-w-0 flex-1 truncate text-sm">{rotulo}</span>
+      {sufixo !== undefined && (
+        <span className="shrink-0 text-[0.625rem] tabular-nums text-muted-foreground">
+          {sufixo}
+        </span>
+      )}
+      <Switch className="shrink-0" checked={ligada} onCheckedChange={onAlternar} />
+    </label>
   );
 }
 

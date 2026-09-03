@@ -190,10 +190,16 @@ export function App() {
           onAlternarMedicao={alternarMedicao}
         />
         <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_340px]">
-          {/* Grid, e não flex, para as duas colunas da esquerda: os itens de grid
-              esticam até a altura da linha sozinhos, e é isso que faz a área de
-              rolagem de cada painel ter altura definida sem alterar nenhum deles. */}
-          <div className="grid min-h-0 grid-rows-[1fr_1.2fr]">
+          {/* Grid, e não flex, nas duas colunas: os itens de grid esticam até a
+              altura da linha sozinhos, e é isso que dá altura DEFINIDA à área de
+              rolagem de cada painel sem alterar nenhum deles.
+
+              `fit-content(55%)` é o que enxugou a coluna: com os combos fechados o
+              painel de camadas ocupa o que precisa e devolve o resto para a lista de
+              baixo; quando tudo está aberto, ele para nos 55% e passa a rolar por
+              dentro em vez de espremer o vizinho. Antes eram proporções fixas
+              (1fr/1.2fr), que reservavam a mesma altura tendo ou não conteúdo. */}
+          <div className="grid min-h-0 grid-rows-[fit-content(55%)_minmax(0,1fr)]">
             <LayerPanel
               visible={visible}
               onToggle={toggleLayer}
@@ -288,13 +294,13 @@ export function App() {
               />
             )}
           </div>
-          <div className="flex min-h-0 flex-col border-l border-border bg-background">
-            <div className="min-h-0 flex-1">
-              <AttributePanel selected={selected} />
-            </div>
-            <div className="min-h-0 flex-[1.4]">
-              <ChatPanel onDestaques={setDestaques} getContexto={getContexto} pergunta={pergunta} />
-            </div>
+          {/* A direita segue a mesma regra da esquerda, e é isso que faz as duas
+              colunas parecerem o mesmo produto: atributos ocupam o que têm — quase
+              nada enquanto ninguém clicou — e o chat, que é a superfície mais
+              trabalhada, fica com o resto. */}
+          <div className="grid min-h-0 grid-rows-[fit-content(45%)_minmax(0,1fr)] border-l border-border bg-background">
+            <AttributePanel selected={selected} />
+            <ChatPanel onDestaques={setDestaques} getContexto={getContexto} pergunta={pergunta} />
           </div>
         </div>
       </div>

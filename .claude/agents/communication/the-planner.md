@@ -154,7 +154,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | PRD or requirements doc | System planning | Exploratory |
 | Existing architecture | Integration | Greenfield |
 | `.claude/kb/` patterns | Best practices | Simple task |

@@ -46,7 +46,7 @@ Glob(.claude/sdd/archive/*/)            # features shipadas
 Glob(.claude/sdd/features/*.md)         # feature ativa (--feature-atual)
 
 # Vocabulário de negócio a EXPURGAR (mesma fonte do leak-check do /contribute)
-Read(CLAUDE.md)                 # seção "Contexto de Negócio": entidades, nomes, regras
+Read(AGENTS.md)                 # seção "Contexto de Negócio": entidades, nomes, regras
 ```
 
 Montar a lista de termos do negócio (entidades, siglas, nomes próprios do domínio) —
@@ -83,7 +83,7 @@ Decisão técnica com racional reaproveitável    streaming table vs materialize
 ```text
 Generalizável puro       → propor como pattern/concept de KB, como está
 Generalizável contaminado → propor APÓS remover o negócio (técnica fica, exemplo neutraliza)
-Específico do negócio    → descartar da KB; sugerir registrar no {projeto}-expert ou CLAUDE.md
+Específico do negócio    → descartar da KB; sugerir registrar no {projeto}-expert ou AGENTS.md
 ```
 
 ### Passo 5: Decidir destino e generalizar (o coração)
@@ -121,7 +121,7 @@ Aprendizados → KB (no filho, depois /contribute):
     • {dominio-novo}/ — {tema} ({n} concepts, {n} patterns)
 
 Descartado (específico do negócio):
-    • {aprendizado} — fica no {projeto}-expert / CLAUDE.md
+    • {aprendizado} — fica no {projeto}-expert / AGENTS.md
 
 Generalizações aplicadas (técnica → exemplo neutro):
     • "{exemplo do projeto}" → "{exemplo genérico}"
@@ -164,7 +164,7 @@ Opcional: oferecer encadear `/contribute` na hora.
 
 ```text
 [ ] Feature localizada (arquivada ou ativa)
-[ ] Vocabulário de negócio extraído do CLAUDE.md (filtro de leak)
+[ ] Vocabulário de negócio extraído do AGENTS.md (filtro de leak)
 [ ] Aprendizados extraídos de docs SDD E do código tocado
 [ ] Cada candidato classificado (puro / contaminado / específico)
 [ ] Generalização aplicada: técnica mantida, negócio removido

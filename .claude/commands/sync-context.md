@@ -1,11 +1,11 @@
 ---
 name: sync-context
-description: Sync project context to CLAUDE.md by analyzing codebase patterns and conventions
+description: Sync project context to AGENTS.md by analyzing codebase patterns and conventions
 ---
 
 # Sync Context Command
 
-Analyzes codebase and intelligently updates `CLAUDE.md` with current project context.
+Analyzes codebase and intelligently updates `AGENTS.md` with current project context.
 
 ## Usage
 
@@ -21,7 +21,7 @@ Analyzes codebase and intelligently updates `CLAUDE.md` with current project con
 
 1. **Analyzes** current codebase structure
 2. **Extracts** patterns, conventions, and architecture
-3. **Merges** with existing CLAUDE.md content
+3. **Merges** with existing AGENTS.md content
 4. **Preserves** manual customizations
 5. **Updates** sections that need refresh
 
@@ -90,9 +90,9 @@ Glob(".claude/agents/**/*.md")
 
 ---
 
-## CLAUDE.md Template
+## AGENTS.md Template
 
-Generated CLAUDE.md follows this structure:
+Generated AGENTS.md follows this structure:
 
 ```markdown
 # {Project Name}
@@ -243,7 +243,7 @@ Generated CLAUDE.md follows this structure:
 ## Execution Flow
 
 ```text
-1. Read existing CLAUDE.md
+1. Read existing AGENTS.md
    │
    ▼
 2. Parse into sections
@@ -268,7 +268,7 @@ Generated CLAUDE.md follows this structure:
 6. Validate (dry-run or save)
    │
    ▼
-7. Write updated CLAUDE.md
+7. Write updated AGENTS.md
 ```
 
 ---
@@ -299,7 +299,7 @@ Section updates:
 • Project Context: PRESERVED (manual content)
 
 ━━━━━━━━━━━━━━━━
-CLAUDE.md updated successfully
+AGENTS.md updated successfully
 ```
 
 ---
@@ -337,9 +337,9 @@ After running, manually update:
 
 ```bash
 # Review changes before committing
-git diff CLAUDE.md
+git diff AGENTS.md
 
 # Commit with context
-git add CLAUDE.md
-git commit -m "chore: update CLAUDE.md with latest project structure"
+git add AGENTS.md
+git commit -m "chore: update AGENTS.md with latest project structure"
 ```

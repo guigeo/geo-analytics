@@ -1,6 +1,6 @@
 ---
 name: project-init
-description: Kickstart interativo do projeto — coleta contexto do stack, instala KBs, cria agentes de domínio e preenche o CLAUDE.md antes da primeira feature
+description: Kickstart interativo do projeto — coleta contexto do stack, instala KBs, cria agentes de domínio e preenche o AGENTS.md antes da primeira feature
 ---
 
 # Comando Project Init
@@ -23,7 +23,7 @@ description: Kickstart interativo do projeto — coleta contexto do stack, insta
 3. **Confirma** — Mostra o plano e pede aprovação antes de executar
 4. **Instala KBs** — Roda `/create-kb` para cada lib/framework relevante
 5. **Cria Agentes** — Gera agentes de domínio específicos para o projeto
-6. **Preenche CLAUDE.md** — Substitui todo conteúdo `[placeholder]` por contexto real
+6. **Preenche AGENTS.md** — Substitui todo conteúdo `[placeholder]` por contexto real
 7. **Handoff** — Indica o próximo passo (`/brainstorm` ou `/define`)
 
 ---
@@ -33,12 +33,12 @@ description: Kickstart interativo do projeto — coleta contexto do stack, insta
 ### Passo 1: Ler estado atual
 
 ```text
-Read(CLAUDE.md)           # Verifica o que já foi preenchido
+Read(AGENTS.md)           # Verifica o que já foi preenchido
 Read(.claude/kb/_index.yaml)      # Verifica KBs existentes
 Glob(.claude/agents/domain/*.md)  # Verifica agentes de domínio existentes
 ```
 
-Se o CLAUDE.md já estiver preenchido (não é template virgem), confirmar com o usuário antes de sobrescrever.
+Se o AGENTS.md já estiver preenchido (não é template virgem), confirmar com o usuário antes de sobrescrever.
 
 ### Passo 2: Entrevista interativa
 
@@ -112,7 +112,7 @@ Pode colar aqui:
 
 Se o usuário fornecer conteúdo:
 - Extrair entidades de negócio, regras e restrições mencionadas
-- Usar para enriquecer o CLAUDE.md na seção de contexto do projeto
+- Usar para enriquecer o AGENTS.md na seção de contexto do projeto
 - Ajustar a lista de KBs e agentes se o conteúdo revelar tecnologias não mencionadas antes
 - Resumir o que foi extraído e confirmar com o usuário antes de avançar
 
@@ -209,7 +209,7 @@ Agentes de domínio a criar:
   • api-developer  — padrões de endpoint FastAPI, validação de requests
   • data-expert    — modelo de dados e regras de negócio do projeto
 
-CLAUDE.md: será preenchido com o contexto do projeto
+AGENTS.md: será preenchido com o contexto do projeto
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Confirmar? (sim / ajustar)
@@ -289,7 +289,7 @@ color: blue
 Carregar antes de agir — usar os caminhos exatos dos KBs criados no Passo 5:
 {Para cada KB relevante criado no Passo 5, listar o caminho real:}
 - `.claude/kb/{kb-criado-no-passo5}/quick-reference.md`
-- `CLAUDE.md` — convenções do projeto
+- `AGENTS.md` — convenções do projeto
 
 ## Referência de Stack
 
@@ -370,7 +370,7 @@ Carregar antes de qualquer decisão — caminhos exatos dos KBs do Passo 5:
 
 ---
 
-### Passo 7: Preencher CLAUDE.md
+### Passo 7: Preencher AGENTS.md
 
 Substituir todas as seções `[placeholder]` com conteúdo real derivado da entrevista:
 
@@ -384,7 +384,7 @@ Substituir todas as seções `[placeholder]` com conteúdo real derivado da entr
 [domain] entries in KB   → {lista de KBs criados}
 ```
 
-Se P6 forneceu contexto adicional, criar uma seção extra no CLAUDE.md:
+Se P6 forneceu contexto adicional, criar uma seção extra no AGENTS.md:
 
 ```markdown
 ## Contexto de Negócio
@@ -412,8 +412,8 @@ Para Diretrizes de Uso dos Agentes, adicionar os agentes de domínio na linha da
 Antes do relatório, commitar tudo que foi criado:
 
 ```bash
-git add .claude/kb/ .claude/agents/domain/ CLAUDE.md
-git commit -m "chore: project-init — KBs, domain agents e CLAUDE.md configurados"
+git add .claude/kb/ .claude/agents/domain/ AGENTS.md
+git commit -m "chore: project-init — KBs, domain agents e AGENTS.md configurados"
 ```
 
 Se o commit falhar (sem git ou sem stage), registrar no relatório como aviso mas não bloquear.
@@ -428,7 +428,7 @@ INICIALIZAÇÃO DO PROJETO CONCLUÍDA
 ✓ Agentes de domínio criados: {quantidade}
   {lista com caminhos reais: .claude/agents/domain/{nome}.md}
 
-✓ CLAUDE.md atualizado com contexto do projeto
+✓ AGENTS.md atualizado com contexto do projeto
 
 ✓ Alterações commitadas no git
 
@@ -462,7 +462,7 @@ Antes de marcar como concluído:
 [ ] Todos os agentes de domínio criados sem nenhum {placeholder} restante
 [ ] Agente {projeto}-expert criado com contexto completo de negócio
 [ ] Cada agente aponta para caminhos reais de KBs do Passo 5
-[ ] CLAUDE.md sem nenhum texto [placeholder] restante
+[ ] AGENTS.md sem nenhum texto [placeholder] restante
 [ ] Alterações commitadas no git
 [ ] Relatório final exibido com caminhos reais e próximos passos
 ```
@@ -473,7 +473,7 @@ Antes de marcar como concluído:
 
 | Situação | Ação |
 |-----------|--------|
-| CLAUDE.md já preenchido | Perguntar: "Projeto já inicializado. Re-executar e sobrescrever?" |
+| AGENTS.md já preenchido | Perguntar: "Projeto já inicializado. Re-executar e sobrescrever?" |
 | Usuário pula uma pergunta | Usar padrões razoáveis e registrar o que foi assumido |
 | Criação de KB falha | Pular e registrar no relatório — não bloquear os outros KBs |
 | Stack incomum (sem mapeamento de KB) | Criar KB mesmo assim com `/create-kb {tech}`, o kb-architect vai pesquisar |

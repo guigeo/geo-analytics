@@ -66,7 +66,7 @@ EXISTE só no template                → ignorar (não é deste fluxo)
 Excluir automaticamente da lista de candidatos:
 - `.claude/agents/domain/{projeto}-expert.md` — sempre específico
 - Qualquer KB/agente cujo conteúdo cite entidades, regras ou dados do projeto
-  (varrer por nomes do negócio que aparecem no `CLAUDE.md` do filho)
+  (varrer por nomes do negócio que aparecem no `AGENTS.md` do filho)
 - Componentes `scope: project` (se marcado)
 
 ### Passo 3: Triagem de reaproveitabilidade

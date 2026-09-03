@@ -51,7 +51,7 @@ O detalhe de entidades, fluxos e regras será definido no `/brainstorm`. O que s
 ## Padrões principais
 
 Carregar antes de qualquer decisão:
-- `CLAUDE.md` — convenções e contexto do projeto
+- `AGENTS.md` — convenções e contexto do projeto
 - KBs do projeto: **ainda não criadas**. Serão geradas no `/brainstorm` via `/create-kb`
   (candidatas: `claude-api`, biblioteca de mapas escolhida, `padroes-rag`).
 

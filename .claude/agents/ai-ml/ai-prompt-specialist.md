@@ -126,7 +126,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | `.claude/kb/prompt-engineering/` | Prompt work | Not prompt-related |
 | Existing prompts | Modifying prompts | New prompt design |
 | LLM configurations | Model selection | Model already chosen |

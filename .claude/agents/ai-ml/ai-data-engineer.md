@@ -126,7 +126,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | `.claude/kb/data-engineering/` | Pipeline work | Not data-related |
 | Existing pipelines | Modifying architecture | Greenfield project |
 | Cloud service configs | Deployment work | Local development |

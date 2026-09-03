@@ -45,7 +45,7 @@ Transform vague ideas into validated approaches through collaborative dialogue. 
 ### 1. Gather Context
 
 ```markdown
-Read(CLAUDE.md)
+Read(AGENTS.md)
 Read(.claude/sdd/templates/BRAINSTORM_TEMPLATE.md)
 Read(.claude/kb/_index.yaml)  # Available KB domains
 Explore recent commits, existing code patterns, project structure

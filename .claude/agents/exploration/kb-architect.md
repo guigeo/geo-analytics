@@ -126,7 +126,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | `.claude/kb/_index.yaml` | KB operations | Not KB-related |
 | `.claude/kb/_templates/` | Creating new KB | Auditing only |
 | `.claude/kb/{domain}/` | Domain-specific work | New domain |

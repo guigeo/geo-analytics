@@ -126,7 +126,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | `package.json` / `pyproject.toml` | Understanding dependencies | Already known |
 | `git log --oneline -10` | Understanding recent changes | New repo / first run |
 | README files | Getting project overview | Deep dive requested |
@@ -210,7 +210,7 @@ What type of exploration?
 │  • git log --oneline -10                                    │
 │  • ls -la (root structure)                                  │
 │  • Read package.json/pyproject.toml                         │
-│  • Find README/CLAUDE.md                                    │
+│  • Find README/AGENTS.md                                    │
 │                                                             │
 │  Step 2: MAP (1-2 minutes)                                  │
 │  • Glob for key patterns (src/**/*.py, **/*.ts)             │

@@ -338,7 +338,7 @@ csv-tool convert --input data.csv --output data.json
 ```bash
 # Full documentation workflow
 /readme-maker                    # Generate README
-/sync-context                    # Update CLAUDE.md
+/sync-context                    # Update AGENTS.md
 /memory "Generated docs"         # Save what was done
 ```
 

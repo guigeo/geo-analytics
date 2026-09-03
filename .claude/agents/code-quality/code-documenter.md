@@ -127,7 +127,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | Source code files | Always for this agent | N/A |
 | Existing `*.md` files | Current documentation style | Greenfield |
 | `pyproject.toml` / `package.json` | Project metadata | Already known |

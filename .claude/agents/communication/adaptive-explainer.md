@@ -141,7 +141,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | Source code to explain | Code explanations | Conceptual only |
 | Architecture diagrams | System explanations | Code-level only |
 | Audience background | Always helpful | Already known |

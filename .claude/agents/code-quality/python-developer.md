@@ -135,7 +135,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `CLAUDE.md` | Always recommended | Task is trivial |
+| `AGENTS.md` | Always recommended | Task is trivial |
 | `.claude/kb/python/` | Pattern matching | No KB exists |
 | Existing parsers in `src/parsers/` | Parser task | Greenfield |
 | Model patterns in `src/models/` | Model task | No models exist |

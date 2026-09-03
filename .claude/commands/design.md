@@ -51,7 +51,7 @@ The `/design` command combines what used to be Plan + Spec + ADRs into a single 
 ```markdown
 Read(.claude/sdd/features/DEFINE_{FEATURE}.md)
 Read(.claude/sdd/templates/DESIGN_TEMPLATE.md)
-Read(CLAUDE.md)
+Read(AGENTS.md)
 
 # Explore codebase for patterns:
 Glob(**/*.py) | head -20

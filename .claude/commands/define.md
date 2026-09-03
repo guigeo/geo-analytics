@@ -53,7 +53,7 @@ The `/define` command combines what used to be Intake + PRD + Refine into a sing
 
 ```markdown
 Read(.claude/sdd/templates/DEFINE_TEMPLATE.md)
-Read(CLAUDE.md)
+Read(AGENTS.md)
 
 # If file provided:
 Read(<input-file>)

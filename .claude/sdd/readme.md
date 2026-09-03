@@ -38,34 +38,7 @@ Traditional Spec:                     AgentSpec:
 
 ---
 
-## Two Mental Models
-
-AgentSpec is part of a larger ecosystem designed to match task complexity with appropriate process rigor:
-
-### 1. Dev Loop (Level 2 Agentic Development)
-
-**Location:** `.claude/dev/`
-
-**Philosophy:** "Structured iteration without ceremony"
-
-**Use When:**
-- Quick prototypes
-- Single-feature tasks
-- KB building
-- Utility development
-
-**Flow:**
-```text
-/dev "task description" → PROMPT.md → Execute → Verify → Done
-```
-
-**Characteristics:**
-- Lightweight PROMPT files
-- Session recovery via PROGRESS files
-- Circuit breakers for safety
-- No multi-phase ceremony
-
-### 2. AgentSpec (Level 3 Spec-Driven Development)
+## AgentSpec (Level 3 Spec-Driven Development)
 
 **Location:** `.claude/sdd/`
 
@@ -92,60 +65,6 @@ AgentSpec is part of a larger ecosystem designed to match task complexity with a
 - Agent Matching in Design
 - Agent Delegation in Build
 - KB-grounded patterns
-
-### Choosing Between Them
-
-| Dimension | Dev Loop | AgentSpec |
-|-----------|----------|-----------|
-| Phases | 1 (execute) | 5 (brainstorm→ship) |
-| Overhead | Low | Medium |
-| Traceability | Logs only | Full artifacts |
-| Agent Orchestration | No | Yes |
-| Best For | Quick tasks | Complex features |
-
-### Decision Flowchart
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                    WHICH WORKFLOW SHOULD I USE?                      │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Start: "I need to build something"                                  │
-│         │                                                            │
-│         ▼                                                            │
-│  ┌─────────────────────────────┐                                     │
-│  │ Is it a quick task?         │                                     │
-│  │ (< 3 files, clear scope)    │                                     │
-│  └─────────────┬───────────────┘                                     │
-│           YES  │  NO                                                 │
-│         ┌──────┴──────┐                                              │
-│         ▼             ▼                                              │
-│    Dev Loop    ┌─────────────────────────────┐                       │
-│    /dev        │ Does it need traceability?  │                       │
-│                │ (audit, team handoff, PRD)  │                       │
-│                └─────────────┬───────────────┘                       │
-│                         YES  │  NO                                   │
-│                       ┌──────┴──────┐                                │
-│                       ▼             ▼                                │
-│                  AgentSpec     Dev Loop                              │
-│                  /define       /dev                                  │
-│                       │                                              │
-│                       ▼                                              │
-│                ┌─────────────────────────────┐                       │
-│                │ Idea clear or vague?        │                       │
-│                └─────────────┬───────────────┘                       │
-│                      CLEAR   │  VAGUE                                │
-│                       ┌──────┴──────┐                                │
-│                       ▼             ▼                                │
-│                   /define      /brainstorm                           │
-│                                     │                                │
-│                                     ▼                                │
-│                                 /define                              │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
 
 ## Architecture
 
@@ -726,7 +645,6 @@ Design phase matches agents using these keywords extracted from agent files:
 | Resource | Location |
 |----------|----------|
 | SDD Index | `.claude/sdd/_index.md` |
-| Dev Loop | `.claude/dev/` |
 | Agents | `.claude/agents/` |
 | Knowledge Base | `.claude/kb/` |
 | Commands | `.claude/commands/` |

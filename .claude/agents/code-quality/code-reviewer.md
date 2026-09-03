@@ -128,7 +128,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `.claude/CLAUDE.md` | Always recommended | Task is trivial |
+| `CLAUDE.md` | Always recommended | Task is trivial |
 | Modified files (full content) | Always for this agent | N/A |
 | Project conventions | Style checks | No conventions exist |
 | `.pre-commit-config.yaml` | Linting rules | No pre-commit |

@@ -9,7 +9,15 @@ data: 2026-06-26
 ---
 
 # PRD — Plataforma de Visualização e Consulta Geográfica
-> *Working title — renomear conforme o repo.*
+
+> **DOCUMENTO HISTÓRICO — não é especificação corrente.** Escrito em 2026-06-26, antes da
+> primeira linha de código. Fica versionado porque o `BRAINSTORM_MAPA_FASE1` nasceu dele, e
+> apagá-lo quebraria a proveniência da primeira feature.
+>
+> **Não use para decidir nada.** O que vale hoje: [`CLAUDE.md`](../CLAUDE.md) para instrução,
+> [`docs/DECISOES.md`](DECISOES.md) para o porquê, e [`.claude/sdd/archive/`](../.claude/sdd/archive/)
+> para o que cada feature entregou. Boa parte do que está abaixo foi superada — a "Fase 3"
+> daqui, por exemplo, virou outra coisa.
 
 ## 1. Resumo
 Aplicação **web** para visualizar camadas geográficas do Brasil (município, setor censitário, bairro e outras) em mapa interativo, evoluindo em três fases: **(1)** visualização, **(2)** consulta em linguagem natural via IA sobre os dados geográficos, **(3)** expansão do acervo de dados. Princípio condutor: stack enxuta, *in-process*, sem infraestrutura pesada no início; a complexidade entra só quando o dado exige.

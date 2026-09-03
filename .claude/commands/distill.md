@@ -46,7 +46,7 @@ Glob(.claude/sdd/archive/*/)            # features shipadas
 Glob(.claude/sdd/features/*.md)         # feature ativa (--feature-atual)
 
 # Vocabulário de negócio a EXPURGAR (mesma fonte do leak-check do /contribute)
-Read(.claude/CLAUDE.md)                 # seção "Contexto de Negócio": entidades, nomes, regras
+Read(CLAUDE.md)                 # seção "Contexto de Negócio": entidades, nomes, regras
 ```
 
 Montar a lista de termos do negócio (entidades, siglas, nomes próprios do domínio) —

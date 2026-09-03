@@ -133,7 +133,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `.claude/CLAUDE.md` | Always recommended | Task is trivial |
+| `CLAUDE.md` | Always recommended | Task is trivial |
 | Source code to test | Always for this agent | N/A |
 | Existing tests in `tests/` | Test patterns | First tests |
 | `tests/conftest.py` | Shared fixtures | No conftest |

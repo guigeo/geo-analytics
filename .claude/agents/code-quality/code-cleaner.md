@@ -134,7 +134,7 @@ Load context based on task needs. Skip what isn't relevant.
 
 | Context Source | When to Load | Skip If |
 |----------------|--------------|---------|
-| `.claude/CLAUDE.md` | Always recommended | Task is trivial |
+| `CLAUDE.md` | Always recommended | Task is trivial |
 | Target Python file | Always for this agent | N/A |
 | Project style conventions | Style matching | No conventions |
 | Related test files | Verify behavior | No tests exist |

@@ -245,6 +245,27 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   dentro do código cobra pedágio de atenção em toda mudança. Sobrou inglês de antes desta
   decisão; ele se traduz quando o arquivo for tocado, não numa varredura só.
 
+## Como se entrega
+
+Versão curta das "Convenções de trabalho" do [`../webgis/AGENTS.md`](../webgis/AGENTS.md) —
+em caso de dúvida, vale o texto de lá, que é a sede.
+
+- **A aprovação acontece na conversa, não no GitHub.** O plano é aprovado antes; daí em
+  diante o agente vai até o fim sozinho — commit, push e entrega na `main`. **Não abrir PR
+  e ficar esperando.**
+- **PR só quando ele fizer trabalho:** mudança que precisa de revisão linha a linha, ou que
+  o Guilherme pediu para ver antes. Nesse caso o agente abre **e mescla**, sem devolver a
+  aprovação para quem já aprovou o plano.
+- **Nada de trabalho pronto parado na árvore** — nem em branch, nem em PR aberto. Peça que
+  fecha é commitada e empurrada no mesmo movimento.
+- **O que autoriza commitar na `main` é a validação, não a pressa.** O corpo do commit
+  declara o que foi rodado: teste, build, portão, medição contra a fonte, processo de pé.
+  Sem isso, o fluxo direto vira só um jeito mais rápido de quebrar a `main`.
+- **Commit convencional, em português, com corpo em prosa** explicando o porquê e o que foi
+  validado — não uma lista do que foi tocado.
+- **Entrega se prova na `main`, não no `git status`.** Antes de dizer "nada pendente",
+  conferir `git log origin/main..HEAD` **e** se a `main` local não está atrás da remota.
+
 ## Acervo de conhecimento (`.claude/kb/`)
 
 `maplibre` · `pmtiles-tippecanoe` · `geospatial-etl` · `agentes-llm` — padrões já

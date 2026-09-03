@@ -175,7 +175,10 @@ function Combo({
             aberto && "rotate-90",
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-xs font-medium">{rotulo}</span>
+        {/* Mesma tipografia das camadas de dentro: um combo com letra menor lia como
+            legenda de outra coisa, e não como o primeiro nível da mesma árvore. Quem
+            marca a hierarquia é a seta e o recuo das linhas, não o tamanho da fonte. */}
+        <span className="min-w-0 flex-1 truncate text-sm">{rotulo}</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-col gap-0.5 pb-1 pl-2 pt-0.5">{children}</div>

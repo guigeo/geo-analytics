@@ -28,6 +28,16 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "tela-cheia-2026-09",
+    data: "2026-09-03",
+    titulo: "Mais mapa, quando você quiser",
+    texto:
+      "Cada painel lateral recolhe num clique, e o botão de tela cheia no topo some " +
+      "com os dois de uma vez — fica só o mapa. As bordas dos painéis também " +
+      "arrastam, se você quiser mais espaço só de um lado. Nada se perde ao voltar: " +
+      "a conversa do chat e o que estava aberto continuam onde estavam.",
+  },
+  {
     id: "acervo-camadas-2026-09",
     data: "2026-09-03",
     titulo: "Suas áreas viram camadas do mapa",
@@ -46,9 +56,8 @@ export const NOVIDADES: Novidade[] = [
     titulo: "O menu de camadas virou árvore",
     texto:
       "As camadas agora ficam agrupadas por tema, e tudo começa recolhido e " +
-      "desligado: você abre só o assunto que quer. O painel também anda — arraste " +
-      "a borda dele sobre o mapa, ou dê um duplo clique para voltar ao tamanho " +
-      "de origem.",
+      "desligado: você abre só o assunto que quer, em vez de procurar numa lista " +
+      "de oito interruptores apagados.",
   },
   {
     id: "mapa-livre-2026-09",
@@ -56,9 +65,8 @@ export const NOVIDADES: Novidade[] = [
     titulo: "O mapa ficou livre",
     texto:
       "Nada mais fica pousado por cima dele. Os atributos aparecem num balão na " +
-      "própria feição que você clicou, as ferramentas de desenho foram para a " +
-      "barra de cima, e o chat recolhe num clique quando você quiser a tela " +
-      "inteira para o mapa.",
+      "própria feição que você clicou, e as ferramentas de desenho — junto com o " +
+      "formulário de salvar — saíram do mapa para a barra de cima e para o painel.",
   },
 ];
 

@@ -92,11 +92,21 @@ do `~/.ssh/config`).
 de modelos versionados. **`make ensaio` faz o caminho inteiro contra `/tmp`** — nada sai da
 máquina, e todo comando que iria por ssh é impresso. Publicar é passo do Guilherme.
 
-**`make ship-app` NÃO toca o agente.** Antes de um `ship-app` puro, confira se há rota nova
-esperada pelo frontend: um `ship-app` de rotina já pôs UI no ar contra um agente velho, e
-todo `/api/desenhos` voltou **404 do FastAPI** (rota inexistente), não 503/422. Diagnóstico:
-`curl -u <portão> .../api/<rota>` — 404 é deploy de agente atrasado; 503/422 vem de dentro
-da rota.
+**`make ship-app` NÃO toca o agente NEM os tiles.** O frontend pode ir à frente de duas
+coisas, e as duas já aconteceram:
+
+1. **À frente do agente** (2026-09-03): um `ship-app` de rotina pôs a UI de desenho no ar
+   contra um agente de 31/08, e todo `/api/desenhos` voltou **404 do FastAPI** (rota
+   inexistente), não 503/422. Diagnóstico: `curl -u <portão> .../api/<rota>` — 404 é deploy
+   de agente atrasado; 503/422 vem de dentro da rota.
+2. **À frente do DADO:** camada declarada no catálogo cujo `.pmtiles` não existe no host de
+   tiles. Pior que a primeira, porque **não dá erro nenhum** — a camada aparece no painel,
+   liga, e não pinta nada. Antes de um `ship-app`, conferir que toda camada do bundle tem
+   tile publicado: `ssh hetzner-gramos 'ls /srv/tiles/'`.
+
+**Documentar não basta, e isso é medido:** o `DESENHO_NO_MAPA` estava escrito como "ainda
+NÃO publicada" neste arquivo, e o `ship-app` de rotina o publicou assim mesmo. A guarda de
+verdade é a máquina — ver a pendência na seção "Estado atual".
 
 **Os tiles não moram neste repositório.** Vivem num host compartilhado, servido para todas
 as aplicações derivadas do `webgis`. O caminho vem de `TILES_DIR` no `.env` da raiz
@@ -310,6 +320,32 @@ só pega o código novo depois do `restart`.
 editado direto na VPS e fica mais novo que o local — antes de `deploy.sh agent`/`ship-ia`,
 comparar mtimes pra não sobrescrever a chave certa com uma desatualizada. Já derrubou o
 portão de um cliente uma vez.
+
+### Pronto e NÃO publicado: `ZONEAMENTO_SP`
+
+Implementado e validado localmente em 2026-09-03 (carga, tile de 12,1 MB, camada, tool do
+agente). **Nada disso está em produção**, por decisão do Guilherme: o cliente 2 vai testar
+o que já subiu antes de receber camada nova.
+
+O código está na `main`, e a `main` é a fonte do deploy — então **um `ship-app` por
+qualquer outro motivo leva a camada junto, morta.** Enquanto esta seção existir, todo
+`ship-app` exige conferir os tiles da VPS antes.
+
+**A ordem de publicação, que não pode inverter:**
+
+1. Rodar `cargas/geosampa_zoneamento.sh` contra o `geodata` central
+2. `make ship-tiles` no `webgis` (o tile já existe local, é só publicar)
+3. `make ship-ia` + restart, pela tool `zoneamento_no_ponto`
+4. **Implementar a quarta checagem do `build_app`** (abaixo) — é passo da publicação, não
+   tarefa separada, justamente para não depender de alguém lembrar
+5. `make ship-app`
+
+**A quarta checagem, a construir no passo 4:** `deploy/deploy.sh:build_app` já verifica três
+coisas paranoicas (o bundle aponta para o host de tiles certo, é do cliente certo, e está
+carimbado). Falta a quarta: **toda camada que o bundle declara tem `.pmtiles` no host de
+tiles** — um `HEAD` por camada contra `$TILES_BASE_URL`, e o deploy para se faltar alguma.
+Fecha a classe inteira do problema 2 acima, e é o que permite feature pronta ficar na `main`
+sem risco.
 
 ### Em aberto
 

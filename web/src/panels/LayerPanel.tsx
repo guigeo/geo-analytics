@@ -19,6 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
 import { agruparCamadas } from "./grupos";
+import { LegendaCategorica } from "./LegendaCategorica";
 
 interface Props {
   visible: Record<string, boolean>;
@@ -108,13 +109,18 @@ export function LayerPanel({
               onAlternar={() => alternar(grupo.id)}
             >
               {grupo.camadas.map((c) => (
-                <Linha
-                  key={c.id}
-                  rotulo={c.rotulo}
-                  amostra={<Amostra camada={c} />}
-                  ligada={!!visible[c.id]}
-                  onAlternar={() => onToggle(c.id)}
-                />
+                <div key={c.id}>
+                  <Linha
+                    rotulo={c.rotulo}
+                    amostra={<Amostra camada={c} />}
+                    ligada={!!visible[c.id]}
+                    onAlternar={() => onToggle(c.id)}
+                  />
+                  {c.cobertura && (
+                    <p className="ml-7 pb-1 text-xs text-muted-foreground">{c.cobertura}</p>
+                  )}
+                  {c.pinturaPorCategoria && <LegendaCategorica pintura={c.pinturaPorCategoria} />}
+                </div>
               ))}
             </Combo>
           ))}

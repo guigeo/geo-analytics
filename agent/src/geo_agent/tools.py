@@ -19,7 +19,7 @@ from .geocode import GeocodeIndisponivel
 from .geocode import pontos as geocode_pontos
 from pydantic import BaseModel, Field, ValidationError
 
-Camada = Literal["municipio", "setor", "bairro", "distrito"]
+Camada = Literal["municipio", "setor", "bairro", "distrito", "zoneamento_sp"]
 
 UF_POR_SIGLA: dict[str, str] = {
     "AC": "Acre",
@@ -250,6 +250,17 @@ class DistritoQueContemArgs(BaseModel):
     lat: float = Field(ge=-90, le=90)
 
 
+class ZoneamentoNoPontoArgs(BaseModel):
+    """A zona de uso do solo que CONTÉM um ponto em São Paulo (Lei 18.177/2024).
+
+    Use para perguntas sobre zoneamento de endereço, lote ou coordenada. Fora do
+    município de São Paulo a resposta informa que a camada ainda não foi carregada.
+    """
+
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+
+
 class InfoLocalArgs(BaseModel):
     """Dados de um lugar citado por nome, no MELHOR recorte disponível ali.
 
@@ -428,6 +439,24 @@ def _distrito_que_contem(ctx: Contexto, a: DistritoQueContemArgs) -> ToolResult:
             error=True,
         )
     return ToolResult(payload=row, camada="distrito", codigos=[str(row["cd_distrito"])], rows=[row])
+
+
+def _zoneamento_no_ponto(ctx: Contexto, a: ZoneamentoNoPontoArgs) -> ToolResult:
+    row = ctx.geodata.zoneamento_no_ponto(a.lon, a.lat)
+    if row is None:
+        return ToolResult(
+            payload={
+                "erro": "não há zoneamento carregado para esta região",
+                "cobertura": "Município de São Paulo · Lei 18.177/2024",
+            },
+            error=True,
+        )
+    return ToolResult(
+        payload=row,
+        camada="zoneamento_sp",
+        codigos=[str(row["cod_zona"])],
+        rows=[row],
+    )
 
 
 # Acima disto, o distrito ocupa quase todo o municipio e responder por ele e responder
@@ -757,6 +786,7 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "info_distrito": (InfoDistritoArgs, _info_distrito),
     "ranking_distritos": (RankingDistritosArgs, _ranking_distritos),
     "distrito_que_contem": (DistritoQueContemArgs, _distrito_que_contem),
+    "zoneamento_no_ponto": (ZoneamentoNoPontoArgs, _zoneamento_no_ponto),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),
     # Nome deliberadamente distante de setores_no_ponto: o LLM escolhe tool por nome

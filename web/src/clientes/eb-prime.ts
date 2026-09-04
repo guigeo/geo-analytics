@@ -113,5 +113,6 @@ export const cliente: ConfiguracaoCliente = {
     com(CATALOGO.setor, { cor: "#1f6f8b" }),
     CATALOGO.rodovias,
     CATALOGO.ferrovias,
+    CATALOGO.zoneamento_sp,
   ],
 };

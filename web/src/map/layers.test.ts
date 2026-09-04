@@ -46,6 +46,14 @@ describe("fontes", () => {
 });
 
 describe("camadas do mapa", () => {
+  it("usa match para a camada categórica e neutro para o que não é zona", () => {
+    const zoneamento = camadasDoMapa().find((camada) => camada.id === "zoneamento_sp");
+    const pintura = zoneamento?.paint as { "fill-color"?: unknown } | undefined;
+    expect(pintura?.["fill-color"]).toEqual(
+      expect.arrayContaining(["match", ["get", "COD_ZONA"], "#94a3b8"]),
+    );
+  });
+
   it("só referencia fonte declarada", () => {
     const fontes = new Set(Object.keys(fontesDeDados()));
     for (const spec of camadasDoMapa()) {

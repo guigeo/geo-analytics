@@ -3,9 +3,9 @@ import { agruparCamadas } from "./grupos";
 import { CATALOGO } from "@/configuracao/catalogo";
 
 describe("agruparCamadas", () => {
-  it("arruma o catálogo inteiro em dois combos, na ordem declarada", () => {
+  it("arruma o catálogo inteiro em três combos, na ordem declarada", () => {
     const grupos = agruparCamadas(Object.values(CATALOGO));
-    expect(grupos.map((g) => g.id)).toEqual(["ibge", "infraestrutura"]);
+    expect(grupos.map((g) => g.id)).toEqual(["ibge", "infraestrutura", "regulacao"]);
     expect(grupos[0].camadas.map((c) => c.id)).toEqual([
       "uf",
       "municipio",
@@ -13,6 +13,7 @@ describe("agruparCamadas", () => {
       "bairro",
       "setor",
     ]);
+    expect(grupos[2].camadas.map((c) => c.id)).toEqual(["zoneamento_sp"]);
     expect(grupos[1].camadas.map((c) => c.id)).toEqual(["antenas", "rodovias", "ferrovias"]);
   });
 

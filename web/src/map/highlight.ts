@@ -6,7 +6,7 @@ import type { DefinicaoCamada } from "@/configuracao";
 // queryRenderedFeatures — funciona para codigos fora do viewport atual, e as camadas
 // ficam sempre visiveis (independem do toggle da camada base).
 export interface Destaques {
-  camada: "municipio" | "setor" | "bairro" | "distrito";
+  camada: "municipio" | "setor" | "bairro" | "distrito" | "zoneamento_sp";
   codigos: string[];
 }
 
@@ -15,6 +15,7 @@ const CODE_FIELDS = {
   setor: "CD_SETOR",
   bairro: "CD_BAIRRO",
   distrito: "CD_DIST",
+  zoneamento_sp: "COD_ZONA",
 } as const;
 
 const HIGHLIGHT = "#00b3ff";

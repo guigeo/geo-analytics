@@ -63,6 +63,19 @@ export const EsquemaContorno = z.object({
   largura: z.number().positive(),
 });
 
+export const EsquemaPinturaPorCategoria = z.object({
+  campo: z.string().min(1),
+  entradas: z
+    .array(
+      z.object({
+        codigo: z.string().min(1),
+        cor: Cor,
+        familia: z.string().min(1),
+      }),
+    )
+    .min(1),
+});
+
 export const GEOMETRIAS = ["poligono", "linha", "ponto"] as const;
 export const ANCORAS_ICONE = ["centro", "base"] as const;
 
@@ -82,6 +95,7 @@ export const ANCORAS_ICONE = ["centro", "base"] as const;
 export const GRUPOS_DE_CAMADA = {
   ibge: { rotulo: "Informações IBGE" },
   infraestrutura: { rotulo: "Infraestrutura" },
+  regulacao: { rotulo: "Regulação urbana" },
 } as const;
 
 export const IDS_DE_GRUPO = Object.keys(GRUPOS_DE_CAMADA) as [IdDeGrupo, ...IdDeGrupo[]];
@@ -104,6 +118,10 @@ export const EsquemaCamada = z
     geometria: z.enum(GEOMETRIAS),
     /** Cor representativa: legenda e desenho base. */
     cor: Cor,
+    /** Pinta cada valor de um atributo com a paleta declarada. */
+    pinturaPorCategoria: EsquemaPinturaPorCategoria.optional(),
+    /** Onde a camada existe, medido na fonte e exibido junto dela. */
+    cobertura: z.string().min(1).optional(),
     /** Polígonos: 0 desenha só o contorno, mas a área continua clicável. */
     opacidadePreenchimento: z.number().min(0).max(1).optional(),
     contorno: EsquemaContorno.optional(),
@@ -320,6 +338,7 @@ export const EsquemaCliente = z
 export type ConfiguracaoAcervo = z.infer<typeof EsquemaAcervo>;
 export type Atributo = z.infer<typeof EsquemaAtributo>;
 export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
+export type PinturaPorCategoria = z.infer<typeof EsquemaPinturaPorCategoria>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
 export type Simbolo = z.infer<typeof EsquemaSimbolo>;

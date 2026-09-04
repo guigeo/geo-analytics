@@ -134,6 +134,18 @@ datasets:
     attributes: [nome, bitola, jurisdicao, situacaofisica]
     tile: { minzoom: 5, maxzoom: 13 }
 
+  - name: zoneamento_sp
+    source:
+      kind: geodata
+      sql: >-
+        select cod_zona as "COD_ZONA", nome_zona as "NM_ZONA", e_zona as "E_ZONA",
+               lei as "LEI", cod_municipio as "CD_MUN",
+               to_char(data_atualizacao, 'YYYY-MM-DD') as "DT_ATUALIZACAO", geom
+        from regulacao.zoneamento
+    geometry: polygon
+    attributes: [COD_ZONA, NM_ZONA, E_ZONA, LEI, CD_MUN, DT_ATUALIZACAO]
+    tile: { minzoom: 9, maxzoom: 14 }
+
 basemap:
   provider: protomaps
   bbox: [-74.0, -34.0, -34.0, 6.0]   # lon_min, lat_min, lon_max, lat_max (Brasil)

@@ -135,6 +135,17 @@ def test_setor_no_ponto_contem(gq: GeoQuery) -> None:
     assert achado["cd_setor"] == ref["cd_setor"]
 
 
+def test_zoneamento_no_ponto_em_sao_paulo(gq: GeoQuery) -> None:
+    zona = gq.zoneamento_no_ponto(-46.6540, -23.5614)
+    assert zona is not None
+    assert zona["cod_municipio"] == "3550308"
+    assert zona["lei"] == "Lei 18177/2024"
+
+
+def test_zoneamento_no_ponto_fora_da_cobertura(gq: GeoQuery) -> None:
+    assert gq.zoneamento_no_ponto(-38.5014, -12.9714) is None
+
+
 def test_ponto_dentro_do_setor_tem_distancia_zero(gq: GeoQuery) -> None:
     """Mede do poligono, nao do centroide.
 

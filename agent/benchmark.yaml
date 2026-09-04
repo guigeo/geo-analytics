@@ -14,6 +14,13 @@
 # `sessao`: casos com a mesma chave rodam na mesma conversa, na ordem do arquivo.
 
 casos:
+  # --- zoneamento de São Paulo ------------------------------------------------
+  - id: BM-ZONEAMENTO-01
+    pergunta: "Qual o zoneamento da Avenida Paulista, 1000?"
+    espera:
+      tool: zoneamento_no_ponto
+      destaques: { camada: zoneamento_sp, n_codigos: 1 }
+
   # --- ranking / agregacao --------------------------------------------------
   - id: BM-01
     pergunta: "Quais os 10 municípios mais populosos do Brasil?"

@@ -63,5 +63,6 @@ export const cliente: ConfiguracaoCliente = {
     CATALOGO.antenas,
     CATALOGO.rodovias,
     CATALOGO.ferrovias,
+    CATALOGO.zoneamento_sp,
   ],
 };

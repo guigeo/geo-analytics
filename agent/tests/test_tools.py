@@ -14,7 +14,7 @@ import os
 
 import time
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from geo_query import GeoQuery
@@ -52,6 +52,42 @@ def test_openai_tools_cobre_o_registry() -> None:
     assert {s["function"]["name"] for s in specs} == set(TOOL_REGISTRY)
     assert all(s["function"]["description"] for s in specs)
     assert all("properties" in s["function"]["parameters"] for s in specs)
+
+
+class GeoQueryDeZoneamentoFalso:
+    def zoneamento_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
+        if lon == -46.6540 and lat == -23.5614:
+            return {
+                "cod_zona": "ZEU",
+                "nome_zona": "Zona Eixo de Estruturação da Transformação Urbana",
+                "e_zona": True,
+                "lei": "Lei 18177/2024",
+                "cod_municipio": "3550308",
+            }
+        return None
+
+
+def test_zoneamento_no_ponto_offline_pinta_a_zona() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryDeZoneamentoFalso()))
+    r = execute_tool(
+        ctx_falso,
+        "zoneamento_no_ponto",
+        json.dumps({"lon": -46.6540, "lat": -23.5614}),
+    )
+    assert not r.error
+    assert r.camada == "zoneamento_sp"
+    assert r.codigos == ["ZEU"]
+
+
+def test_zoneamento_fora_da_cobertura_offline_explica_o_motivo() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryDeZoneamentoFalso()))
+    r = execute_tool(
+        ctx_falso,
+        "zoneamento_no_ponto",
+        json.dumps({"lon": -38.5014, "lat": -12.9714}),
+    )
+    assert r.error
+    assert r.payload["cobertura"] == "Município de São Paulo · Lei 18.177/2024"
 
 
 def test_listar_metricas(ctx: Contexto) -> None:
@@ -181,6 +217,19 @@ def test_bairro_que_contem_fora_da_malha_explica_o_motivo(ctx: Contexto) -> None
     r = execute_tool(ctx, "bairro_que_contem", json.dumps({"lon": -63.0, "lat": -4.0}))
     assert r.error
     assert "área urbana" in r.payload["motivo"]
+
+
+def test_zoneamento_no_ponto(ctx: Contexto) -> None:
+    r = execute_tool(ctx, "zoneamento_no_ponto", json.dumps({"lon": -46.6540, "lat": -23.5614}))
+    assert not r.error
+    assert r.camada == "zoneamento_sp"
+    assert r.codigos == [r.payload["cod_zona"]]
+
+
+def test_zoneamento_fora_da_cobertura_explica_o_motivo(ctx: Contexto) -> None:
+    r = execute_tool(ctx, "zoneamento_no_ponto", json.dumps({"lon": -38.5014, "lat": -12.9714}))
+    assert r.error
+    assert "não há zoneamento" in r.payload["erro"]
 
 
 def test_metrica_invalida_lista_as_validas(ctx: Contexto) -> None:

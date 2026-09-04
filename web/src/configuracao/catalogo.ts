@@ -14,6 +14,7 @@
  * é do cliente — a que ele sobe, desenha ou importa — não entra neste arquivo.
  */
 import { ANTENNA_ICON } from "@/map/icons";
+import { PALETA_ZONEAMENTO } from "./paleta-zoneamento";
 import type { DefinicaoCamada } from "./esquema";
 
 /** Ajusta uma camada do catálogo para um cliente, sem tocar no catálogo. */
@@ -80,6 +81,8 @@ export const CATALOGO = {
     camadaFonte: "bairro",
     geometria: "poligono",
     cor: "#8e5bd0",
+    // Medição de docs/bairro.md no servidor-dados-gis, em 2026-09-03.
+    cobertura: "895 de 5.571 municípios · São Paulo não tem bairro nesta malha",
     opacidadePreenchimento: 0.18,
     contorno: { cor: "#6f3fb0", largura: 0.6 },
     atributos: [
@@ -146,6 +149,24 @@ export const CATALOGO = {
       { chave: "nome", rotulo: "Ferrovia" },
       { chave: "bitola", rotulo: "Bitola" },
       { chave: "situacaofisica", rotulo: "Situação" },
+    ],
+  },
+  zoneamento_sp: {
+    id: "zoneamento_sp",
+    rotulo: "Zoneamento de São Paulo",
+    grupo: "regulacao",
+    camadaFonte: "zoneamento_sp",
+    geometria: "poligono",
+    cor: "#1e4e8c",
+    pinturaPorCategoria: { campo: "COD_ZONA", entradas: PALETA_ZONEAMENTO },
+    cobertura: "São Paulo (capital) · Lei 18.177/2024 · atualizado em 28/03/2025",
+    opacidadePreenchimento: 0.62,
+    contorno: { cor: "#475569", largura: 0.35 },
+    atributos: [
+      { chave: "COD_ZONA", rotulo: "Zona" },
+      { chave: "NM_ZONA", rotulo: "Descrição" },
+      { chave: "LEI", rotulo: "Legislação" },
+      { chave: "DT_ATUALIZACAO", rotulo: "Atualizado em" },
     ],
   },
 } satisfies Record<string, DefinicaoCamada>;

@@ -50,5 +50,6 @@ export type {
   DefinicaoCamada,
   IdDeGrupo,
   Identidade,
+  PinturaPorCategoria,
   Simbolo,
 } from "./esquema";

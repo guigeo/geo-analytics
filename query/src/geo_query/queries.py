@@ -679,6 +679,24 @@ class GeoQuery:
         )
         return self.distrito(rows[0]["cod_distrito"]) if rows else None
 
+    def zoneamento_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
+        """Zona de uso do solo que contém o ponto.
+
+        A cobertura é somente o município de São Paulo. Fora dela, None não é
+        consulta vazia: quem chama precisa dizer que não há zoneamento carregado
+        para aquela região (regra 8 do ADR-0001).
+        """
+        rows = self._rows(
+            sql.SQL("""
+                select cod_zona, nome_zona, e_zona, lei, cod_municipio, data_atualizacao
+                from regulacao.zoneamento
+                where ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4674))
+                limit 1
+            """),
+            [float(lon), float(lat)],
+        )
+        return rows[0] if rows else None
+
     def municipio_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
         """Qual municipio CONTEM este ponto. E o juiz de um geocoding: nome resolvido
         fora do municipio que a pessoa disse e resultado errado, nao resultado pobre."""

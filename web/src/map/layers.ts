@@ -10,7 +10,11 @@
  * porque a lista mudou de lugar: se a especificação gerada mudou junto, o
  * refactor deixou de ser refactor.
  */
-import type { LayerSpecification, SourceSpecification } from "maplibre-gl";
+import type {
+  DataDrivenPropertyValueSpecification,
+  LayerSpecification,
+  SourceSpecification,
+} from "maplibre-gl";
 import { camadas, type DefinicaoCamada } from "@/configuracao";
 import { tileUrl } from "./tileHost";
 
@@ -22,6 +26,18 @@ export const IDS_CLICAVEIS = camadas.map((c) => c.id);
 
 /** O MapLibre nomeia âncora em inglês; a configuração, em português. */
 const ANCORA_MAPLIBRE = { centro: "center", base: "bottom" } as const;
+const NEUTRO_SEM_ZONA = "#94a3b8";
+
+function corDoPreenchimento(camada: DefinicaoCamada): DataDrivenPropertyValueSpecification<string> {
+  if (!camada.pinturaPorCategoria) return camada.cor;
+  const { campo, entradas } = camada.pinturaPorCategoria;
+  return [
+    "match",
+    ["get", campo],
+    ...entradas.flatMap((entrada) => [entrada.codigo, entrada.cor]),
+    NEUTRO_SEM_ZONA,
+  ] as unknown as DataDrivenPropertyValueSpecification<string>;
+}
 
 export function fontesDeDados(
   lista: DefinicaoCamada[] = camadas,
@@ -89,7 +105,7 @@ function camadaBase(c: DefinicaoCamada, visibility: "visible" | "none"): LayerSp
     "source-layer": c.camadaFonte,
     layout: { visibility },
     paint: {
-      "fill-color": c.cor,
+      "fill-color": corDoPreenchimento(c),
       "fill-opacity": c.opacidadePreenchimento ?? 0.15,
     },
   } satisfies LayerSpecification;

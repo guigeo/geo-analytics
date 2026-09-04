@@ -19,7 +19,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
 import { agruparCamadas } from "./grupos";
-import { LegendaCategorica } from "./LegendaCategorica";
 
 interface Props {
   visible: Record<string, boolean>;
@@ -116,10 +115,15 @@ export function LayerPanel({
                     ligada={!!visible[c.id]}
                     onAlternar={() => onToggle(c.id)}
                   />
+                  {/* A cobertura fica; a legenda categórica saiu em 2026-09-03.
+                      Com 14 famílias e 38 códigos ela empilhava ~52 peças debaixo de
+                      UMA linha, num painel estreito — e embaralhava a coluna inteira.
+                      A tematização se lê no mapa, que é onde ela tem espaço. Se o
+                      cliente pedir a referência das siglas, ela volta em outro lugar,
+                      não aqui. */}
                   {c.cobertura && (
                     <p className="ml-7 pb-1 text-xs text-muted-foreground">{c.cobertura}</p>
                   )}
-                  {c.pinturaPorCategoria && <LegendaCategorica pintura={c.pinturaPorCategoria} />}
                 </div>
               ))}
             </Combo>

@@ -103,20 +103,22 @@ describe("LayerPanel", () => {
     expect(onToggle).toHaveBeenCalledWith(grupo.camadas[0].id);
   });
 
-  it("mostra cobertura e legenda somente na camada categórica", () => {
+  it("mostra a cobertura das camadas parciais, e nada além disso", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
     abrir("Regulação urbana");
     expect(
       screen.getByText("São Paulo (capital) · Lei 18.177/2024 · atualizado em 28/03/2025"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Legenda categórica" })).toBeInTheDocument();
-    expect(screen.getByText("ZEIS-1")).toBeInTheDocument();
 
     abrir("Informações IBGE");
     expect(
       screen.getByText("895 de 5.571 municípios · São Paulo não tem bairro nesta malha"),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("group", { name: "Legenda categórica" })).toHaveLength(1);
+
+    // A legenda categórica saiu do painel: a camada de zoneamento fica com uma linha
+    // só, como as do IBGE. Sem isto, o teste passaria de novo se ela voltasse sem querer.
+    expect(screen.queryByRole("group", { name: "Legenda categórica" })).toBeNull();
+    expect(screen.queryByText("ZEIS-1")).toBeNull();
   });
 
   it("o cabeçalho oferece recolher a coluna", () => {

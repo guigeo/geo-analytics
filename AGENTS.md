@@ -31,8 +31,11 @@ arquitetura sem ter lido — foi assim que o recorte do Censo ficou quatro dias 
 no artefato do SDD que existe decisão pendente e trate dela como emenda no ADR-0001 do
 `webgis` — lendo antes o `AGENTS.md` de lá.
 
-**Um agente por vez, e a feature inteira com ele.** Claude Code e Codex nunca trabalham
-juntos, nem na mesma feature partida por fase. Quem assume vai do início ao fim.
+**Um agente por vez, e a passagem de bastão é explícita.** Claude Code e Codex nunca
+trabalham **ao mesmo tempo**. Em **sequência**, trabalham: o `ZONEAMENTO_SP` saiu assim —
+brainstorm, define e design pelo Claude Code, build pelo Codex, validação de volta com o
+Claude Code. Para passar o bastão, o que está pronto tem de estar commitado e empurrado, e
+o documento da fase tem de bastar sozinho. Texto completo no `../webgis/AGENTS.md`.
 
 Este arquivo guarda **instrução**: linha que, se faltasse, faria o agente errar. O histórico
 das decisões está em [`docs/DECISOES.md`](docs/DECISOES.md), e o registro por feature em

@@ -11,7 +11,7 @@
 | **Data** | 2026-09-05 |
 | **Autor** | design (sessão Claude Code) |
 | **DEFINE** | [DEFINE_CENSO_H3.md](DEFINE_CENSO_H3.md) |
-| **Status** | Ready for Build |
+| **Status** | ✅ Entregue (2026-09-05) |
 | **Repositório do código** | `../servidor-dados-gis` (+ emenda no `../webgis`) |
 
 ---
@@ -518,6 +518,7 @@ guarda fonte, versão, script, contagem e **qual recorte** foi carregado.
 | Versão | Data | Autor | Mudanças |
 |--------|------|-------|----------|
 | 1.0 | 2026-09-05 | design (Claude Code) | Versão inicial |
+| 1.1 | 2026-09-05 | ship | Entregue e arquivada |
 
 ---
 
@@ -527,3 +528,7 @@ guarda fonte, versão, script, contagem e **qual recorte** foi carregado.
 
 Com uma ordem que não pode inverter: **a emenda ao ADR-0001 (itens 8 e 9) sai antes ou
 junto da carga**, nunca depois — é a mesma regra que o `ZONEAMENTO_SP` seguiu.
+
+---
+
+**Entregue em 2026-09-05.** Ver [SHIPPED_2026-09-05.md](SHIPPED_2026-09-05.md).

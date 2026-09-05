@@ -10,10 +10,10 @@
 | **Feature** | CENSO_H3 |
 | **Data** | 2026-09-05 |
 | **Autor** | define (sessão Claude Code) |
-| **Status** | Ready for Design |
+| **Status** | ✅ Entregue (2026-09-05) |
 | **Clarity Score** | 14/15 |
 | **Origem** | Conversa medida em 2026-09-05 (piloto no scratchpad, não commitado) |
-| **Pré-requisito** | ⏳ Emenda ao ADR-0001 (`webgis`) — sai junto com a feature, não depois |
+| **Pré-requisito** | ✅ Emenda ao ADR-0001 feita (`webgis`, `e1912c2`) |
 | **Repositório do código** | `../servidor-dados-gis` — esta feature quase não toca este repo |
 
 ---
@@ -173,9 +173,14 @@ tem — o Censo — porque a malha só se prova com dado cujo total se conhece.
 | Versão | Data | Autor | Mudanças |
 |--------|------|-------|----------|
 | 1.0 | 2026-09-05 | define (Claude Code) | Versão inicial, a partir do piloto medido na mesma sessão |
+| 1.1 | 2026-09-05 | ship | Entregue e arquivada |
 
 ---
 
 ## Próximo passo
 
 **Pronto para:** `/design .claude/sdd/features/DEFINE_CENSO_H3.md`
+
+---
+
+**Entregue em 2026-09-05.** Ver [SHIPPED_2026-09-05.md](SHIPPED_2026-09-05.md).

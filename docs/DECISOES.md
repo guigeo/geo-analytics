@@ -111,10 +111,28 @@ antes do passo 4 do ADR:
   bairro, distrito e a cascata `info_local`.
 - ~~"desenho no mapa, com os dados do cliente"~~ — **feito**: `DESENHO_NO_MAPA`.
 
+**Prioridade declarada para a volta (2026-09-05): o portal de login.** Sai o portão de
+`basic_auth`, entra portal com sessão, logout e troca de senha. O escopo é o que o mantém
+pequeno: **conta por pessoa, sem distinção entre pessoas do mesmo cliente** — várias
+pessoas da mesma empresa veem os mesmos desenhos, as mesmas camadas, o mesmo acervo; não
+há papel, permissão nem dado por pessoa. O gatilho já estava nomeado no ADR desde
+2026-08-29 ("dado do usuário para guardar") e disparou em 2026-09-03, quando o
+`DESENHO_NO_MAPA` subiu nos dois clientes. A pergunta que a feature abre — onde a sessão
+mora, já que hoje o portão é Caddy puro e o site sobrevive à queda do agente — está na
+emenda de 2026-09-05 à §8 do ADR-0001, no `webgis`.
+
+**A malha H3 (2026-09-05).** O Censo 2022 passou a existir em 68.448 células de 0,106 km²
+sobre a concentração urbana São Paulo/SP, no `servidor-dados-gis`. Ela **não toca esta
+aplicação**: a feature foi escopada sem tile, sem camada e sem tool, porque o hexágono só
+ganha tela quando tiver dentro dele variável que o setor não tem. O caminho barato para
+isso é o CNEFE 2022 — endereços com coordenada, que entram por ponto e sem rateio —
+cruzado com a base de CNPJ. Registro completo em `.claude/sdd/archive/CENSO_H3/`.
+
 **Segue em aberto:** Atlas do Desenvolvimento Humano/IDHM por município; POIs via
 OSM/Geofabrik com ANAC para aeroportos; streaming se a latência do chat doer; um caso de área
 desenhada no `benchmark.yaml` (o ambiente já recebe o acervo).
 
-**Segue barrado por espaço:** eixo de ruas nacional (OSM). A VPS tem **3,9 GB livres de 38 GB
-(90% usado)**, medido em 2026-08-31 — não os ~6 GB que o parágrafo anterior dizia. Hetzner
+**Segue barrado por espaço:** eixo de ruas nacional (OSM). A VPS tem **5,2 GB livres de 38 GB
+(86% usado)**, medido em 2026-09-05 — eram 3,9 GB em 2026-08-31, e antes disso o parágrafo
+dizia ~6 GB, que já estava errado. Hetzner
 Volume continua sendo a rota mais barata, e não upgrade de plano.

@@ -350,6 +350,26 @@ tiles** — um `HEAD` por camada contra `$TILES_BASE_URL`, e o deploy para se fa
 Fecha a classe inteira do problema 2 acima, e é o que permite feature pronta ficar na `main`
 sem risco.
 
+### A malha H3 existe, e só no banco LOCAL
+
+O `CENSO_H3` foi entregue em 2026-09-05 (`.claude/sdd/archive/CENSO_H3/`): o Censo 2022
+re-agregado em 68.448 células H3 res 9 sobre a concentração urbana São Paulo/SP, em
+`indicadores.censo_h3_r9_celula` e `indicadores.censo_h3_r9`, no `servidor-dados-gis`.
+
+**Nada disso aparece nesta aplicação, e é de propósito** — sem tile, sem camada no
+catálogo, sem tool do agente. A malha é fundação para receber variáveis que o setor não
+tem; ela só ganha tela quando houver uma. **E a carga rodou só no `geodata` local:** o
+banco central não tem essas tabelas. Antes de escrever qualquer consulta que dependa
+delas, conferir onde o `GEODATA_DSN` da sessão aponta.
+
+### Próxima prioridade declarada: o portal de login
+
+Decidido pelo Guilherme em 2026-09-05. O portão de `basic_auth` sai e entra portal com
+sessão, logout e troca de senha. **Conta por pessoa, sem distinção entre pessoas do mesmo
+cliente** — todas veem os mesmos desenhos e as mesmas camadas. Escopo, gatilho e o
+trade-off que a feature terá de resolver primeiro (onde a sessão mora) estão na emenda de
+2026-09-05 à §8 do ADR-0001, no `webgis`. **Ler antes de propor.**
+
 ### Em aberto
 
 - **Remedir o cruzamento na VPS (A-001).** Os tempos foram medidos neste Mac; lá a memória é
@@ -359,7 +379,9 @@ sem risco.
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma
   feature.
-- **Espaço na VPS:** 3,9 GB livres de 38 GB (90% usado), medido em 2026-08-31. É o que barra
-  o eixo de ruas nacional (OSM).
+- **Espaço na VPS:** 5,2 GB livres de 38 GB (86% usado), medido em 2026-09-05 — melhorou
+  desde os 3,9 GB de 2026-08-31. É o que barra o eixo de ruas nacional (OSM) e o que
+  adiaria uma malha H3 nacional (~2 GB em res 8). O tile do zoneamento (12,1 MB) e a malha
+  de São Paulo (~11 MB) não são o problema.
 
 Roadmap e ideias em aberto: [`docs/DECISOES.md`](docs/DECISOES.md).

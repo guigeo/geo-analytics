@@ -351,12 +351,18 @@ qualquer outro motivo leva a camada junto, morta.** Enquanto esta seção existi
    tarefa separada, justamente para não depender de alguém lembrar
 5. `make ship-app`
 
-**A quarta checagem, a construir no passo 4:** `deploy/deploy.sh:build_app` já verifica três
-coisas paranoicas (o bundle aponta para o host de tiles certo, é do cliente certo, e está
-carimbado). Falta a quarta: **toda camada que o bundle declara tem `.pmtiles` no host de
-tiles** — um `HEAD` por camada contra `$TILES_BASE_URL`, e o deploy para se faltar alguma.
-Fecha a classe inteira do problema 2 acima, e é o que permite feature pronta ficar na `main`
-sem risco.
+**A quarta checagem existe desde 2026-09-06.** O `deploy/deploy.sh:build_app` verificava
+três coisas paranoicas (o bundle aponta para o host de tiles certo, é do cliente certo, e
+está carimbado); a quarta é **toda camada que o bundle declara tem `.pmtiles` no host de
+tiles** — um `HEAD` por camada contra `$TILES_BASE_URL`, mais o `basemap`, e o deploy para
+se faltar alguma. Ela fecha a classe inteira do problema 2 acima: **feature pronta pode
+esperar na `main` sem risco**, porque um `ship-app` distraído recusa em vez de publicar
+camada morta.
+
+A lista de camadas sai do arquivo do cliente (`web/src/clientes/<id>.ts`), e não do bundle —
+o bundle monta a URL do tile em runtime, então não há nome de arquivo dentro dele. Se a
+extração devolver zero camadas, o deploy **para**: zero não é "cliente sem camada", é o
+parser quebrado, e uma checagem que não extrai nada passaria verde para sempre.
 
 ### A malha H3 existe, e só no banco LOCAL
 

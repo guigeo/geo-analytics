@@ -122,6 +122,53 @@ build_app() {
   grep -qF "commit=$commit" web/dist/index.html \
     || { echo "✗ o index.html nao tem o carimbo commit=$commit" >&2; exit 1; }
   echo "  ✓ bundle aponta para ${TILES_BASE_URL}, é do $nome_esperado e carimbado $commit"
+
+  # ── 4ª checagem: toda camada declarada tem tile publicado ──────────────────
+  #
+  # As tres acima conferem que o bundle e o certo. Esta confere que o MUNDO em volta
+  # dele esta pronto — e ela existe porque a falha que fecha nao da erro nenhum: o
+  # bundle declara uma camada, o `.pmtiles` nao esta no host, e a camada aparece no
+  # painel, liga, e nao pinta nada. Ninguem e avisado; o usuario conclui que nao ha
+  # dado ali.
+  #
+  # Escrita em 2026-09-06, como passo da publicacao do ZONEAMENTO_SP — que ficou tres
+  # dias pronto na `main` e fora do ar justamente porque um `ship-app` por qualquer
+  # outro motivo teria levado a camada junto, morta. Com esta checagem, feature pronta
+  # pode esperar na `main` sem risco: o deploy recusa antes de publicar.
+  #
+  # A lista sai do ARQUIVO DO CLIENTE, que e a fonte de quais camadas este build
+  # declara. O bundle nao serve: ele monta a URL do tile em runtime
+  # (web/src/map/tileHost.ts), entao nao ha nome de arquivo dentro dele para procurar.
+  local camadas
+  camadas="$(grep -oE 'CATALOGO\.[a-z0-9_]+' "web/src/clientes/${CLIENTE}.ts" \
+             | sed 's/CATALOGO\.//' | sort -u)"
+
+  # Zero camadas nao e "cliente sem camada", e o parse quebrado — alguem mudou a forma
+  # de declarar. Publicar aqui seria publicar sem checagem NENHUMA, que e pior do que
+  # nao ter a checagem: ela passaria verde para sempre.
+  [[ -n "$camadas" ]] || {
+    echo "✗ nao extrai camada nenhuma de web/src/clientes/${CLIENTE}.ts" >&2
+    echo "  a forma de declarar mudou? conserte a extracao antes de publicar" >&2
+    exit 1; }
+
+  # `basemap` entra junto embora nao seja "camada" na configuracao: ele vem do mesmo
+  # host (web/src/map/basemap.ts) e, sem ele, o mapa nasce branco — que e a versao
+  # mais visivel do defeito que esta checagem existe para pegar.
+  local faltando=()
+  local nome cod
+  for nome in $camadas basemap; do
+    cod="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -I \
+           "${TILES_BASE_URL}/${nome}.pmtiles" || echo 000)"
+    [[ "$cod" == "200" ]] || faltando+=("${nome}.pmtiles (HTTP ${cod})")
+  done
+
+  if (( ${#faltando[@]} > 0 )); then
+    echo "✗ o bundle declara camada sem tile publicado em ${TILES_BASE_URL}:" >&2
+    printf '    %s\n' "${faltando[@]}" >&2
+    echo "  publique os tiles antes: 'make ship-tiles' no repositorio webgis." >&2
+    exit 1
+  fi
+  echo "  ✓ as $(echo "$camadas" | wc -l | tr -d ' ') camadas declaradas + basemap têm tile em ${TILES_BASE_URL}"
 }
 
 # A ORDEM DA PUBLICACAO, transformada em checagem para nao depender de alguem

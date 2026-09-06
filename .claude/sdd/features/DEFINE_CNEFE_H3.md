@@ -11,9 +11,9 @@
 | **Data** | 2026-09-06 |
 | **Autor** | define (sessão Claude Code) |
 | **Status** | Pronto para /design |
-| **Clarity Score** | 14/15 |
+| **Clarity Score** | 15/15 |
 | **Origem** | [`BRAINSTORM_CNEFE_H3.md`](BRAINSTORM_CNEFE_H3.md), medido contra as fontes reais |
-| **Pré-requisito** | ⏳ Emenda ao ADR-0001 (`webgis`) — ver "Questões em aberto" |
+| **Pré-requisito** | ✅ Nenhum — a regra 9 do ADR-0001 já cobre o caso (ver "Questões em aberto") |
 | **Repositório do código** | `../servidor-dados-gis` — esta feature **não toca** este repo |
 | **Onde roda** | Home lab (`server-homelab` / `homelab-ts`), 865 GB livres |
 
@@ -63,10 +63,10 @@ bruto **fiel à fonte** uma vez, no lab, resolve as três de antemão.
 | **MUST** | **Fechamento exato** contra o Censo, município a município e setor a setor — a carga falha se não fechar |
 | **MUST** | Caminho **lab → Mac** para o derivado, com o script **recusando** publicar se a conferência não fechar |
 | **MUST** | Linhagem em `meta.fonte` com a versão medida da fonte, e `SELECT` para `geo_reader` |
-| **MUST** | Emenda ao ADR-0001 decidindo onde mora número exato re-agregado em malha estatística |
 | **SHOULD** | O recorte ser parâmetro do script (município ou lista), não constante — o `brasil` é o mesmo código |
 | **SHOULD** | Rótulos das 16 variáveis em **TSV commitado** (padrão do `censo_nomes.tsv`), não em `dict` no script |
 | **COULD** | A conferência por setor ficar guardada como tabela, não só como asserção que passa e some |
+| **COULD** | Registrar no ADR-0001, no `/ship`, a aplicação da regra 9 a dado que entra por ponto — com a medição dos 37 municípios junto |
 
 ---
 
@@ -190,26 +190,39 @@ Confirmado com o Guilherme no brainstorm. O que segue **não** entra:
 | Usuários | **3** | Quatro, com dor específica cada um, incluindo o cliente 2 nomeado e o caso de uso dele |
 | Objetivos | **3** | Oito MUST, dois SHOULD, um COULD, todos verificáveis |
 | Sucesso | **3** | Onze critérios, **todos numéricos e conhecidos antes da carga** — 8.741.738 domicílios, 37 municípios, zero setor diferente, zero célula órfã. Nenhuma tolerância percentual |
-| Escopo | **2** | O que entra e o que sai está fechado e confirmado — mas **o schema de destino do derivado depende de uma emenda de ADR que ainda não foi feita** |
-| **Total** | **14/15** | Acima do mínimo de 12 |
+| Escopo | **3** | O que entra e o que sai está fechado e confirmado, e o destino do derivado **já está decidido pelo ADR vigente** — o que restou é desenho de tabela, que é trabalho do `/design`, não indefinição de escopo |
+| **Total** | **15/15** | Acima do mínimo de 12 |
 
 ---
 
 ## Questões em aberto
 
-**1. Onde mora a tabela derivada — emenda ao ADR-0001, no `webgis`.**
+**1. Onde mora a tabela derivada — RESPONDIDA pelo ADR vigente, sem emenda.**
 
-A regra 7 manda dado **estimado** para `indicadores`, e a emenda de 2026-09-05 acrescentou
-que re-agregar geometria também estima. Mas **contar ponto dentro de célula é agregação
-exata**: nada é esticado, e a soma fecha com a origem na unidade. Este é o primeiro número
-desta malha que não é estimativa, e ele conviveria numa mesma família de tabelas com os que
-são.
+A primeira leitura desta sessão viu contradição onde não há. A emenda de 2026-09-05 à
+regra 9 do ADR-0001 já diz, com estas palavras: *"dado re-agregado para uma malha que a
+fonte não publica é estimativa — vai para `indicadores`, nunca para `ibge*`"*. O IBGE não
+publica por hexágono, logo o CNEFE por célula vai para `indicadores` pelo texto vigente.
 
-O encaminhamento recomendado é tabela irmã — `indicadores.cnefe_h3_r9` mais uma companheira
-de célula com a distribuição de `NV_GEO_COORD` —, apontando para a mesma malha
-`censo_h3_r9_celula`. Mas **se número exato mora em `indicadores` junto com os estimados é
-decisão da sede**, e vira commit no ADR-0001 com o aval do Guilherme. O `CENSO_H3` fez a
-emenda **antes** do build (`webgis`, `e1912c2`); esta segue o mesmo caminho.
+E a mesma emenda já separa os dois casos: *"Somar setores inteiros dentro de uma célula é
+aritmética exata e não estima nada; espalhar um setor por várias células presume densidade
+uniforme e inventa."* Ou seja, **"é exato" e "mora em `indicadores`" já convivem no ADR**.
+O erro de leitura foi tratar `indicadores` como o schema do incerto: o critério dele é
+**procedência** — entra ali o que a aplicação derivou —, e o que separa exato de estimado é
+a linha, não a prateleira.
+
+**O que sobra não é decisão de arquitetura, é desenho de tabela**, e cabe ao `/design`: a
+FK para `ibge_tabular.variavel` e o `fracao_ausente NOT NULL` impedem o CNEFE de entrar em
+`indicadores.censo_h3_r9`, e a saída recomendada é tabela irmã com coluna de honestidade
+própria.
+
+Fica **um registro para o `/ship`, e ele não é pré-requisito de nada**: a regra 9 manda a
+linha carregar *"a medida da própria incerteza"* e define essa medida como o fator de
+desagregação. Para dado que entra por ponto não há desagregação, e a medida é outra — a
+qualidade da coordenada da fonte. Isso é **aplicação** da regra, não mudança dela, e o ADR
+já tem precedente de registrar aplicação sem emendar (a pintura categórica do
+`ZONEAMENTO_SP`). Registrar no `/ship`, com a medição dos 37 municípios junto, vale mais
+do que registrar agora com número de um município só.
 
 **2. Onde roda a conferência, já que o lab não tem o Censo — decisão do `/design`.**
 
@@ -226,6 +239,7 @@ emenda **antes** do build (`webgis`, `e1912c2`); esta segue o mesmo caminho.
 | Versão | Data | Autor | Mudanças |
 |--------|------|-------|----------|
 | 1.0 | 2026-09-06 | define (sessão Claude Code) | Versão inicial, a partir do `BRAINSTORM_CNEFE_H3.md`. Estimativa de linhas corrigida de ~16 M para ~10,2 M, ancorada nos 8.741.738 domicílios do Censo |
+| 1.1 | 2026-09-06 | define (sessão Claude Code) | **A emenda de ADR deixa de ser pré-requisito.** Releitura da regra 9 na íntegra mostrou que a emenda de 2026-09-05 já cobre o caso: o destino é `indicadores` pelo texto vigente, e "exato" não conflita com isso. Escopo passa de 2 para 3, e o score de 14 para 15 |
 
 ---
 

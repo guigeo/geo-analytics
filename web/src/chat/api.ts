@@ -1,3 +1,4 @@
+import { sessaoCaiu } from "@/auth/api";
 import type { Destaques } from "@/map/highlight";
 
 // Espelho dos schemas Pydantic do backend (agent/src/geo_agent/schemas.py).
@@ -27,6 +28,10 @@ export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
+  // 401 = a sessao caiu (venceu, ou alguem saiu noutro aparelho). Avisar o portao e
+  // mais util que mostrar "falha no chat": a acao certa e entrar de novo, e a mensagem
+  // de erro generica esconderia isso.
+  if (res.status === 401) sessaoCaiu();
   if (!res.ok) {
     const detail = await res
       .json()

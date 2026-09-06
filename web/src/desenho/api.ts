@@ -6,6 +6,7 @@
  * enquanto 422 é algo a corrigir no formulário. Sem separar, os dois virariam o mesmo
  * "algo deu errado", que não ajuda em nenhum dos casos.
  */
+import { sessaoCaiu } from "@/auth/api";
 import type { Desenho, TipoDesenho } from "./geometria";
 
 export type { Desenho };
@@ -59,6 +60,9 @@ async function pedir<T>(caminho: string, init?: RequestInit): Promise<T> {
     // Rede fora, agente parado antes de responder: para a tela é o mesmo caso do 503.
     throw new ErroDoAcervo("Não foi possível falar com o servidor.", 503);
   }
+  // Ver o mesmo trecho em `chat/api.ts`: 401 e sessao caida, e a acao certa e entrar
+  // de novo — nao "tente de novo", que e o que a mensagem de acervo diria.
+  if (res.status === 401) sessaoCaiu();
   if (!res.ok) {
     const detalhe = await res
       .json()

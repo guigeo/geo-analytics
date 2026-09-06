@@ -22,6 +22,7 @@ import { identidade, tema } from "@/configuracao";
 import { Simbolo } from "@/components/Simbolo";
 import { cn } from "@/lib/utils";
 import type { ModoMedicao } from "@/map/medicao";
+import { MenuDaConta } from "@/auth/MenuDaConta";
 
 interface Props {
   theme: Theme;
@@ -189,6 +190,13 @@ export function Header({
           </TooltipTrigger>
           <TooltipContent>{theme === "dark" ? "Tema claro" : "Tema escuro"}</TooltipContent>
         </Tooltip>
+
+        {/* A conta fica no fim, e separada: nao e ferramenta de mapa. Sair e trocar
+            senha sao as duas unicas coisas que o portal oferece — nao ha perfil,
+            preferencia nem papel, porque o escopo nao distingue pessoas dentro do
+            cliente. */}
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        <MenuDaConta />
       </div>
     </header>
   );

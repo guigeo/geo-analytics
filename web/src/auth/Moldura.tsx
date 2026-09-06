@@ -6,6 +6,18 @@
  * cores e nome já vivem em `web/src/clientes/<id>.ts` desde sempre, e a tela de entrar
  * só precisa usar o que já está lá. Não há decisão de design a tomar por cliente novo:
  * ele traz o próprio arquivo, e o portal dele nasce com a cara certa.
+ *
+ * `fixed inset-0`, e não `min-h-screen`, porque esta moldura tem DOIS pontos de uso e
+ * eles são estruturalmente diferentes:
+ *
+ * - entrar e a troca obrigatória são a raiz — não há nada atrás, e fluxo normal bastaria;
+ * - a troca VOLUNTÁRIA é aberta pelo menu da conta, e portanto renderiza de dentro do
+ *   `<header>`, que tem altura fixa e é uma linha flex.
+ *
+ * No segundo caso o fluxo normal prendia a tela dentro do cabeçalho e o mapa passava por
+ * cima — foi o que aconteceu no primeiro teste em 2026-09-06. Tirar do fluxo resolve os
+ * dois de uma vez, sem a moldura precisar saber de onde foi chamada. O `z-[60]` fica
+ * acima do `z-50` que o tooltip e o popover usam.
  */
 import { identidade, tema } from "@/configuracao";
 import { Simbolo } from "@/components/Simbolo";
@@ -16,7 +28,7 @@ interface Props {
 
 export function Moldura({ children }: Props) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-background px-4 py-8 text-foreground">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           {tema.simbolo ? (

@@ -124,6 +124,31 @@ describe("o portão", () => {
   });
 });
 
+describe("a moldura sai do fluxo", () => {
+  it("a tela do portal é fixa e fica acima do resto", async () => {
+    // Regressão de 2026-09-06, achada olhando a tela e não um teste: a troca
+    // VOLUNTÁRIA de senha é aberta pelo menu da conta, que vive dentro do <header> —
+    // um elemento de altura fixa numa linha flex. Em fluxo normal, a moldura ficava
+    // presa lá dentro e o mapa passava por cima.
+    //
+    // O teste afirma o que conserta: `fixed` tira do fluxo, e o z-index fica acima do
+    // z-50 que tooltip e popover usam. Sem isto, a correção volta a se perder na
+    // primeira vez que alguém mexer nas classes da moldura.
+    respondeCom(respostaDe(401));
+    render(
+      <ProvedorDeSessao>
+        <p>o mapa</p>
+      </ProvedorDeSessao>,
+    );
+    const campo = await screen.findByLabelText("E-mail");
+    const moldura = campo.closest("div.fixed");
+
+    expect(moldura).not.toBeNull();
+    expect(moldura!.className).toContain("inset-0");
+    expect(moldura!.className).toMatch(/z-\[6\d\]/);
+  });
+});
+
 describe("a marca do cliente na tela de entrar", () => {
   it("usa a identidade do cliente do build, que já é dado", async () => {
     // A regra 1 do ADR-0001 obriga que o que difere entre clientes seja dado, e por

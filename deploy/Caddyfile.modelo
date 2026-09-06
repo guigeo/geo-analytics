@@ -20,28 +20,29 @@
 #   os tiles NÃO moram aqui: host compartilhado, ver ../../webgis/docs/VPS.md
 
 {{DOMINIO}} {
-{{#SE PORTAO_USUARIO}}
-	# ── Portão ────────────────────────────────────────────────────────────────
-	# Credencial por APLICAÇÃO (não por pessoa), decidida na emenda de 2026-08-29
-	# da §8 do ADR-0001 do `webgis`. O motivo é custo, não sigilo: cada pergunta
-	# ao /api/chat chama um modelo. Site aberto é ausência de PORTAO_USUARIO no
-	# deploy/clientes/<id>.env; com ele, o bloco abaixo aparece.
+	# ── Sem portão aqui ───────────────────────────────────────────────────────
+	# Até 2026-09-06 existia neste ponto um bloco `basicauth`, e ele cobria o site
+	# inteiro. Ele saiu, e o que entrou no lugar não é nada: o portão passou a ser
+	# SESSÃO, e ela mora no agente, atrás do `/api`. Ver a emenda de 2026-09-06 à
+	# §9 do ADR-0001 do `webgis`.
 	#
-	# Os dois clientes estão fechados desde 2026-08-31. O cliente 1 ficou aberto
-	# até então porque fechar site já público é decisão de produto — e a decisão
-	# veio quando se mediu que o /api/chat dele respondia sem credencial nenhuma.
+	# Por que isso é melhor e não pior. Com o `basicauth` cobrindo o HTML, o site
+	# dependia do agente no dia em que o portão virasse sessão — `forward_auth`
+	# faria toda página passar por ele, e agente fora do ar trancaria tudo. Com o
+	# portão só no `/api`, o Caddy serve o mapa sem perguntar nada a ninguém:
+	# agente parado é chat e desenhos indisponíveis, e mapa de pé. É a §9 ao pé da
+	# letra, e virou teste de aceitação da feature.
 	#
-	# ⚠️ `basicauth` e NÃO `basic_auth`: o Caddy da VPS é 2.6.2 (medido em
-	# 2026-08-30), onde o nome novo não existe e o `validate` recusa o arquivo
-	# INTEIRO — que é compartilhado com os outros sites da máquina. Quando o
-	# Caddy de lá subir para 2.8+, isto vira `basic_auth`. Ver webgis/docs/VPS.md.
+	# O que ficou público, dito sem eufemismo: o `index.html`, o bundle e a
+	# configuração deste cliente. NÃO o acervo — os desenhos continuam atrás do
+	# `/api`. E os tiles nunca estiveram aqui: o host compartilhado não tem portão
+	# nenhum desde sempre, só filtro de CORS (medido em 2026-09-06).
 	#
-	# Só o hash mora no repositório; a senha em claro, em lugar nenhum.
-	basicauth {
-		{{PORTAO_USUARIO}} {{PORTAO_HASH}}
-	}
+	# ⚠️ ORDEM DE PUBLICAÇÃO: este bloco só pode ir para a VPS DEPOIS de o agente
+	# novo estar de pé lá. Publicar antes deixa o `/api/chat` — e a chave da OpenAI
+	# atrás dele — aberto, protegido só pelo limite por IP. O `push_app` do
+	# `deploy.sh` recusa o deploy se o `/api/auth/eu` da VPS não responder 401.
 
-{{/SE}}
 	# Chat IA: agente FastAPI local (systemd {{SERVICO}}, :{{PORTA_AGENTE}}).
 	@api path /api/*
 	reverse_proxy @api 127.0.0.1:{{PORTA_AGENTE}}

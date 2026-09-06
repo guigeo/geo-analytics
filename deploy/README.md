@@ -5,7 +5,7 @@ Site **estático** (app MapLibre) mais o agente de IA, servidos pelo **Caddy**
 
 > **Desde 2026-08-30 o deploy é por cliente** (fase 6 do passo 5 do ADR-0001 do
 > `webgis`). Tudo que era do cliente 1 — domínio, caminhos, unit do systemd,
-> porta e portão — mora em `deploy/clientes/<id>.env`, e `CLIENTE` escolhe:
+> porta — mora em `deploy/clientes/<id>.env`, e `CLIENTE` escolhe:
 >
 > ```bash
 > make ensaio                      # ENSAIA o deploy sem tocar a VPS
@@ -134,9 +134,24 @@ make ship-app  # manda só o frontend  (ou: make ship / make ship-tiles)
 
 > **Sempre rode `make preview` antes de `ship`** — é a única forma de ver, localmente,
 > exatamente o que o Caddy da VPS vai servir (Range nos tiles, compressão só fora de
-> `/tiles`) — e, desde a fase 5, o **portão**: o preview pede credencial
-> (`previa` / `previa-local`). O `deploy/Caddyfile.local` espelha o
-> comportamento do `deploy/Caddyfile.modelo`.
+> `/tiles`). O `deploy/Caddyfile.local` espelha o comportamento do
+> `deploy/Caddyfile.modelo`, e desde 2026-09-06 isso inclui **não** ter portão: o
+> preview serve o site aberto, e é o agente que recusa o `/api` sem sessão.
+
+## Cliente novo: a primeira conta
+
+O portal de login não tem tela de cadastro — não existe papel de administrador, e a
+razão está na emenda de 2026-09-05 à §8 do ADR-0001. Depois de `app_clientes.sh`, quem
+opera cria as contas à mão, no `servidor-dados-gis`:
+
+```bash
+./cargas/app_clientes.sh <id-do-cliente> '<senha-do-papel>' [--destino vps]
+./scripts/criar-usuario.sh <id-do-cliente> <email-da-pessoa> [--destino vps]
+```
+
+O segundo imprime uma senha provisória **uma vez**. Entregue-a por fora; ela vale só até
+a primeira entrada, porque a pessoa é obrigada a trocá-la antes de alcançar o mapa.
+Esqueceu depois? `--resetar` no mesmo comando, o que também derruba as sessões dela.
 
 ## Redeploys futuros
 - **Só código:** `make ship-app [CLIENTE=<id>]`  (= `CLIENTE=<id> ./deploy/deploy.sh app`)

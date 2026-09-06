@@ -80,8 +80,10 @@ else
   echo "  [ensaio] systemctl is-active $SERVICO && curl http://127.0.0.1:$PORTA_AGENTE/api/health"
 fi
 echo "✔ Setup concluido."
-if [[ -n "${PORTAO_USUARIO:-}" ]]; then
-  echo "  Teste publico (com portao): curl -u $PORTAO_USUARIO:SENHA https://$DOMINIO/api/health"
-else
-  echo "  Teste publico: https://$DOMINIO/api/health"
-fi
+# O /api/health responde SEM sessao, e e de proposito: o vigia bate nele a cada 10
+# minutos e nao pode precisar de uma conta para isso. Ver a allowlist em
+# `agent/src/geo_agent/sessao.py`.
+echo "  Teste publico: curl https://$DOMINIO/api/health"
+echo "  O portao, no par que prova que ele esta de pe:"
+echo "    curl -o /dev/null -w '%{http_code}\\n' https://$DOMINIO/          # 200"
+echo "    curl -o /dev/null -w '%{http_code}\\n' https://$DOMINIO/api/auth/eu  # 401"

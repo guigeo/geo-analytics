@@ -131,9 +131,13 @@ cd pipeline && uv run geo-pipeline search-index        # indice de busca do fron
 #   -> web/src/search/municipios.json (gitignored). OBRIGATORIO antes de `npm run build`
 #      em clone novo: o front importa esse JSON via `?url` (asset com hash).
 
-# Frontend (NÃO há node no host — usar o container)
+# Frontend — o container é a porta de entrada, mas há node no host desde algum ponto
+# entre 2026-08 e 2026-09-06 (v26.7.0, medido). Com Docker parado, o portão inteiro
+# roda nativo do diretório `web/`, que foi como o PORTAL_LOGIN se validou.
 docker compose up web                                  # dev :5173 (= make dev)
 docker compose exec web npm run typecheck
+cd web && npx tsc --noEmit && npx eslint . --max-warnings 0 \
+       && npx prettier --check . && npx vitest run && npx vite build
 
 # Testes/lint do ETL (lógica pura roda nativa com uv)
 cd pipeline && uv sync --group dev && uv run pytest && uv run ruff check .
@@ -313,6 +317,10 @@ conteúdo serve a qualquer agente, e o do `sdd/archive/` também.
 `DESENHO_NO_MAPA` (ponto, área e raio guardados no `app_clientes`, com o agente cruzando a
 área desenhada com o Censo por rateio areal). Nenhuma pendência de acervo ou desenho.
 
+**Desde o `PORTAL_LOGIN`, o `ACERVO_DSN` é obrigatório** e o agente não sobe sem ele: a
+sessão mora no `app_clientes`, então acervo ausente significa que ninguém entra. Antes
+disso ele subia e só os desenhos sumiam.
+
 **Redeploy do agente:** `make ship-ia [CLIENTE=<id>]` + `ssh -t hetzner-gramos 'sudo
 systemctl restart <SERVICO do cliente>'`. O restart pede senha — **só roda num terminal de
 verdade do Guilherme, nunca pelo Claude Code.** A instalação na VPS é **editable**: `uv sync`
@@ -362,13 +370,35 @@ tem; ela só ganha tela quando houver uma. **E a carga rodou só no `geodata` lo
 banco central não tem essas tabelas. Antes de escrever qualquer consulta que dependa
 delas, conferir onde o `GEODATA_DSN` da sessão aponta.
 
-### Próxima prioridade declarada: o portal de login
+### Construído e NÃO publicado: o `PORTAL_LOGIN`
 
-Decidido pelo Guilherme em 2026-09-05. O portão de `basic_auth` sai e entra portal com
-sessão, logout e troca de senha. **Conta por pessoa, sem distinção entre pessoas do mesmo
-cliente** — todas veem os mesmos desenhos e as mesmas camadas. Escopo, gatilho e o
-trade-off que a feature terá de resolver primeiro (onde a sessão mora) estão na emenda de
-2026-09-05 à §8 do ADR-0001, no `webgis`. **Ler antes de propor.**
+Implementado em 2026-09-06 (`.claude/sdd/features/*_PORTAL_LOGIN.md`). O portão de
+`basic_auth` do Caddy sai e entra portal de verdade: sessão, sair da sessão e trocar a
+própria senha, com conta por pessoa e **sem distinção entre pessoas do mesmo cliente**.
+
+**A decisão que a §8 mandava resolver primeiro está resolvida:** o portão passa a valer
+**só no `/api`**, a sessão mora no agente e o site estático deixa de depender dele —
+emenda de 2026-09-06 à §9 do ADR-0001, no `webgis`.
+
+**Nada disso está em produção.** A `main` tem o código; a VPS tem o `basicauth` de
+sempre. Ao contrário do `ZONEAMENTO_SP`, aqui um `ship-app` distraído **não** publica
+pela metade: o `push_app` recusa o deploy se o `/api/auth/eu` da VPS não responder 401.
+
+**A ordem de publicação, que não pode inverter:**
+
+1. `backup-acervo.sh --origem vps` — o acervo vai ganhar tabela
+2. `cargas/app_clientes.sh` nos dois clientes, local e VPS (idempotente)
+3. `scripts/criar-usuario.sh` — as contas de cada cliente, senha provisória entregue
+   por fora
+4. `make ship-ia` + **restart** (terminal do Guilherme). Aqui o `basicauth` **ainda
+   está de pé**: portão novo por dentro, velho por fora
+5. Conferir: `curl -o /dev/null -w '%{http_code}' https://<domínio>/api/auth/eu` → 401
+6. Publicar o bloco de Caddy sem `basicauth` + `make ship-app`
+7. `make verificar-vps` no `webgis` — ele agora afirma o par: site 200 **e** `/api` 401
+
+**Falta medir na VPS antes do passo 4:** o custo do argon2 com `ARGON2_MEMORIA_KIB`
+(64 MiB por verificação, numa máquina de 3,7 GB). Os parâmetros estão no `.env`
+justamente para se ajustarem sem mudar código.
 
 ### Em aberto
 

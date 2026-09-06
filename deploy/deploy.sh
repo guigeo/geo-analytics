@@ -124,7 +124,41 @@ build_app() {
   echo "  ✓ bundle aponta para ${TILES_BASE_URL}, é do $nome_esperado e carimbado $commit"
 }
 
+# A ORDEM DA PUBLICACAO, transformada em checagem para nao depender de alguem
+# lembrar dela. Irmã das tres do build_app, e pelo mesmo motivo: o erro que ela fecha
+# nao da mensagem nenhuma quando acontece.
+#
+# O portao novo entra ANTES de o velho sair. Publicar este bundle contra um agente
+# antigo poe a tela de entrar no ar batendo em 404 — ninguem usa o produto. E na outra
+# ordem, publicar o bloco de Caddy sem `basicauth` antes do agente devolve o /api/chat
+# — e a chave da OpenAI atras dele — a internet aberta, que e exatamente o estado que a
+# emenda de 2026-08-29 a §8 mediu e decidiu corrigir.
+#
+# O /api/auth/eu prova as duas coisas com uma resposta so: 401 significa que a rota
+# existe (agente novo) E que o portao esta de pe. 404 e agente antigo; 200 e portao
+# aberto, que e pior que nao ter publicado.
+verificar_portao_da_vps() {
+  if [[ -n "$ENSAIO" ]]; then
+    echo "  [ensaio] curl https://$DOMINIO/api/auth/eu (esperado 401)"
+    return
+  fi
+  local cod
+  cod="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$DOMINIO/api/auth/eu" || echo 000)"
+  case "$cod" in
+    401) echo "  ✓ o agente da VPS emite sessão e o portão está de pé (401 no /api/auth/eu)" ;;
+    404) echo "✗ /api/auth/eu respondeu 404: o agente da VPS e anterior ao portal." >&2
+         echo "  Rode 'make ship-ia' e reinicie o serviço ANTES de publicar o app." >&2
+         exit 1 ;;
+    200) echo "✗ /api/auth/eu respondeu 200 SEM sessão: o portão está aberto." >&2
+         echo "  Nao publique nada até entender por quê." >&2
+         exit 1 ;;
+    *)   echo "✗ /api/auth/eu respondeu $cod (esperado 401) — VPS fora do ar?" >&2
+         exit 1 ;;
+  esac
+}
+
 push_app() {
+  verificar_portao_da_vps
   echo "▶ Enviando frontend → $(destino "$CAMINHO_APP")/ (exceto tiles)…"
   rsync -avz --delete --exclude 'tiles' \
     web/dist/ "$(destino "$CAMINHO_APP")/"
@@ -144,10 +178,10 @@ push_agent() {
   # O `.env` que vai para a VPS e o comum MAIS o do cliente, quando existir.
   #
   # Ha segredo que e igual para todo mundo (chave da OpenAI, GEODATA_DSN) e
-  # segredo que e de um cliente so — hoje a PORTAO_CREDENCIAL, que o vigia usa
-  # para nao alertar sobre um site que esta de pe atras do portao. Antes disto
-  # havia um `.env` unico para os dois, e a credencial de um cliente aterrissava
-  # no diretorio do outro. Nenhum dos dois arquivos e versionado.
+  # segredo que e de um cliente so — o ACERVO_DSN, que carrega o papel do Postgres
+  # DAQUELE cliente. Antes disto havia um `.env` unico para os dois, e a credencial
+  # de um cliente aterrissava no diretorio do outro. Nenhum dos dois e versionado.
+  # (Ate 2026-09-06 a PORTAO_CREDENCIAL tambem morava aqui; o portao virou sessao.)
   #
   # O do cliente vem por ultimo de proposito: em shell, a ultima atribuicao vence,
   # entao ele tambem serve para sobrescrever um valor comum.

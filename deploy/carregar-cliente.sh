@@ -9,8 +9,12 @@
 # três jeitos até 2026-08-30, e um deles deixava o vazio do arquivo vencer o
 # ambiente — o tipo de divergência que só aparece na hora do deploy.
 #
-# Define: DOMINIO, CAMINHO_APP, CAMINHO_AGENTE, SERVICO, PORTA_AGENTE,
-# PORTAO_USUARIO, PORTAO_HASH — e falha alto se faltar o que é obrigatório.
+# Define: DOMINIO, CAMINHO_APP, CAMINHO_AGENTE, SERVICO, PORTA_AGENTE — e falha alto
+# se faltar o que é obrigatório.
+#
+# Até 2026-09-06 definia também PORTAO_USUARIO e PORTAO_HASH. O portão virou sessão no
+# agente e a credencial saiu do repositório: ver a emenda de 2026-09-06 à §9 do ADR-0001
+# do `webgis`.
 
 CLIENTE="${CLIENTE:-geo-analytics}"
 _RAIZ_CLIENTE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

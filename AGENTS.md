@@ -413,4 +413,24 @@ setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** func
   login, e o padrão ficou. Se um dia incomodar, `ARGON2_MEMORIA_KIB=32768` cai para 78 ms
   e não invalida senha nenhuma (o argon2 guarda os parâmetros dentro do próprio hash).
 
+- **A PRÓXIMA FEATURE é a tela da malha H3** — o dado existe desde 2026-09-06 e não há
+  nada na aplicação. Escopo levantado, não iniciado: gerar o polígono do hexágono (a malha
+  guarda só o **centro**), tilar, camada no catálogo com a cobertura declarada (37 de 5.571
+  municípios — ligada fora da concentração urbana de SP ela não pinta nada e não dá erro),
+  e publicar. Estrear com **casa contra apartamento**, que é densa e cobre a malha inteira;
+  o seletor de variável e "onde se constrói" ficam para depois.
+- **Duas capacidades que a casca NÃO tem, e a tela do H3 depende das duas** (medido em
+  2026-09-06):
+  1. **Pintura por valor numérico.** Só existe `pinturaPorCategoria`, que veio do
+     `ZONEAMENTO_SP` e vira um `match` do MapLibre em `map/layers.ts`. Contagem por
+     hexágono é escala contínua. Pela regra 1 do ADR isso é **casca, não configuração** —
+     não existe cliente plausível que queira ver contagem sem escala de cor.
+  2. **Legenda.** Não existe nenhuma. O zoneamento pinta **38 códigos de zona** e nada na
+     tela diz o que cada cor significa. Para camada categórica já é ruim; para escala
+     contínua é inútil. Consertar serve as duas.
+- **Expectativa a alinhar antes de mostrar o H3 a alguém:** a célula res 9 tem 0,106 km² e
+  o setor urbano mediano tem 0,0275 km². **No urbano o hexágono é mais GROSSO que o setor**,
+  então a camada vai parecer menos detalhada que a de setores. O ganho é que toda célula
+  tem o mesmo tamanho — cor significa densidade comparável, o que no setor não acontece.
+
 Roadmap e ideias em aberto: [`docs/DECISOES.md`](docs/DECISOES.md).

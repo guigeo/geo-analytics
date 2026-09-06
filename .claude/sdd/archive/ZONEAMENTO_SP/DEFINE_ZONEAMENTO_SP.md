@@ -10,7 +10,7 @@
 | **Feature** | ZONEAMENTO_SP |
 | **Data** | 2026-09-03 |
 | **Autor** | define (sessão Claude Code) |
-| **Status** | Ready for Design |
+| **Status** | ✅ Entregue 2026-09-03, publicado 2026-09-06 |
 | **Clarity Score** | 15/15 |
 | **Origem** | [BRAINSTORM_ZONEAMENTO_SP.md](BRAINSTORM_ZONEAMENTO_SP.md) |
 | **Pré-requisito** | ✅ Emenda ao ADR-0001 feita (`webgis`, `de24896`) |

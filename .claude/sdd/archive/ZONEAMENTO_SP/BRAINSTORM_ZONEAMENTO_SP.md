@@ -10,7 +10,7 @@
 | **Feature** | ZONEAMENTO_SP |
 | **Data** | 2026-09-03 |
 | **Autor** | brainstorm (sessão Claude Code) |
-| **Status** | Ready for Define |
+| **Status** | ✅ Entregue 2026-09-03, publicado 2026-09-06 |
 
 ---
 

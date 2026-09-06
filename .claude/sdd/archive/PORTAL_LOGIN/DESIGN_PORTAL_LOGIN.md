@@ -10,7 +10,7 @@
 | **Feature** | PORTAL_LOGIN |
 | **Data** | 2026-09-06 |
 | **Autor** | design (sessão Claude Code) |
-| **Status** | Ready for Build |
+| **Status** | ✅ Entregue em 2026-09-06 |
 | **Entrada** | `DEFINE_PORTAL_LOGIN.md` (`2277c26`) |
 | **Decisão de arquitetura** | Emenda de 2026-09-06 à §9 do ADR-0001 (`webgis` `5f023f4`) — **já tomada**, esta fase implementa |
 | **Arquivos** | 34 (11 criados, 23 modificados), em 3 repositórios |

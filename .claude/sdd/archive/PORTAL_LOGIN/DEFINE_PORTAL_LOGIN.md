@@ -10,7 +10,7 @@
 | **Feature** | PORTAL_LOGIN |
 | **Data** | 2026-09-06 |
 | **Autor** | define (sessão Claude Code) |
-| **Status** | Ready for Design |
+| **Status** | ✅ Entregue em 2026-09-06 |
 | **Clarity Score** | 15/15 |
 | **Entrada** | `BRAINSTORM_PORTAL_LOGIN.md` (`9cb7ffa`) + emendas de 2026-09-05 à §8 e de 2026-09-06 à §9 do ADR-0001 (`webgis` `5f023f4`) |
 

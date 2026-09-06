@@ -9,7 +9,7 @@
 |-----------|-------|
 | **Feature** | ZONEAMENTO_SP |
 | **Data** | 2026-09-03 |
-| **Status** | Ready for Build |
+| **Status** | ✅ Entregue 2026-09-03, publicado 2026-09-06 |
 | **Origem** | [DEFINE_ZONEAMENTO_SP.md](DEFINE_ZONEAMENTO_SP.md) |
 | **Repositórios** | `servidor-dados-gis`, `geo-analytics` (ADR já emendado em `webgis`) |
 

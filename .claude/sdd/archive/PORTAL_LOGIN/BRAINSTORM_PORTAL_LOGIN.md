@@ -10,7 +10,7 @@
 | **Feature** | PORTAL_LOGIN |
 | **Data** | 2026-09-06 |
 | **Autor** | brainstorm (sessão Claude Code) |
-| **Status** | Ready for Define |
+| **Status** | ✅ Entregue em 2026-09-06 |
 
 ---
 

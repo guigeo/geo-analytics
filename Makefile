@@ -43,7 +43,15 @@ PORTA_IA      ?= 8000
 agente:          ## agente (uv, nativo): make agente [CLIENTE=eb-prime] [PORTA_IA=8001]
 	@test -f agent/src/geo_agent/clientes/$(CLIENTE_ALVO).toml \
 	  || { echo "cliente '$(CLIENTE_ALVO)' nao existe em agent/src/geo_agent/clientes/"; exit 1; }
-	cd agent && CLIENTE=$(CLIENTE_ALVO) \
+# COOKIE_SECURE=false vive AQUI, e nao no agent/.env, e a diferenca importa: o
+# deploy monta o .env da VPS como `cat agent/.env` + `.env.<cliente>`, entao tudo que
+# entra naquele arquivo VIAJA PARA PRODUCAO. Um ajuste de desenvolvimento posto la
+# desligaria o `Secure` dos cookies de sessao num site HTTPS, sem erro nenhum e sem
+# ninguem perceber. No ambiente do comando de dev, ele nao tem como vazar.
+#
+# Por que dev precisa: cookie `Secure` nao viaja em HTTP, e o dev e http://localhost.
+# Com o padrao (ligado), o navegador descarta o cookie e o login falha sem dizer por que.
+	cd agent && CLIENTE=$(CLIENTE_ALVO) COOKIE_SECURE=false \
 	  uv run uvicorn geo_agent.main:app --reload --port $(PORTA_IA)
 
 dev-ia:          ## front (:5173, background) + agente do cliente 1 (:8000)

@@ -238,6 +238,26 @@ push_agent() {
     # Melhor parar aqui do que descobrir pelo systemd em restart loop na VPS.
     grep -qh '^GEODATA_DSN=' agent/.env "$ENV_CLIENTE" 2>/dev/null \
       || { echo "✗ agent/.env sem GEODATA_DSN — o serviço não sobe. Ver agent/.env.example" >&2; exit 1; }
+    # ⚠️ O `agent/.env` serve a DOIS donos: e a configuracao de desenvolvimento desta
+    # maquina E a base da de producao, porque as duas linhas abaixo o copiam inteiro
+    # para a VPS. Ajuste de dev posto la VIAJA — e o pior deles nao da erro nenhum.
+    #
+    # Medido em 2026-09-06, durante a subida do portal de login: `COOKIE_SECURE=false`
+    # tinha sido posto no `.env` para o login funcionar em http://localhost, e ia
+    # publicar cookie de sessao SEM `Secure` num site HTTPS. Nada quebraria; o cookie
+    # so passaria a viajar em claro se alguem forcasse HTTP.
+    #
+    # O valor de dev mudou de lugar (vai por ambiente no `make agente`), e esta guarda
+    # existe para o dia em que alguem o puser aqui de novo.
+    for proibido in 'COOKIE_SECURE=false' 'COOKIE_SECURE=0' 'COOKIE_SECURE=False'; do
+      if grep -qF "$proibido" agent/.env "$ENV_CLIENTE" 2>/dev/null; then
+        echo "✗ '$proibido' num .env que vai para producao." >&2
+        echo "  Isso publica cookie de sessao sem Secure num site HTTPS." >&2
+        echo "  Em desenvolvimento ele vem do 'make agente', nao do arquivo." >&2
+        exit 1
+      fi
+    done
+
     JUNTOS="$(mktemp)"
     # O arquivo carrega segredo: nasce fechado e some na saida, inclusive por erro.
     chmod 600 "$JUNTOS"

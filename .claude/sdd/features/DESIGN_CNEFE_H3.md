@@ -11,7 +11,7 @@
 | **Data** | 2026-09-06 |
 | **Autor** | design (sessão Claude Code) |
 | **DEFINE** | [`DEFINE_CNEFE_H3.md`](DEFINE_CNEFE_H3.md) |
-| **Status** | Pronto para /build |
+| **Status** | ✅ Construído. **Três decisões mudaram na medição** — ver os achados 4, 5 e 7 do [BUILD_REPORT](../reports/BUILD_REPORT_CNEFE_H3.md) |
 | **Repositório** | `../servidor-dados-gis` — **nenhum arquivo em `geo-analytics/`** |
 | **Pré-requisito no lab** | `./cargas/ibge_municipio.sh` (ver Decisão 6) |
 

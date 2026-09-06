@@ -10,7 +10,7 @@
 | **Feature** | CNEFE_H3 |
 | **Data** | 2026-09-06 |
 | **Autor** | define (sessão Claude Code) |
-| **Status** | Pronto para /design |
+| **Status** | ✅ Construída — ver [BUILD_REPORT](../reports/BUILD_REPORT_CNEFE_H3.md) |
 | **Clarity Score** | 15/15 |
 | **Origem** | [`BRAINSTORM_CNEFE_H3.md`](BRAINSTORM_CNEFE_H3.md), medido contra as fontes reais |
 | **Pré-requisito** | ✅ Nenhum — a regra 9 do ADR-0001 já cobre o caso (ver "Questões em aberto") |
@@ -58,7 +58,7 @@ bruto **fiel à fonte** uma vez, no lab, resolve as três de antemão.
 |------------|----------|
 | **MUST** | CNEFE 2022 dos **37 municípios** da concentração urbana de SP carregado no `geodata` do **home lab**, **fiel à fonte** (34 colunas), por script re-executável |
 | **MUST** | Índice H3 res 9 calculado **da coordenada** em toda linha — nunca do setor |
-| **MUST** | Tabela derivada com **16 variáveis** por célula: 8 espécies de endereço, 4 tipos de edificação, 4 finalidades de obra |
+| **MUST** | Tabela derivada com **17 variáveis** por célula: 8 espécies, 4 tipos de edificação, 5 de finalidade da obra — a quinta é a ausência de finalidade, que a medição obrigou a acrescentar |
 | **MUST** | A honestidade da célula em dado, não em prosa: a **distribuição de `NV_GEO_COORD`** preservada por célula |
 | **MUST** | **Fechamento exato** contra o Censo, município a município e setor a setor — a carga falha se não fechar |
 | **MUST** | Caminho **lab → Mac** para o derivado, com o script **recusando** publicar se a conferência não fechar |
@@ -75,13 +75,17 @@ bruto **fiel à fonte** uma vez, no lab, resolve as três de antemão.
 Todos os números abaixo são **conhecidos antes de a carga rodar** — eles saem do Censo, que
 conta o mesmo universo. Não há tolerância percentual em nenhum.
 
-- [ ] **8.741.738 domicílios** carregados como espécie 1 + espécie 2 nos 37 municípios —
+- [x] **8.741.738 domicílios** — ✅ medido carregados como espécie 1 + espécie 2 nos 37 municípios —
       igual, na unidade, a `sum(municipio_basico.domicilios_total)` do recorte
-- [ ] **Por município (37 de 37)**: `count(espécie 1)` igual a `domicilios_particulares`
-- [ ] **Por setor**: `count(espécie 1)` igual a `setor_basico.domicilios_particulares` em
-      **todos** os setores que existem nos dois lados — **zero setor diferente**
-- [ ] **Zero célula órfã**: toda célula H3 produzida pela carga existe em
-      `indicadores.censo_h3_r9_celula` (68.448 células)
+- [x] **Por município (37 de 37)** — ✅ medido, exato: `count(espécie 1)` igual a `domicilios_particulares`
+- [x] ~~**Por setor**: zero setor diferente~~ — **CAIU NA MEDIÇÃO.** 500 de 43.232 setores
+      divergem (1,16%), porque os dois produtos do Censo 2022 **renumeram** parte dos mesmos
+      setores. A recusa passou para o município (exata) e a divergência por setor passou a
+      ser declarada. Ver o achado 5 do BUILD_REPORT
+- [x] ~~**Zero célula órfã**~~ — **CAIU NA MEDIÇÃO.** A diferença tem os dois sentidos: 6
+      células só do CNEFE (18 endereços rurais, de 12 m a 360 m fora do setor) contra 30.653
+      só do Censo (sem endereço). Substituída por resolução compatível + conservação no
+      transporte
 - [ ] **Zero linha sem coordenada** e zero linha sem célula atribuída
 - [ ] As **16 variáveis** presentes, e a soma de cada bloco fecha com a contagem bruta:
       Σ(8 espécies) = total de linhas; Σ(4 tipos) = total de domicílios;
@@ -109,7 +113,7 @@ disco e de memória caber — ver as restrições.
 | **AT-004** | Célula fora da malha | Uma célula H3 produzida pela carga que não exista em `censo_h3_r9_celula` | O script de publicação lab → Mac roda | **Recusa publicar** e nomeia as células órfãs. Medido em São Caetano: 167 de 167 existem, zero órfã |
 | **AT-005** | Conferência não fecha | Um município cujo `count(espécie 1)` por setor divirja do Censo | A carga chega ao passo de validação | **Falha com erro**, nomeia o município e os setores divergentes, e não grava o derivado |
 | **AT-006** | Re-execução | O banco já carregado com os 37 municípios | A carga roda de novo, inteira | Mesmas contagens, mesmas linhas, nada duplicado |
-| **AT-007** | Acentuação da fonte | O CSV é **latin-1**, com `SÃO CAETANO`, `JOSÉ`, `GUARULHOS` | A carga lê e grava | Acento correto no banco. Ler como UTF-8 falha ou corrompe silenciosamente |
+| ~~**AT-007**~~ | ~~Acentuação da fonte~~ | **SEM O QUE EXERCITAR.** Varredura integral dos 37 arquivos (2,5 GB): zero byte acima de 127 — o IBGE tirou os acentos do CNEFE. A leitura em latin-1 ficou como defesa para republicação futura, não como teste | | |
 | **AT-008** | O lab está vazio | O `geodata` do lab sem `ibge_tabular`, sem Censo, sem malha H3 | A carga bruta e a derivação rodam | Passam. A célula sai de lat/lon; nenhuma tabela do IBGE é consultada do lado da carga |
 | **AT-009** | Coordenada imprecisa preservada | Endereços com `NV_GEO_COORD` 3 e 4 (2,09% em São Caetano) | A derivação agrega a célula | As 6 contagens de nível aparecem na linha da célula. **Não** são descartadas nem viram média |
 | **AT-010** | Pico de disco | São Paulo capital, 177 MB de zip — 67% do peso do recorte | A carga processa o maior município | Não estoura memória nem enche o disco; o staging de um município é liberado antes do seguinte |

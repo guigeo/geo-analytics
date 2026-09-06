@@ -11,8 +11,9 @@
 | **Data** | 2026-09-06 |
 | **Autor** | build (sessão Claude Code) |
 | **Entrada** | `DESIGN_PORTAL_LOGIN.md` (`1f99e40`) |
-| **Status** | Construído — **não publicado** |
+| **Status** | Construído e **validado localmente** — não publicado |
 | **Arquivos** | 37 (12 criados, 25 modificados), em 3 repositórios |
+| **Validação** | 2026-09-06, com Docker de pé: DDL aplicado, 160 testes, fluxo ponta a ponta contra o agente e o banco |
 
 ---
 
@@ -34,23 +35,78 @@ descoberta durante o build** — ver "Além do manifesto".
 
 ---
 
-## ⚠️ O que NÃO foi validado, e por quê
+## Validação com o banco de pé (2026-09-06, segunda passada)
 
-**O Docker está parado nesta máquina.** Isso deixa três coisas por verificar, e nenhuma
-delas é opcional antes de publicar:
+O Docker subiu e fechou quase tudo que a primeira passada deixou aberto.
 
-| Não validado | O que falta | Onde isso trava |
-|--------------|-------------|-----------------|
-| **O DDL nunca rodou** | `cargas/app_clientes.sh` foi escrito, não executado. As tabelas `usuario` e `sessao` não existem em banco nenhum | Passo 2 da publicação |
-| **8 testes de banco pularam** | `test_contas.py` só roda com `ACERVO_DSN` e um `app_clientes` de pé. São justamente os que provam AT-005 (sair revoga), AT-006 (troca derruba as outras), expiração e CASCADE | Confiança na fachada |
-| **`make preview` e `make ensaio`** | Os dois passam pelo build no container | Ver o Caddy sem portão servindo o app |
+| O que | Resultado |
+|-------|-----------|
+| **O DDL rodou** | `app_clientes.sh` nos dois clientes, local. As 6 tabelas existem (`desenho`, `usuario`, `sessao` × 2 schemas) |
+| **Idempotência** | Rodado de novo: 0 erros, nada muda |
+| **Suíte completa do agente** | **160 passaram, 0 pularam** (com `ACERVO_DSN` e `GEODATA_DSN`) |
+| **AT-005 — sair revoga** | 200 → `sair` 204 → **o mesmo cookie devolve 401** |
+| **AT-006 — troca derruba as outras** | Duas sessões; troca no aparelho A: **A continua 200, B cai para 401**. Senha provisória passa a dar 401, a nova dá 200 |
+| **AT-007 — restart não desloga** | Processo morto e subido de novo: o mesmo cookie devolve **200** |
+| **AT-008 (a §9)** | Agente parado: `/` **200**, bundle **200**, tiles **206**, `/api/chat` **502**. Degrada, não derruba |
+| **AT-009 / AT-010** | Sem sessão: `chat` 401, `desenhos` 401, `geocode` 401, **`health` 200** |
+| **AT-002 / AT-003** | Senha errada e conta inexistente devolvem corpo **byte a byte idêntico** |
+| **AT-011** | `401 401 401 429 429 …` com `retry-after: 260` |
+| **D-2 — acervo obrigatório** | O `lifespan` levanta `RuntimeError` com a mensagem que explica por quê |
+| **`criar-usuario.sh`** | Criou, imprimiu a provisória, **recusou o e-mail repetido**, e `--listar` funciona |
+| **Preview sem portão** | `make preview` serve `/` em **200 sem credencial** — antes era 401 |
+| **CASCADE** | Apagar a conta levou a sessão junto; os 2 desenhos ficaram intactos |
 
-O que rodou sem banco: hash, tempo constante, o portão inteiro (com dublê), as rotas
-(com dublê), e o front inteiro. O que a camada de banco faz de verdade — revogação,
-expiração, CASCADE — está escrito e **não medido**.
+**A-001, medido neste Mac** (a medição que conta continua sendo a da VPS):
 
-**Para fechar:** subir o Docker, rodar `cargas/app_clientes.sh geo-analytics '<senha>'`
-e depois `cd agent && ACERVO_DSN=... uv run pytest tests/test_contas.py`.
+| Parâmetros | Custo por verificação |
+|---|---|
+| `m=64 MiB t=3 p=4` (o padrão) | **28,0 ms** |
+| `m=32 MiB t=3 p=4` | 11,5 ms |
+| `m=16 MiB t=2 p=2` | 6,9 ms |
+
+O pico de memória é por verificação e o limite por IP é de 10 tentativas em 300 s, então
+64 MiB não ameaça os 3,7 GB da VPS. O que falta medir lá é a CPU — se passar de uns
+200 ms, `ARGON2_MEMORIA_KIB=32768` está no `.env` para isso.
+
+**O que continua só na VPS:** AT-012 (fronteira entre clientes em produção), AT-015
+(`verificar-vps.sh` contra os domínios reais), AT-016 (`caddy validate` no 2.6.2) e
+AT-018 contra a VPS de verdade.
+
+---
+
+## 🐛 Um defeito que o build introduziu, e um que ele revelou
+
+**O que aconteceu:** a primeira execução do `app_clientes.sh` morreu com
+`ERROR: syntax error at or near "2"`, citando uma linha que falava de
+`cliente_eb_prime … 2 desenho(s), 2 de carga` — texto que não existe naquele script.
+
+**A causa:** o heredoc do SQL é `<<-SQL` com delimitador **não quotado** — e não pode ser
+quotado, porque `${SCHEMA}` e `${PAPEL}` precisam expandir. Então o bash trata **crase
+como substituição de comando** antes de o psql ver a linha. Um comentário que escrevi
+citava `` `scripts/backup-acervo.sh` `` entre crases, e o bash **executou o script**: o
+backup rodou sozinho no meio da carga e a saída dele foi parar dentro do SQL.
+
+**O efeito colateral:** um backup local do acervo foi gerado sem ninguém pedir
+(`app_clientes-local-2026-09-06.sql.gz`). Local, não VPS; a rotação guarda 12 cópias, e
+o arquivo é um backup válido. Nada se perdeu — mas não era para ter acontecido.
+
+**O defeito mais velho que isso revelou:** as duas crases em volta de `public`, no bloco
+de GRANTs, **já estavam lá antes desta feature** e já vinham fazendo o bash rodar
+`public` — comando que não existe. O resultado era o comentário sair mutilado
+(`-- O  perde so o CREATE`) e um `command not found` no stderr. Passou despercebido por
+anos-luz de commits porque o alvo era só um comentário. Provado nesta sessão:
+
+```console
+$ bash -c 'cat <<-SQL
+	-- O `public` perde so o CREATE, nunca o USAGE.
+SQL'
+bash: public: command not found
+-- O  perde so o CREATE, nunca o USAGE.
+```
+
+**A correção:** as 4 crases dentro do heredoc viraram aspas simples, e um aviso de 12
+linhas ficou logo acima do `<<-SQL`, onde quem for editar vai ler. Depois disso o script
+rodou limpo nos dois clientes.
 
 ---
 
@@ -168,25 +224,25 @@ Dependência nova por um teste não se justifica num projeto que conta as suas.
 
 ## Testes de aceitação
 
-| ID | Cobertura | Estado |
-|----|-----------|--------|
-| AT-001 | `test_entrar_com_credencial_certa` | ✅ |
-| AT-002 / AT-003 | Corpo: `test_senha_errada_e_email_inexistente_dao_a_mesma_resposta`. Tempo: `test_conta_inexistente_custa_o_mesmo_tempo_que_senha_errada` | ✅ |
-| AT-004 | `test_obriga_a_trocar_a_senha_provisoria` (front) | ✅ |
-| AT-005 | Rota: ✅. **Banco: pulou** (`test_sair_revoga_de_verdade`) | ⚠️ |
-| AT-006 | Rota: ✅. **Banco: pulou** | ⚠️ |
-| AT-007 | Sessão sobrevive ao restart | ⏳ só na VPS |
-| **AT-008 (a §9)** | Parar o agente e navegar | ⏳ **só na VPS, e sem substituto automatizado** |
-| AT-009 | `test_desenhos_so_responde_com_sessao` | ✅ |
-| AT-010 | `test_health_responde_sem_sessao` | ✅ |
-| AT-011 | `test_limite_por_ip_barra_forca_bruta` | ✅ |
-| AT-012 | Fronteira de cliente (papel do Postgres) | ⏳ exige banco |
-| AT-013 | Rota ✅; banco pulou | ⚠️ |
-| AT-014 | `auth.test.tsx`, 2 casos | ✅ |
-| AT-015 | `verificar-vps.sh` reescrito | ⏳ exige VPS |
-| AT-016 | `caddy validate` | ⏳ exige o container |
-| AT-017 | `grep PORTAO_` nos dois repositórios: só comentários históricos | ✅ |
-| AT-018 | `verificar_portao_da_vps` — os 4 ramos exercitados | ✅ (lógica) / ⏳ (contra a VPS) |
+| ID | Estado | Como se verificou |
+|----|--------|-------------------|
+| AT-001 | ✅ | teste + `curl` real |
+| AT-002 / AT-003 | ✅ | corpo idêntico (`curl`) + tempo constante (teste) |
+| AT-004 | ✅ | teste do front |
+| AT-005 | ✅ | teste com banco **e** `curl`: cookie antigo → 401 |
+| AT-006 | ✅ | teste com banco **e** `curl`: A fica, B cai |
+| AT-007 | ✅ | processo morto e subido; mesmo cookie → 200 |
+| **AT-008 (a §9)** | ✅ *(local)* | agente parado: `/` 200, bundle 200, tiles 206, `/api/chat` 502 |
+| AT-009 | ✅ | as três rotas em 401 sem sessão |
+| AT-010 | ✅ | `/api/health` 200 sem sessão |
+| AT-011 | ✅ | `401 401 401 429…` com `retry-after` |
+| AT-012 | ⏳ | exige os dois papéis em produção |
+| AT-013 | ✅ | teste com banco |
+| AT-014 | ✅ | 2 testes do front |
+| AT-015 | ⏳ | `verificar-vps.sh` contra os domínios reais |
+| AT-016 | ⏳ | `caddy validate` no 2.6.2 da VPS |
+| AT-017 | ✅ | `grep PORTAO_`: só comentários históricos |
+| AT-018 | ✅ *(lógica)* / ⏳ *(VPS)* | os 4 ramos exercitados |
 
 ---
 
@@ -194,19 +250,16 @@ Dependência nova por um teste não se justifica num projeto que conta as suas.
 
 | ID | Estado |
 |----|--------|
-| A-001 (custo do argon2 na VPS) | **Aberta.** Local: `m=65536,t=3,p=4` confirmado no hash gerado. Falta medir na VPS |
+| A-001 (custo do argon2 na VPS) | **Aberta, mas com base.** Neste Mac: 28,0 ms no padrão. Falta a VPS, que é a medição que conta |
 | A-002 (três consumidores do `/api`) | Fechada — os três tratam 401 |
 | A-003 (nenhum consumidor externo) | Fechada |
 | A-004 (30 dias) | Fechada pela D-9 |
-| A-005 (o papel alcança as tabelas novas) | **Aberta** — depende do DDL rodar |
+| A-005 (o papel alcança as tabelas novas) | **Fechada** — o DDL rodou e o agente leu e escreveu nas duas tabelas com o papel do cliente |
 
 ---
 
 ## Próximo passo
 
-**NÃO é `/ship`.** Falta a validação que só acontece com Docker de pé e, depois, na VPS:
-
-1. Subir o Docker, rodar o `app_clientes.sh` local e os 8 testes que pularam.
-2. `make preview` — ver o Caddy sem portão servindo o app.
-3. Só então a ordem de publicação em 7 passos do `AGENTS.md`, com o passo 4 (restart)
-   num terminal de verdade do Guilherme.
+O que faltava com o Docker parado está fechado. O que resta é a VPS, na ordem de 7
+passos do `AGENTS.md` — com o passo 4 (`restart` do systemd) e a medição do argon2 num
+terminal de verdade do Guilherme.

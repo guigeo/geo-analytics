@@ -60,7 +60,7 @@ visibilidade diferente entre colegas.
 |---------|-----------|------------|
 | Local provável | `agent/src/geo_agent/`, `web/src/`, `deploy/`, `servidor-dados-gis/cargas/` e `scripts/` | Feature atravessa 3 repositórios |
 | KBs relevantes | **nenhum cobre autenticação** — o acervo tem `maplibre`, `pmtiles-tippecanoe`, `geospatial-etl`, `agentes-llm` | Candidato a `/distill` depois do ship |
-| Emenda de ADR | §8 (escopo, já emendado em 2026-09-05) e **§9 (pendente — ver D-001)** | A D-001 muda o que o `webgis` faz |
+| Emenda de ADR | §8 (escopo, emendado em 2026-09-05) e **§9 (emendada em 2026-09-06 — a D-001)** | Feito: `webgis` `5f023f4` |
 | Dependência nova | biblioteca de hash de senha (argon2) no agente | A única do projeto inteiro |
 
 ---
@@ -212,9 +212,9 @@ existentes volta para a tela de entrar.
 
 ---
 
-## ⚠️ Decisão pendente de emenda ao ADR-0001 (`webgis`)
+## ✅ Emenda ao ADR-0001 (`webgis`) — FEITA em 2026-09-06
 
-**A D-001 não se resolve nesta sessão.** Ela muda o bloco de Caddy — que é do `webgis` — e
+**A D-001 não se resolvia nesta sessão.** Ela muda o bloco de Caddy — que é do `webgis` — e
 altera o enunciado da §9: hoje a propriedade é "o site sobrevive à queda do agente porque
 tudo que o usuário vê vem de arquivo estático"; com a D-001 ela passa a ser "o site
 sobrevive à queda do agente, e o que exige sessão degrada com 401".
@@ -224,8 +224,17 @@ teve portão**, só filtro de CORS. A frase da §8 sobre os tiles serem "dado p�
 e vazá-los custar banda" está correta, mas o ADR nunca disse em texto que o portão não os
 cobre — e a D-001 fica difícil de justificar sem esse fato à vista.
 
-Conforme o `AGENTS.md`: anotado aqui, tratado como emenda no `webgis`, **antes do
-`/build`**.
+Conforme o `AGENTS.md`, isso foi tratado como emenda no `webgis`, e não aqui:
+
+- **`webgis` `5f023f4`** — emenda de 2026-09-06 à §9 (o portão sai do site e fica só no
+  `/api`), o achado dos tiles registrado, a linha da tabela de riscos reescrita, e o
+  ponteiro da §8 para onde a pergunta foi respondida.
+- No mesmo commit, a §8 foi **reordenada**: a emenda de 2026-08-31 (b), que argumenta que
+  o gatilho não disparou, vinha depois da de 2026-09-05, que diz que disparou. Quem lesse
+  em ordem lia a negação por último.
+- O `webgis/AGENTS.md` deixou de dizer que a pergunta da sessão está em aberto.
+
+**Não há mais bloqueio para o `/build`.**
 
 ---
 
@@ -334,4 +343,4 @@ lá dentro, e já se perdeu uma vez.
 
 **Pronto para:** `/define .claude/sdd/features/BRAINSTORM_PORTAL_LOGIN.md`
 
-**Antes do `/build`:** a D-001 tem de virar emenda à §9 do ADR-0001 no `webgis`.
+**Emenda ao ADR:** feita em 2026-09-06 (`webgis` `5f023f4`). Nada bloqueia o `/build`.

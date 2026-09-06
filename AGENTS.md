@@ -364,17 +364,36 @@ recusa se encontrar esse em particular num `.env` que sobe.
 a lista de tiles **escrita à mão** — camada nova entra lá também, ou ele afirma menos do
 que quem o lê imagina.
 
-### A malha H3 existe, e só no banco LOCAL
+### A malha H3 existe, tem variável própria, e só no banco LOCAL
 
-O `CENSO_H3` foi entregue em 2026-09-05 (`.claude/sdd/archive/CENSO_H3/`): o Censo 2022
-re-agregado em 68.448 células H3 res 9 sobre a concentração urbana São Paulo/SP, em
-`indicadores.censo_h3_r9_celula` e `indicadores.censo_h3_r9`, no `servidor-dados-gis`.
+O `CENSO_H3` (2026-09-05) re-agregou o Censo 2022 em 68.448 células H3 res 9 sobre a
+concentração urbana São Paulo/SP; o `CNEFE_H3` (2026-09-06) pôs dentro delas a primeira
+variável **medida** — 17 contagens do Cadastro Nacional de Endereços em 37.801 células, em
+`indicadores.cnefe_h3_r9`. Tudo no `servidor-dados-gis`, arquivos em
+`.claude/sdd/archive/CENSO_H3/` e `.claude/sdd/archive/CNEFE_H3/`.
 
-**Nada disso aparece nesta aplicação, e é de propósito** — sem tile, sem camada no
-catálogo, sem tool do agente. A malha é fundação para receber variáveis que o setor não
-tem; ela só ganha tela quando houver uma. **E a carga rodou só no `geodata` local:** o
-banco central não tem essas tabelas. Antes de escrever qualquer consulta que dependa
-delas, conferir onde o `GEODATA_DSN` da sessão aponta.
+A diferença entre as duas tabelas é a que importa: a do Censo é **estimativa** (o setor é
+espalhado por rateio areal, e a linha carrega quanto foi esticado); a do CNEFE é **exata**
+(o endereço tem coordenada e cai na célula), e a medida de incerteza dela é a qualidade da
+coordenada na origem, não o esticamento.
+
+**Nada disso aparece nesta aplicação, e continua sendo de propósito** — sem tile, sem
+camada no catálogo, sem tool do agente. A tela é feature própria, e agora ela tem o que
+mostrar. **E as cargas rodaram só no `geodata` local:** o banco central não tem essas
+tabelas. Antes de escrever qualquer consulta que dependa delas, conferir onde o
+`GEODATA_DSN` da sessão aponta.
+
+**O bruto do CNEFE não está aqui nem lá: são 10 M endereços que vivem só no home lab**, e
+o que viajou foi a tabela por célula, pelo `scripts/lab-trazer-cnefe-h3.sh` — o primeiro
+caminho de dado na direção lab → Mac (todos os outros scripts da casa empurram, por isso
+ele se chama *trazer*).
+
+**A armadilha que vale para qualquer carga futura: o `cod_setor` do CNEFE não serve de
+chave contra os produtos do Censo.** Medido em 2026-09-06: os dois renumeram parte dos
+mesmos setores — numa amostra de 200 setores que o CNEFE tem e a malha não, 200 de 200 dos
+endereços caem dentro de um setor da malha e **nenhum** com o mesmo código. Cruzar por
+setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** funciona. Ver
+`../servidor-dados-gis/docs/cnefe.md`.
 
 ### Em aberto
 

@@ -121,12 +121,20 @@ há papel, permissão nem dado por pessoa. O gatilho já estava nomeado no ADR d
 mora, já que hoje o portão é Caddy puro e o site sobrevive à queda do agente — está na
 emenda de 2026-09-05 à §8 do ADR-0001, no `webgis`.
 
-**A malha H3 (2026-09-05).** O Censo 2022 passou a existir em 68.448 células de 0,106 km²
-sobre a concentração urbana São Paulo/SP, no `servidor-dados-gis`. Ela **não toca esta
-aplicação**: a feature foi escopada sem tile, sem camada e sem tool, porque o hexágono só
-ganha tela quando tiver dentro dele variável que o setor não tem. O caminho barato para
-isso é o CNEFE 2022 — endereços com coordenada, que entram por ponto e sem rateio —
-cruzado com a base de CNPJ. Registro completo em `.claude/sdd/archive/CENSO_H3/`.
+**A malha H3 (2026-09-05) e a variável que faltava (2026-09-06).** O Censo 2022 passou a
+existir em 68.448 células de 0,106 km² sobre a concentração urbana São Paulo/SP, e o
+`CNEFE_H3` pôs dentro delas 17 contagens do Cadastro Nacional de Endereços em 37.801
+células — a primeira variável **medida** da malha, que entra por ponto e sem rateio.
+Nenhuma das duas toca esta aplicação: seguem sem tile, sem camada e sem tool, e agora **a
+tela é o que falta**, não o dado.
+
+O que a segunda ensinou e vale além dela: o CNEFE e a malha de setores do Censo 2022
+**renumeram parte dos mesmos setores**, então o `cod_setor` não serve de chave entre os
+dois produtos — cruzar por ele perderia 4,3% dos domicílios sem dar erro nenhum, e cruzar
+por coordenada funciona. Por município os dois fecham na unidade: 8.735.615 domicílios
+particulares nos 37. Registro completo em `.claude/sdd/archive/CENSO_H3/` e
+`.claude/sdd/archive/CNEFE_H3/`; armadilhas da fonte em
+`../servidor-dados-gis/docs/cnefe.md`.
 
 **Segue em aberto:** Atlas do Desenvolvimento Humano/IDHM por município; POIs via
 OSM/Geofabrik com ANAC para aeroportos; streaming se a latência do chat doer; um caso de área

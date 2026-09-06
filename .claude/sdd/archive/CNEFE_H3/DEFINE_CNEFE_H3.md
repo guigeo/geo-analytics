@@ -10,7 +10,7 @@
 | **Feature** | CNEFE_H3 |
 | **Data** | 2026-09-06 |
 | **Autor** | define (sessão Claude Code) |
-| **Status** | ✅ Construída — ver [BUILD_REPORT](../reports/BUILD_REPORT_CNEFE_H3.md) |
+| **Status** | ✅ Entregue e arquivado em 2026-09-06 — ver [SHIPPED](SHIPPED_2026-09-06.md) |
 | **Clarity Score** | 15/15 |
 | **Origem** | [`BRAINSTORM_CNEFE_H3.md`](BRAINSTORM_CNEFE_H3.md), medido contra as fontes reais |
 | **Pré-requisito** | ✅ Nenhum — a regra 9 do ADR-0001 já cobre o caso (ver "Questões em aberto") |

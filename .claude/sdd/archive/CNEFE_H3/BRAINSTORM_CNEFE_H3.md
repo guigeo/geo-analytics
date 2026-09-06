@@ -10,7 +10,7 @@
 | **Feature** | CNEFE_H3 |
 | **Data** | 2026-09-06 |
 | **Autor** | brainstorm (sessão Claude Code) |
-| **Status** | Pronto para /define |
+| **Status** | ✅ Entregue e arquivado em 2026-09-06 — ver [SHIPPED](SHIPPED_2026-09-06.md) |
 
 ---
 

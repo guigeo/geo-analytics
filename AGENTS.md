@@ -313,56 +313,56 @@ conteúdo serve a qualquer agente, e o do `sdd/archive/` também.
 
 ## Estado atual
 
-**Tudo que está pronto está no ar**, nos dois clientes, desde 2026-09-03 — inclusive o
-`DESENHO_NO_MAPA` (ponto, área e raio guardados no `app_clientes`, com o agente cruzando a
-área desenhada com o Censo por rateio areal). Nenhuma pendência de acervo ou desenho.
+**Tudo que está pronto está no ar**, nos dois clientes. A subida de 2026-09-06 publicou
+duas features de uma vez — o `ZONEAMENTO_SP`, que esperava desde 2026-09-03, e o
+`PORTAL_LOGIN` — em nove fases, e não há mais nada pronto esperando na `main`.
 
-**Desde o `PORTAL_LOGIN`, o `ACERVO_DSN` é obrigatório** e o agente não sobe sem ele: a
-sessão mora no `app_clientes`, então acervo ausente significa que ninguém entra. Antes
-disso ele subia e só os desenhos sumiam.
+**O portão agora é sessão, e vale só no `/api`.** Não existe mais `basic_auth` no Caddy:
+cada pessoa entra com conta própria, sai da sessão e troca a própria senha. O site
+estático é servido sem portão, e é isso que mantém verdadeira a promessa da §9 — agente
+fora do ar degrada chat, desenhos e login, e não derruba o mapa. Ver a emenda de
+2026-09-06 à §9 do ADR-0001, no `webgis`.
+
+**Conta nova é ato de operação, não tela:** não há administrador, porque papel ficou fora
+do escopo (emenda de 2026-09-05 à §8). No `servidor-dados-gis`:
+
+```bash
+./scripts/criar-usuario.sh <cliente> <email> --destino vps            # cria
+./scripts/criar-usuario.sh <cliente> <email> --resetar --destino vps  # reseta e derruba as sessões
+./scripts/criar-usuario.sh <cliente> --listar --destino vps           # quem tem conta
+```
+
+A senha provisória aparece **uma vez** e vale até a primeira entrada — a pessoa é obrigada
+a trocá-la antes de alcançar o mapa.
+
+**O deploy agora recusa em vez de confiar na memória.** O `build_app` faz quatro
+checagens (host de tiles certo, cliente certo, carimbado, e **toda camada declarada tem
+`.pmtiles` publicado**), e o `push_app` exige 401 no `/api/auth/eu` da VPS antes de
+publicar o bundle — o que garante que o agente novo já está lá. Por isso feature pronta
+pode esperar na `main` sem o risco que o `ZONEAMENTO_SP` correu por três dias.
 
 **Redeploy do agente:** `make ship-ia [CLIENTE=<id>]` + `ssh -t hetzner-gramos 'sudo
 systemctl restart <SERVICO do cliente>'`. O restart pede senha — **só roda num terminal de
-verdade do Guilherme, nunca pelo Claude Code.** A instalação na VPS é **editable**: `uv sync`
-sem mudança de dependências não precisa de `--reinstall-package`, mas o processo do systemd
-só pega o código novo depois do `restart`.
+verdade do Guilherme, nunca pelo Claude Code.** A instalação na VPS é **editable**: `uv
+sync` sem mudança de dependências não precisa de `--reinstall-package`, mas o processo do
+systemd só pega o código novo depois do `restart`.
 
-**Atenção ao redeploy do agente:** o `.env` (chave OpenAI, credencial do portão) às vezes é
-editado direto na VPS e fica mais novo que o local — antes de `deploy.sh agent`/`ship-ia`,
-comparar mtimes pra não sobrescrever a chave certa com uma desatualizada. Já derrubou o
-portão de um cliente uma vez.
+**Atenção ao redeploy do agente:** o `.env` (chave OpenAI, DSNs) às vezes é editado direto
+na VPS e fica mais novo que o local — antes de `deploy.sh agent`/`ship-ia`, comparar mtimes
+pra não sobrescrever a chave certa com uma desatualizada. Já derrubou o portão de um
+cliente uma vez.
 
-### Pronto e NÃO publicado: `ZONEAMENTO_SP`
+**E o `agent/.env` serve a DOIS donos.** Ele é a configuração desta máquina *e* a base da
+de produção, porque o deploy o copia inteiro para a VPS. Ajuste de desenvolvimento posto
+ali **viaja**: em 2026-09-06 um `COOKIE_SECURE=false` quase publicou cookie de sessão sem
+`Secure` num site HTTPS. Valor de dev vai por ambiente (no `make agente`), e o deploy
+recusa se encontrar esse em particular num `.env` que sobe.
 
-Implementado e validado localmente em 2026-09-03 (carga, tile de 12,1 MB, camada, tool do
-agente). **Nada disso está em produção**, por decisão do Guilherme: o cliente 2 vai testar
-o que já subiu antes de receber camada nova.
-
-O código está na `main`, e a `main` é a fonte do deploy — então **um `ship-app` por
-qualquer outro motivo leva a camada junto, morta.** Enquanto esta seção existir, todo
-`ship-app` exige conferir os tiles da VPS antes.
-
-**A ordem de publicação, que não pode inverter:**
-
-1. Rodar `cargas/geosampa_zoneamento.sh` contra o `geodata` central
-2. `make ship-tiles` no `webgis` (o tile já existe local, é só publicar)
-3. `make ship-ia` + restart, pela tool `zoneamento_no_ponto`
-4. **Implementar a quarta checagem do `build_app`** (abaixo) — é passo da publicação, não
-   tarefa separada, justamente para não depender de alguém lembrar
-5. `make ship-app`
-
-**A quarta checagem existe desde 2026-09-06.** O `deploy/deploy.sh:build_app` verificava
-três coisas paranoicas (o bundle aponta para o host de tiles certo, é do cliente certo, e
-está carimbado); a quarta é **toda camada que o bundle declara tem `.pmtiles` no host de
-tiles** — um `HEAD` por camada contra `$TILES_BASE_URL`, mais o `basemap`, e o deploy para
-se faltar alguma. Ela fecha a classe inteira do problema 2 acima: **feature pronta pode
-esperar na `main` sem risco**, porque um `ship-app` distraído recusa em vez de publicar
-camada morta.
-
-A lista de camadas sai do arquivo do cliente (`web/src/clientes/<id>.ts`), e não do bundle —
-o bundle monta a URL do tile em runtime, então não há nome de arquivo dentro dele. Se a
-extração devolver zero camadas, o deploy **para**: zero não é "cliente sem camada", é o
-parser quebrado, e uma checagem que não extrai nada passaria verde para sempre.
+**Publicar camada nova exige quatro coisas, nesta ordem:** a carga local, o
+`scripts/vps-publicar-<camada>.sh` (o dado viaja pronto; a VPS é réplica de leitura),
+`make ship-tiles` no `webgis`, e o `make ship-app`. O `verificar-tiles.sh` do `webgis` tem
+a lista de tiles **escrita à mão** — camada nova entra lá também, ou ele afirma menos do
+que quem o lê imagina.
 
 ### A malha H3 existe, e só no banco LOCAL
 
@@ -376,36 +376,6 @@ tem; ela só ganha tela quando houver uma. **E a carga rodou só no `geodata` lo
 banco central não tem essas tabelas. Antes de escrever qualquer consulta que dependa
 delas, conferir onde o `GEODATA_DSN` da sessão aponta.
 
-### Construído e NÃO publicado: o `PORTAL_LOGIN`
-
-Implementado em 2026-09-06 (`.claude/sdd/features/*_PORTAL_LOGIN.md`). O portão de
-`basic_auth` do Caddy sai e entra portal de verdade: sessão, sair da sessão e trocar a
-própria senha, com conta por pessoa e **sem distinção entre pessoas do mesmo cliente**.
-
-**A decisão que a §8 mandava resolver primeiro está resolvida:** o portão passa a valer
-**só no `/api`**, a sessão mora no agente e o site estático deixa de depender dele —
-emenda de 2026-09-06 à §9 do ADR-0001, no `webgis`.
-
-**Nada disso está em produção.** A `main` tem o código; a VPS tem o `basicauth` de
-sempre. Ao contrário do `ZONEAMENTO_SP`, aqui um `ship-app` distraído **não** publica
-pela metade: o `push_app` recusa o deploy se o `/api/auth/eu` da VPS não responder 401.
-
-**A ordem de publicação, que não pode inverter:**
-
-1. `backup-acervo.sh --origem vps` — o acervo vai ganhar tabela
-2. `cargas/app_clientes.sh` nos dois clientes, local e VPS (idempotente)
-3. `scripts/criar-usuario.sh` — as contas de cada cliente, senha provisória entregue
-   por fora
-4. `make ship-ia` + **restart** (terminal do Guilherme). Aqui o `basicauth` **ainda
-   está de pé**: portão novo por dentro, velho por fora
-5. Conferir: `curl -o /dev/null -w '%{http_code}' https://<domínio>/api/auth/eu` → 401
-6. Publicar o bloco de Caddy sem `basicauth` + `make ship-app`
-7. `make verificar-vps` no `webgis` — ele agora afirma o par: site 200 **e** `/api` 401
-
-**Falta medir na VPS antes do passo 4:** o custo do argon2 com `ARGON2_MEMORIA_KIB`
-(64 MiB por verificação, numa máquina de 3,7 GB). Os parâmetros estão no `.env`
-justamente para se ajustarem sem mudar código.
-
 ### Em aberto
 
 - **Remedir o cruzamento na VPS (A-001).** Os tempos foram medidos neste Mac; lá a memória é
@@ -415,9 +385,13 @@ justamente para se ajustarem sem mudar código.
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma
   feature.
-- **Espaço na VPS:** 5,2 GB livres de 38 GB (86% usado), medido em 2026-09-05 — melhorou
-  desde os 3,9 GB de 2026-08-31. É o que barra o eixo de ruas nacional (OSM) e o que
-  adiaria uma malha H3 nacional (~2 GB em res 8). O tile do zoneamento (12,1 MB) e a malha
-  de São Paulo (~11 MB) não são o problema.
+- **Espaço na VPS:** 6,0 GB livres de 38 GB (84% usado), medido em 2026-09-06, já com o
+  zoneamento publicado (71 MB no banco, 12,1 MB de tile — não moveram o ponteiro). É o que
+  barra o eixo de ruas nacional (OSM) e o que adiaria uma malha H3 nacional (~2 GB em
+  res 8).
+- **Custo do argon2, medido na VPS em 2026-09-06:** 163 ms por verificação no padrão
+  (m=64 MiB, t=3, p=4), contra 28 ms neste Mac — 5,8× mais lenta. Confortável para um
+  login, e o padrão ficou. Se um dia incomodar, `ARGON2_MEMORIA_KIB=32768` cai para 78 ms
+  e não invalida senha nenhuma (o argon2 guarda os parâmetros dentro do próprio hash).
 
 Roadmap e ideias em aberto: [`docs/DECISOES.md`](docs/DECISOES.md).

@@ -67,9 +67,15 @@ class Settings(BaseSettings):
     # Conexao do geodata. Vazio cai no ambiente (GEODATA_DSN); a fachada e quem
     # falha, com instrucao, se nenhum dos dois existir.
     geodata_dsn: str = ""
-    # Conexao do acervo do cliente (banco `app_clientes`), com o papel DELE. Vazio
-    # nao derruba o processo: o chat continua funcionando e o painel de desenhos diz
-    # que esta indisponivel — a §9 do ADR promete que a queda degrada, nao derruba.
+    # Conexao do acervo do cliente (banco `app_clientes`), com o papel DELE.
+    #
+    # ATE 2026-09-06 ISTO ERA OPCIONAL, e o comentario aqui dizia que vazio nao
+    # derruba o processo. Deixou de ser verdade com o PORTAL_LOGIN: a sessao mora
+    # neste banco, entao "acervo ausente" passou a significar "ninguem entra". Um
+    # agente que sobe e recusa todo login e indistinguivel, para quem olha de fora,
+    # de todo mundo errando a senha — entao ele para de subir, como ja faz sem a
+    # chave da OpenAI. O `Restart=on-failure` do systemd cobre o caso benigno de o
+    # Postgres ainda estar subindo depois de um reboot. Ver main.py.
     acervo_dsn: str = ""
     openai_model: str = "gpt-5-mini"
     max_tool_iters: int = 6
@@ -82,6 +88,31 @@ class Settings(BaseSettings):
     # Proxy de geocoding (Nominatim): janela separada, mais folgada (digitar rua = varias teclas).
     geocode_rate_limit_max: int = 20
     geocode_rate_limit_window_s: int = 60
+
+    # --- PORTAL_LOGIN --------------------------------------------------------
+    # Cookie `Secure` nao viaja em HTTP, e o `make dev-ia` e HTTP em localhost.
+    # Padrao seguro, com desligamento EXPLICITO no .env de desenvolvimento.
+    #
+    # Deriva-lo do X-Forwarded-Proto seria automatico e frágil: o header e escrito
+    # por quem esta na frente, e um proxy mal configurado desligaria o Secure em
+    # producao sem avisar ninguem. Ler `request.url.scheme` seria pior — atras do
+    # Caddy ele e `http`, entao a deteccao desligaria o Secure justamente la.
+    cookie_secure: bool = True
+    # A expiracao e renovada a cada requisicao autenticada, entao ela mede
+    # INATIVIDADE e nao idade. Num app que o cliente abre semanas depois, medir
+    # idade transformaria o portal numa cerimonia.
+    sessao_dias: int = 30
+    # Janela propria, e muito mais apertada que a do chat: aqui o que se barra e
+    # adivinhacao de senha, nao gasto com a OpenAI.
+    login_rate_limit_max: int = 10
+    login_rate_limit_window_s: int = 300
+    # Custo do argon2id. Sao os padroes da biblioteca (m=64 MiB, t=3, p=4), e estao
+    # aqui — e nao cravados no codigo — porque o custo real so se mede na VPS, que
+    # tem 3,7 GB de RAM. Trocar o numero nao invalida hash ja gravado: o argon2
+    # guarda os parametros dentro do proprio hash.
+    argon2_memoria_kib: int = 65536
+    argon2_iteracoes: int = 3
+    argon2_paralelismo: int = 4
 
 
 settings = Settings()

@@ -1,4 +1,4 @@
-"""API do chat: POST /api/chat e GET /api/health.
+"""API do agente: o chat, o acervo, o geocoding e o portal de login.
 
 Dev: `uv run uvicorn geo_agent.main:app --reload --port 8000` (ou `make agent` na raiz).
 O front (Vite em :5173) alcanca via proxy /api -> host.docker.internal:8000 (sem CORS).
@@ -14,9 +14,11 @@ import openai
 from fastapi import FastAPI, HTTPException, Request, Response
 from geo_query import GeoQuery
 
-from . import rotas_desenhos
-from .acervo import Acervo, AcervoIndisponivel, nome_do_schema
+from . import rotas_auth, rotas_desenhos, sessao
+from .acervo import Acervo, nome_do_schema
 from .agent import RateLimiter, SessionStore, run_turn
+from .contas import Contas
+from .sessao import ExigeSessao
 from .tools import Contexto
 from .cliente import cliente_ativo
 from .config import settings
@@ -51,21 +53,40 @@ async def lifespan(app: FastAPI):
         max_requests=settings.geocode_rate_limit_max,
         window_s=settings.geocode_rate_limit_window_s,
     )
-    # O acervo e OPCIONAL no boot, e o geodata nao. Sem ele o chat continua inteiro e
-    # so os desenhos somem, com a UI dizendo isso — derrubar o processo por causa da
-    # feature mais nova violaria a §9 do ADR, que promete que a queda degrada e nao
-    # derruba. O schema sai do id do cliente, com a mesma regra do app_clientes.sh;
-    # quem impede um cliente de ler o outro e o PAPEL, nao esta linha.
-    if settings.acervo_dsn:
-        try:
-            state["acervo"] = Acervo(
-                dsn=settings.acervo_dsn, schema=nome_do_schema(cliente_ativo.id)
-            )
-            rotas_desenhos.estado["acervo"] = state["acervo"]
-        except AcervoIndisponivel:
-            log.exception("acervo indisponivel no boot; o chat sobe sem ele")
-    else:
-        log.warning("ACERVO_DSN ausente: os desenhos ficam indisponiveis nesta instancia")
+    # O ACERVO DEIXOU DE SER OPCIONAL em 2026-09-06, e a mudanca merece explicacao
+    # porque ela inverte o que estava escrito aqui.
+    #
+    # Ate o PORTAL_LOGIN, acervo ausente custava so os desenhos: o chat seguia inteiro
+    # e a UI avisava. Com a sessao morando neste mesmo banco, "acervo ausente" passou a
+    # significar "ninguem entra" — e um processo que sobe e recusa TODO login e
+    # indistinguivel, para quem olha de fora, de todo mundo errando a senha. Falhar
+    # alto e cedo, como ja se faz com a chave da OpenAI, e o que torna o defeito
+    # legivel. O `Restart=on-failure` + `RestartSec=5` do systemd cobrem o caso benigno
+    # de o Postgres ainda estar subindo depois de um reboot: o agente tenta de novo.
+    #
+    # Isto NAO contradiz a §9 do ADR. A promessa de la e que a queda do agente degrada
+    # o chat e os desenhos sem derrubar o site — e o site, desde a emenda de 2026-09-06,
+    # e servido pelo Caddy sem passar por aqui. Agente fora do ar continua sendo mapa de
+    # pe. O schema sai do id do cliente, com a mesma regra do app_clientes.sh; quem
+    # impede um cliente de ler o outro e o PAPEL, nao esta linha.
+    if not settings.acervo_dsn:
+        raise RuntimeError(
+            "ACERVO_DSN ausente. Desde o portal de login a sessao mora no acervo: sem ele "
+            "ninguem entra. Preencha em agent/.env (ou agent/.env.<cliente>)."
+        )
+    state["acervo"] = Acervo(dsn=settings.acervo_dsn, schema=nome_do_schema(cliente_ativo.id))
+    rotas_desenhos.estado["acervo"] = state["acervo"]
+
+    # Conta e sessao sobre a MESMA conexao do acervo: mesmo banco, mesmo papel, mesmo
+    # schema. Uma segunda conexao seria um segundo jeito de o mesmo processo falhar.
+    state["contas"] = Contas(con=state["acervo"].con, schema=nome_do_schema(cliente_ativo.id))
+    sessao.estado["contas"] = state["contas"]
+    rotas_auth.estado["contas"] = state["contas"]
+    rotas_auth.estado["limiter_login"] = RateLimiter(
+        max_requests=settings.login_rate_limit_max,
+        window_s=settings.login_rate_limit_window_s,
+    )
+    rotas_auth.estado["ip_da_requisicao"] = _client_ip
 
     log.info("agente pronto: cliente=%s model=%s", cliente_ativo.id, settings.openai_model)
     yield
@@ -75,10 +96,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="geo-agent", lifespan=lifespan)
-# Middleware roda de fora para dentro: este e o primeiro a ver a requisicao e o
-# ultimo a tocar a resposta, que e onde o `X-Request-ID` e a duracao precisam ser
-# escritos para valerem tambem quando algo estoura la dentro.
+# A ORDEM DAS DUAS LINHAS ABAIXO IMPORTA, e ao contrario do que a leitura sugere: o
+# `add_middleware` INSERE no inicio da pilha, entao quem e adicionado por ULTIMO fica
+# por FORA e ve a requisicao primeiro.
+#
+# Queremos o `ContextoDaRequisicao` por fora, e por isso ele vem depois: assim um 401
+# do portao tambem sai com `X-Request-ID` e duracao no log. Invertido, o 401 sairia
+# mudo, e a recusa de sessao e justamente o que se vai querer investigar.
+app.add_middleware(ExigeSessao)
 app.add_middleware(ContextoDaRequisicao)
+app.include_router(rotas_auth.router)
 app.include_router(rotas_desenhos.router)
 
 

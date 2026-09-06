@@ -11,6 +11,11 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "pyyaml>=6.0",
+    # Hash de senha do PORTAL_LOGIN. argon2id e o padrao da biblioteca, e os
+    # parametros de custo ficam no .env (ver config.py): tunar na VPS nao exige
+    # mudar codigo, e nao invalida hash ja gravado — o argon2 guarda os parametros
+    # dentro do proprio hash.
+    "argon2-cffi>=23.1",
     "geo-query",
 ]
 

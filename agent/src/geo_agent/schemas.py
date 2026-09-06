@@ -123,3 +123,37 @@ class GeocodeHit(BaseModel):
     rotulo: str
     detalhe: str
     bbox: tuple[float, float, float, float]  # oeste, sul, leste, norte
+
+
+class Entrar(BaseModel):
+    """O que a tela de entrar manda. Nada mais existe no portal."""
+
+    # `str`, e nao um tipo de e-mail validado: validar o formato aqui adicionaria a
+    # dependencia `email-validator` para nada. Quem digita um endereco malformado
+    # simplesmente nao casa com conta nenhuma, e cai no mesmo 401 de senha errada —
+    # que e o comportamento desejado, porque distinguir os dois casos ja seria contar
+    # quais e-mails existem.
+    email: str = Field(min_length=1, max_length=320)
+    senha: str = Field(min_length=1, max_length=200)
+
+
+class TrocaDeSenha(BaseModel):
+    """Troca da propria senha — a atual e cobrada mesmo com a sessao valida.
+
+    Quem tem o computador destravado tem a sessao; cobrar a senha atual e o que impede
+    que passar por uma mesa aberta vire tomar a conta.
+    """
+
+    senha_atual: str = Field(min_length=1, max_length=200)
+    senha_nova: str = Field(min_length=1, max_length=200)
+
+
+class Eu(BaseModel):
+    """Quem esta dentro. O front so precisa disto para decidir o que mostrar.
+
+    Nao ha papel nem permissao: o escopo do portal nao distingue pessoas dentro do
+    cliente, e um campo a mais aqui seria a primeira rachadura nisso.
+    """
+
+    email: str
+    trocar_senha: bool

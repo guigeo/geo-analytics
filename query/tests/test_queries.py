@@ -146,6 +146,17 @@ def test_zoneamento_no_ponto_fora_da_cobertura(gq: GeoQuery) -> None:
     assert gq.zoneamento_no_ponto(-38.5014, -12.9714) is None
 
 
+def test_h3_no_ponto_na_concentracao(gq: GeoQuery) -> None:
+    celula = gq.h3_no_ponto(-46.6540, -23.5614)
+    assert celula is not None
+    assert celula["h3_r9"].startswith("89")
+    assert celula["dom_apartamento"] >= 0
+
+
+def test_h3_no_ponto_fora_da_cobertura(gq: GeoQuery) -> None:
+    assert gq.h3_no_ponto(-38.5014, -12.9714) is None
+
+
 def test_ponto_dentro_do_setor_tem_distancia_zero(gq: GeoQuery) -> None:
     """Mede do poligono, nao do centroide.
 

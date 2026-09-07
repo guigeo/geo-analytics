@@ -19,7 +19,7 @@ from .geocode import GeocodeIndisponivel
 from .geocode import pontos as geocode_pontos
 from pydantic import BaseModel, Field, ValidationError
 
-Camada = Literal["municipio", "setor", "bairro", "distrito", "zoneamento_sp"]
+Camada = Literal["municipio", "setor", "bairro", "distrito", "zoneamento_sp", "h3_domicilios"]
 
 UF_POR_SIGLA: dict[str, str] = {
     "AC": "Acre",
@@ -261,6 +261,17 @@ class ZoneamentoNoPontoArgs(BaseModel):
     lat: float = Field(ge=-90, le=90)
 
 
+class H3NoPontoArgs(BaseModel):
+    """Contagens de domicílios na célula H3 r9 que contém um ponto.
+
+    Use para apartamento, casa ou verticalização em endereço/coordenada. Cobre só os
+    37 municípios da concentração urbana de São Paulo; fora dela, explique a cobertura.
+    """
+
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+
+
 class InfoLocalArgs(BaseModel):
     """Dados de um lugar citado por nome, no MELHOR recorte disponível ali.
 
@@ -455,6 +466,24 @@ def _zoneamento_no_ponto(ctx: Contexto, a: ZoneamentoNoPontoArgs) -> ToolResult:
         payload=row,
         camada="zoneamento_sp",
         codigos=[str(row["cod_zona"])],
+        rows=[row],
+    )
+
+
+def _h3_no_ponto(ctx: Contexto, a: H3NoPontoArgs) -> ToolResult:
+    row = ctx.geodata.h3_no_ponto(a.lon, a.lat)
+    if row is None:
+        return ToolResult(
+            payload={
+                "erro": "não há dados H3 carregados para esta região",
+                "cobertura": "37 municípios da concentração urbana de São Paulo · CNEFE 2022",
+            },
+            error=True,
+        )
+    return ToolResult(
+        payload=row,
+        camada="h3_domicilios",
+        codigos=[str(row["h3_r9"])],
         rows=[row],
     )
 
@@ -787,6 +816,7 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "ranking_distritos": (RankingDistritosArgs, _ranking_distritos),
     "distrito_que_contem": (DistritoQueContemArgs, _distrito_que_contem),
     "zoneamento_no_ponto": (ZoneamentoNoPontoArgs, _zoneamento_no_ponto),
+    "h3_no_ponto": (H3NoPontoArgs, _h3_no_ponto),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),
     # Nome deliberadamente distante de setores_no_ponto: o LLM escolhe tool por nome

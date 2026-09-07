@@ -76,6 +76,22 @@ export const EsquemaPinturaPorCategoria = z.object({
     .min(1),
 });
 
+/** Escala sequencial para valor numérico — a regra cartográfica vem da camada. */
+export const EsquemaPinturaPorNumero = z
+  .object({
+    campo: z.string().min(1),
+    minimo: z.number(),
+    maximo: z.number(),
+    corInicial: Cor,
+    corFinal: Cor,
+    /** Texto da legenda; não é código de um cliente. */
+    rotulo: z.string().min(1),
+  })
+  .refine(({ minimo, maximo }) => maximo > minimo, {
+    message: "máximo da pintura numérica precisa ser maior que o mínimo",
+    path: ["maximo"],
+  });
+
 export const GEOMETRIAS = ["poligono", "linha", "ponto"] as const;
 export const ANCORAS_ICONE = ["centro", "base"] as const;
 
@@ -94,6 +110,7 @@ export const ANCORAS_ICONE = ["centro", "base"] as const;
  */
 export const GRUPOS_DE_CAMADA = {
   ibge: { rotulo: "Informações IBGE" },
+  indicadores: { rotulo: "Indicadores territoriais" },
   infraestrutura: { rotulo: "Infraestrutura" },
   regulacao: { rotulo: "Regulação urbana" },
 } as const;
@@ -120,6 +137,10 @@ export const EsquemaCamada = z
     cor: Cor,
     /** Pinta cada valor de um atributo com a paleta declarada. */
     pinturaPorCategoria: EsquemaPinturaPorCategoria.optional(),
+    /** Pinta valor numérico em escala contínua. */
+    pinturaPorNumero: EsquemaPinturaPorNumero.optional(),
+    /** Atributo estável pelo qual o agente destaca a feição no PMTiles. */
+    campoDestaque: z.string().min(1).optional(),
     /** Onde a camada existe, medido na fonte e exibido junto dela. */
     cobertura: z.string().min(1).optional(),
     /** Polígonos: 0 desenha só o contorno, mas a área continua clicável. */
@@ -156,6 +177,18 @@ export const EsquemaCamada = z
       ctx.addIssue({
         code: "custom",
         message: `camada "${camada.id}": opacidadePreenchimento não se aplica a ponto`,
+      });
+    }
+    if (camada.pinturaPorCategoria && camada.pinturaPorNumero) {
+      ctx.addIssue({
+        code: "custom",
+        message: `camada "${camada.id}": escolha pintura por categoria ou por número, nunca as duas`,
+      });
+    }
+    if (camada.pinturaPorNumero && camada.geometria !== "poligono") {
+      ctx.addIssue({
+        code: "custom",
+        message: `camada "${camada.id}": pintura numérica só se aplica a polígono`,
       });
     }
   });
@@ -339,6 +372,7 @@ export type ConfiguracaoAcervo = z.infer<typeof EsquemaAcervo>;
 export type Atributo = z.infer<typeof EsquemaAtributo>;
 export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type PinturaPorCategoria = z.infer<typeof EsquemaPinturaPorCategoria>;
+export type PinturaPorNumero = z.infer<typeof EsquemaPinturaPorNumero>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
 export type Simbolo = z.infer<typeof EsquemaSimbolo>;

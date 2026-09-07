@@ -114,5 +114,6 @@ export const cliente: ConfiguracaoCliente = {
     CATALOGO.rodovias,
     CATALOGO.ferrovias,
     CATALOGO.zoneamento_sp,
+    CATALOGO.h3_domicilios,
   ],
 };

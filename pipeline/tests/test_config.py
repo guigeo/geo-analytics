@@ -6,7 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from geo_pipeline.config import GeodataSource, PipelineConfig, geodata_dsn, load_config
+from geo_pipeline.config import (
+    GeodataSource,
+    H3GeodataSource,
+    PipelineConfig,
+    geodata_dsn,
+    load_config,
+)
 
 
 def test_load_real_registry():
@@ -80,6 +86,20 @@ def test_uf_vem_do_geodata():
     for campo in ("CD_UF", "NM_UF", "SIGLA_UF"):
         assert f'as "{campo}"' in uf.source.sql
     assert uf.attributes == ["CD_UF", "NM_UF", "SIGLA_UF"]
+
+
+def test_h3_declara_geometria_pura_e_atributos_do_popup():
+    h3 = load_config().dataset("h3_domicilios")
+    assert isinstance(h3.source, H3GeodataSource)
+    assert h3.source.campo_indice == "H3_R9"
+    assert h3.attributes[:4] == [
+        "H3_R9",
+        "DOM_APARTAMENTO",
+        "DOM_CASA",
+        "DOMICILIOS_PARTICULARES",
+    ]
+    assert "indicadores.censo_h3_r9_celula" in h3.source.sql
+    assert "indicadores.cnefe_h3_r9_celula" in h3.source.sql
 
 
 def test_fonte_de_arquivo_continua_valendo():

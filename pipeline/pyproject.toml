@@ -5,6 +5,7 @@ description = "ETL geoespacial: fontes IBGE/antenas -> GeoParquet canonico -> PM
 requires-python = ">=3.11"
 dependencies = [
     "geopandas>=1.0",
+    "h3>=4.5,<5",
     # Piso explicito: a imagem base do GDAL roda Python 3.14, e shapely so publica
     # wheel para cp314 a partir da 2.1.2. Sem ele o uv resolve 2.1.0, que compila
     # do fonte — e o Dockerfile expurga o build-essential, entao o build da imagem

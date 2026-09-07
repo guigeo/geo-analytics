@@ -1,22 +1,14 @@
 import type { FilterSpecification, LayerSpecification, Map } from "maplibre-gl";
-import type { DefinicaoCamada } from "@/configuracao";
+import { camadas as camadasAtivas, type DefinicaoCamada } from "@/configuracao";
 
 // Destaques do agente (Fase 2): pinta municipios/distritos/bairros/setores POR CODIGO via filtro nas
 // proprias fontes PMTiles. Diferente do selection.ts (clique), nao depende de
 // queryRenderedFeatures — funciona para codigos fora do viewport atual, e as camadas
 // ficam sempre visiveis (independem do toggle da camada base).
 export interface Destaques {
-  camada: "municipio" | "setor" | "bairro" | "distrito" | "zoneamento_sp";
+  camada: string;
   codigos: string[];
 }
-
-const CODE_FIELDS = {
-  municipio: "CD_MUN",
-  setor: "CD_SETOR",
-  bairro: "CD_BAIRRO",
-  distrito: "CD_DIST",
-  zoneamento_sp: "COD_ZONA",
-} as const;
 
 const HIGHLIGHT = "#00b3ff";
 
@@ -34,9 +26,8 @@ function codeFilter(field: string, codigos: string[]): FilterSpecification {
  * sem nenhum pedido de tile (2026-08-29).
  */
 export function highlightLayers(camadas: DefinicaoCamada[]): LayerSpecification[] {
-  const disponiveis = new Set(camadas.map((c) => c.id));
-  return Object.entries(CODE_FIELDS)
-    .filter(([id]) => disponiveis.has(id))
+  return camadas
+    .flatMap((camada) => (camada.campoDestaque ? [[camada.id, camada.campoDestaque] as const] : []))
     .flatMap(([id, field]) => [
       {
         id: `${id}__highlight-fill`,
@@ -64,13 +55,19 @@ export function highlightLayers(camadas: DefinicaoCamada[]): LayerSpecification[
  * style ser parseado não dá erro, dá silêncio — e um destaque perdido em silêncio é
  * uma resposta do agente que o mapa ignorou.
  */
-export function applyHighlights(map: Map, destaques: Destaques | null) {
+export function applyHighlights(
+  map: Map,
+  destaques: Destaques | null,
+  lista: DefinicaoCamada[] = camadasAtivas,
+) {
   let achou = false;
-  for (const [camada, field] of Object.entries(CODE_FIELDS)) {
-    const codigos = destaques?.camada === camada ? destaques.codigos : [];
+  for (const camada of lista) {
+    if (!camada.campoDestaque) continue;
+    const field = camada.campoDestaque;
+    const codigos = destaques?.camada === camada.id ? destaques.codigos : [];
     const filter = codeFilter(field, codigos);
     for (const kind of ["fill", "line"] as const) {
-      const id = `${camada}__highlight-${kind}`;
+      const id = `${camada.id}__highlight-${kind}`;
       if (map.getLayer(id)) {
         map.setFilter(id, filter);
         achou = true;

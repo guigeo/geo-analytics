@@ -62,6 +62,19 @@ describe("esquema de cliente", () => {
     expect(r.success).toBe(false);
   });
 
+  it("recusa as duas tematizações na mesma camada", () => {
+    const r = comCliente((c) => {
+      const h3 = c.camadas.find((camada) => camada.id === "h3_domicilios");
+      if (h3)
+        h3.pinturaPorCategoria = {
+          campo: "x",
+          entradas: [{ codigo: "x", cor: "#000000", familia: "x" }],
+        };
+    });
+    expect(r.success).toBe(false);
+    expect(JSON.stringify(r.error?.issues)).toContain("nunca as duas");
+  });
+
   it("recusa zoom inicial fora da faixa declarada", () => {
     const r = comCliente((c) => {
       c.mapa.zoomMinimo = 8;

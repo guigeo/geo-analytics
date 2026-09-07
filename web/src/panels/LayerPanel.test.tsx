@@ -121,6 +121,19 @@ describe("LayerPanel", () => {
     expect(screen.queryByText("ZEIS-1")).toBeNull();
   });
 
+  it("mostra a legenda numérica apenas quando a camada H3 está ligada", () => {
+    const visible = { h3_domicilios: true };
+    render(<LayerPanel visible={visible} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Indicadores territoriais");
+    expect(
+      screen.getByRole("group", { name: "Legenda: Domicílios em apartamento" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("37 municípios da concentração urbana de São Paulo · CNEFE 2022"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("820+")).toBeInTheDocument();
+  });
+
   it("o cabeçalho oferece recolher a coluna", () => {
     const onRecolher = vi.fn();
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} onRecolher={onRecolher} />);

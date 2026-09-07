@@ -56,9 +56,22 @@ class GeodataSource(BaseModel):
     sql: str
 
 
+class H3GeodataSource(BaseModel):
+    """Fonte tabular do geodata cuja geometria é função pura do índice H3.
+
+    O banco guarda o centro da célula, e não sua borda: materializar o polígono lá
+    seria cache de função pura. O pipeline é o lugar em que esse cache existe por
+    pouco tempo, só para produzir o GeoParquet/PMTiles.
+    """
+
+    kind: Literal["h3_geodata"]
+    sql: str
+    campo_indice: str = "H3_R9"
+
+
 class DatasetConfig(BaseModel):
     name: str
-    source: str | GeodataSource
+    source: str | GeodataSource | H3GeodataSource
     geometry: Literal["polygon", "line", "point"] = "polygon"
     layer: str | None = None
     format: Literal["vector", "csv_points"] = "vector"
@@ -82,10 +95,10 @@ class DatasetConfig(BaseModel):
 
     @property
     def do_geodata(self) -> bool:
-        return isinstance(self.source, GeodataSource)
+        return isinstance(self.source, (GeodataSource, H3GeodataSource))
 
     def source_path(self) -> Path:
-        if isinstance(self.source, GeodataSource):
+        if isinstance(self.source, (GeodataSource, H3GeodataSource)):
             raise TypeError(f"dataset {self.name!r} vem do geodata, nao de arquivo")
         return _resolve(self.source)
 

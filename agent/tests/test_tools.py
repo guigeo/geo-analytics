@@ -67,6 +67,13 @@ class GeoQueryDeZoneamentoFalso:
         return None
 
 
+class GeoQueryH3Falso:
+    def h3_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
+        if lon == -46.6540 and lat == -23.5614:
+            return {"h3_r9": "89a8100d2cfffff", "dom_apartamento": 42, "dom_casa": 8}
+        return None
+
+
 def test_zoneamento_no_ponto_offline_pinta_a_zona() -> None:
     ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryDeZoneamentoFalso()))
     r = execute_tool(
@@ -88,6 +95,21 @@ def test_zoneamento_fora_da_cobertura_offline_explica_o_motivo() -> None:
     )
     assert r.error
     assert r.payload["cobertura"] == "Município de São Paulo · Lei 18.177/2024"
+
+
+def test_h3_no_ponto_offline_pinta_a_celula() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryH3Falso()))
+    r = execute_tool(ctx_falso, "h3_no_ponto", json.dumps({"lon": -46.6540, "lat": -23.5614}))
+    assert not r.error
+    assert r.camada == "h3_domicilios"
+    assert r.codigos == ["89a8100d2cfffff"]
+
+
+def test_h3_fora_da_cobertura_offline_explica_o_motivo() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryH3Falso()))
+    r = execute_tool(ctx_falso, "h3_no_ponto", json.dumps({"lon": -38.5014, "lat": -12.9714}))
+    assert r.error
+    assert r.payload["cobertura"] == "37 municípios da concentração urbana de São Paulo · CNEFE 2022"
 
 
 def test_listar_metricas(ctx: Contexto) -> None:

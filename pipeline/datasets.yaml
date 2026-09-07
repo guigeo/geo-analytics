@@ -146,6 +146,42 @@ datasets:
     attributes: [COD_ZONA, NM_ZONA, E_ZONA, LEI, CD_MUN, DT_ATUALIZACAO]
     tile: { minzoom: 9, maxzoom: 14 }
 
+  - name: h3_domicilios
+    source:
+      kind: h3_geodata
+      # A malha do Censo tem 68.448 células; seis células CNEFE ficam 12–360 m
+      # fora da borda dos setores por discordância da própria fonte. A união é a
+      # geometria honesta: omitir as seis perderia 18 endereços medidos em silêncio.
+      sql: >-
+        with malha as (
+          select h3_r9 from indicadores.censo_h3_r9_celula
+          union
+          select h3_r9 from indicadores.cnefe_h3_r9_celula
+        ), valores as (
+          select h3_r9,
+                 max(valor) filter (where cod_variavel = 'dom_apartamento') as dom_apartamento,
+                 max(valor) filter (where cod_variavel = 'dom_casa') as dom_casa,
+                 max(valor) filter (where cod_variavel = 'end_dom_particular') as domicilios_particulares
+          from indicadores.cnefe_h3_r9
+          group by h3_r9
+        )
+        select m.h3_r9 as "H3_R9",
+               coalesce(v.dom_apartamento, 0)::integer as "DOM_APARTAMENTO",
+               coalesce(v.dom_casa, 0)::integer as "DOM_CASA",
+               coalesce(v.domicilios_particulares, 0)::integer as "DOMICILIOS_PARTICULARES",
+               coalesce(c.coord_original, 0)::integer as "COORD_ORIGINAL",
+               coalesce(c.coord_modificada, 0)::integer as "COORD_MODIFICADA",
+               coalesce(c.coord_estimada, 0)::integer as "COORD_ESTIMADA",
+               coalesce(c.coord_face_quadra, 0)::integer as "COORD_FACE_QUADRA",
+               coalesce(c.coord_localidade, 0)::integer as "COORD_LOCALIDADE",
+               coalesce(c.coord_setor, 0)::integer as "COORD_SETOR"
+        from malha m
+        left join indicadores.cnefe_h3_r9_celula c using (h3_r9)
+        left join valores v using (h3_r9)
+    geometry: polygon
+    attributes: [H3_R9, DOM_APARTAMENTO, DOM_CASA, DOMICILIOS_PARTICULARES, COORD_ORIGINAL, COORD_MODIFICADA, COORD_ESTIMADA, COORD_FACE_QUADRA, COORD_LOCALIDADE, COORD_SETOR]
+    tile: { minzoom: 8, maxzoom: 14 }
+
 basemap:
   provider: protomaps
   bbox: [-74.0, -34.0, -34.0, 6.0]   # lon_min, lat_min, lon_max, lat_max (Brasil)

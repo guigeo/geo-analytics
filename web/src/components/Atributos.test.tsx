@@ -36,6 +36,28 @@ describe("Atributos", () => {
     expect(screen.getAllByText("—").length).toBe(CAMADA.atributos.length);
   });
 
+  it("na célula H3 mostra apartamentos, casas e a qualidade da coordenada", () => {
+    const h3 = camadas.find((camada) => camada.id === "h3_domicilios");
+    if (!h3) throw new Error("camada H3 ausente da configuração ativa");
+    render(
+      <Atributos
+        selected={selecao(h3.id, {
+          H3_R9: "89a8100d2c7ffff",
+          DOM_APARTAMENTO: 120,
+          DOM_CASA: 35,
+          DOMICILIOS_PARTICULARES: 160,
+          COORD_ORIGINAL: 100,
+        })}
+        onFechar={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Domicílios em apartamento")).toBeInTheDocument();
+    expect(screen.getByText("Domicílios em casa")).toBeInTheDocument();
+    expect(screen.getByText("Coordenadas originais de campo")).toBeInTheDocument();
+    expect(screen.getByText("120")).toBeInTheDocument();
+  });
+
   it("de um desenho, o título é o nome e os rótulos são os da casca", () => {
     // Desenho não é camada configurada: tem as mesmas colunas em todo cliente, e por
     // isso os rótulos vêm de `desenho/atributos.ts`, não de `camada.atributos`.

@@ -29,14 +29,28 @@ const ANCORA_MAPLIBRE = { centro: "center", base: "bottom" } as const;
 const NEUTRO_SEM_ZONA = "#94a3b8";
 
 function corDoPreenchimento(camada: DefinicaoCamada): DataDrivenPropertyValueSpecification<string> {
-  if (!camada.pinturaPorCategoria) return camada.cor;
-  const { campo, entradas } = camada.pinturaPorCategoria;
-  return [
-    "match",
-    ["get", campo],
-    ...entradas.flatMap((entrada) => [entrada.codigo, entrada.cor]),
-    NEUTRO_SEM_ZONA,
-  ] as unknown as DataDrivenPropertyValueSpecification<string>;
+  if (camada.pinturaPorCategoria) {
+    const { campo, entradas } = camada.pinturaPorCategoria;
+    return [
+      "match",
+      ["get", campo],
+      ...entradas.flatMap((entrada) => [entrada.codigo, entrada.cor]),
+      NEUTRO_SEM_ZONA,
+    ] as unknown as DataDrivenPropertyValueSpecification<string>;
+  }
+  if (camada.pinturaPorNumero) {
+    const { campo, minimo, maximo, corInicial, corFinal } = camada.pinturaPorNumero;
+    return [
+      "interpolate",
+      ["linear"],
+      ["to-number", ["get", campo], minimo],
+      minimo,
+      corInicial,
+      maximo,
+      corFinal,
+    ] as unknown as DataDrivenPropertyValueSpecification<string>;
+  }
+  return camada.cor;
 }
 
 export function fontesDeDados(

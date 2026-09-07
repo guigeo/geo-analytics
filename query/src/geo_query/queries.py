@@ -22,6 +22,7 @@ from __future__ import annotations
 import contextlib
 from typing import Any, Literal
 
+import h3
 import psycopg
 from psycopg import sql
 
@@ -694,6 +695,48 @@ class GeoQuery:
                 limit 1
             """),
             [float(lon), float(lat)],
+        )
+        return rows[0] if rows else None
+
+    def h3_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
+        """Contagens CNEFE da célula H3 r9 que contém o ponto.
+
+        A célula não guarda polígono no banco: H3 é função pura de latitude/longitude.
+        A união preserva as seis células CNEFE que a fonte coloca logo fora do contorno
+        de setores; descartá-las apagaria 18 endereços medidos na borda.
+        """
+        indice = h3.latlng_to_cell(float(lat), float(lon), 9)
+        rows = self._rows(
+            sql.SQL("""
+                with malha as (
+                  select h3_r9 from indicadores.censo_h3_r9_celula
+                  union
+                  select h3_r9 from indicadores.cnefe_h3_r9_celula
+                ), valores as (
+                  select h3_r9,
+                         max(valor) filter (where cod_variavel = 'dom_apartamento') as dom_apartamento,
+                         max(valor) filter (where cod_variavel = 'dom_casa') as dom_casa,
+                         max(valor) filter (where cod_variavel = 'end_dom_particular') as domicilios_particulares
+                    from indicadores.cnefe_h3_r9
+                   where h3_r9 = %s
+                   group by h3_r9
+                )
+                select m.h3_r9,
+                       coalesce(v.dom_apartamento, 0)::integer as dom_apartamento,
+                       coalesce(v.dom_casa, 0)::integer as dom_casa,
+                       coalesce(v.domicilios_particulares, 0)::integer as domicilios_particulares,
+                       coalesce(c.coord_original, 0)::integer as coord_original,
+                       coalesce(c.coord_modificada, 0)::integer as coord_modificada,
+                       coalesce(c.coord_estimada, 0)::integer as coord_estimada,
+                       coalesce(c.coord_face_quadra, 0)::integer as coord_face_quadra,
+                       coalesce(c.coord_localidade, 0)::integer as coord_localidade,
+                       coalesce(c.coord_setor, 0)::integer as coord_setor
+                  from malha m
+                  left join indicadores.cnefe_h3_r9_celula c using (h3_r9)
+                  left join valores v using (h3_r9)
+                 where m.h3_r9 = %s
+            """),
+            [indice, indice],
         )
         return rows[0] if rows else None
 

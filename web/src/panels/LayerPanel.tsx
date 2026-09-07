@@ -124,6 +124,9 @@ export function LayerPanel({
                   {c.cobertura && (
                     <p className="ml-7 pb-1 text-xs text-muted-foreground">{c.cobertura}</p>
                   )}
+                  {visible[c.id] && c.pinturaPorNumero && (
+                    <LegendaNumerica pintura={c.pinturaPorNumero} />
+                  )}
                 </div>
               ))}
             </Combo>
@@ -362,5 +365,30 @@ function Amostra({ camada }: { camada: DefinicaoCamada }) {
         borderColor: camada.contorno?.cor ?? camada.cor,
       }}
     />
+  );
+}
+
+/** Escala curta: cabe no painel sem transformar a árvore em uma segunda cartografia. */
+function LegendaNumerica({
+  pintura,
+}: {
+  pintura: NonNullable<DefinicaoCamada["pinturaPorNumero"]>;
+}) {
+  const formatar = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+  return (
+    <div className="ml-7 pb-2 pt-0.5" role="group" aria-label={`Legenda: ${pintura.rotulo}`}>
+      <p className="text-xs text-muted-foreground">{pintura.rotulo}</p>
+      <div
+        aria-hidden="true"
+        className="mt-1 h-2 w-full rounded-sm ring-1 ring-black/10"
+        style={{
+          background: `linear-gradient(to right, ${pintura.corInicial}, ${pintura.corFinal})`,
+        }}
+      />
+      <div className="mt-0.5 flex justify-between text-xs tabular-nums text-muted-foreground">
+        <span>{formatar.format(pintura.minimo)}</span>
+        <span>{formatar.format(pintura.maximo)}+</span>
+      </div>
+    </div>
   );
 }

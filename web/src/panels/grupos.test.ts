@@ -3,9 +3,9 @@ import { agruparCamadas } from "./grupos";
 import { CATALOGO } from "@/configuracao/catalogo";
 
 describe("agruparCamadas", () => {
-  it("arruma o catálogo inteiro em três combos, na ordem declarada", () => {
+  it("arruma o catálogo inteiro em quatro combos, na ordem declarada", () => {
     const grupos = agruparCamadas(Object.values(CATALOGO));
-    expect(grupos.map((g) => g.id)).toEqual(["ibge", "infraestrutura", "regulacao"]);
+    expect(grupos.map((g) => g.id)).toEqual(["ibge", "indicadores", "infraestrutura", "regulacao"]);
     expect(grupos[0].camadas.map((c) => c.id)).toEqual([
       "uf",
       "municipio",
@@ -13,8 +13,9 @@ describe("agruparCamadas", () => {
       "bairro",
       "setor",
     ]);
-    expect(grupos[2].camadas.map((c) => c.id)).toEqual(["zoneamento_sp"]);
-    expect(grupos[1].camadas.map((c) => c.id)).toEqual(["antenas", "rodovias", "ferrovias"]);
+    expect(grupos[1].camadas.map((c) => c.id)).toEqual(["h3_domicilios"]);
+    expect(grupos[3].camadas.map((c) => c.id)).toEqual(["zoneamento_sp"]);
+    expect(grupos[2].camadas.map((c) => c.id)).toEqual(["antenas", "rodovias", "ferrovias"]);
   });
 
   it("grupo sem camada nenhuma não aparece", () => {

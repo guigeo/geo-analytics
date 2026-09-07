@@ -320,6 +320,49 @@ exports[`saída congelada > mantém as camadas 1`] = `
     "type": "line",
   },
   {
+    "id": "h3_domicilios",
+    "layout": {
+      "visibility": "none",
+    },
+    "paint": {
+      "fill-color": [
+        "interpolate",
+        [
+          "linear",
+        ],
+        [
+          "to-number",
+          [
+            "get",
+            "DOM_APARTAMENTO",
+          ],
+          0,
+        ],
+        0,
+        "#eff6ff",
+        820,
+        "#1d4ed8",
+      ],
+      "fill-opacity": 0.72,
+    },
+    "source": "h3_domicilios",
+    "source-layer": "h3_domicilios",
+    "type": "fill",
+  },
+  {
+    "id": "h3_domicilios__outline",
+    "layout": {
+      "visibility": "none",
+    },
+    "paint": {
+      "line-color": "#1e40af",
+      "line-width": 0.25,
+    },
+    "source": "h3_domicilios",
+    "source-layer": "h3_domicilios",
+    "type": "line",
+  },
+  {
     "id": "uf__label",
     "layout": {
       "text-field": [
@@ -389,6 +432,10 @@ exports[`saída congelada > mantém as fontes 1`] = `
   "ferrovias": {
     "type": "vector",
     "url": "pmtiles://http://localhost:8081/tiles/ferrovias.pmtiles",
+  },
+  "h3_domicilios": {
+    "type": "vector",
+    "url": "pmtiles://http://localhost:8081/tiles/h3_domicilios.pmtiles",
   },
   "municipio": {
     "type": "vector",

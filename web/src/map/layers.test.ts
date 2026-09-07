@@ -54,6 +54,20 @@ describe("camadas do mapa", () => {
     );
   });
 
+  it("interpola a contagem H3 até o teto medido da legenda", () => {
+    const h3 = camadasDoMapa().find((camada) => camada.id === "h3_domicilios");
+    const pintura = h3?.paint as { "fill-color"?: unknown } | undefined;
+    expect(pintura?.["fill-color"]).toEqual([
+      "interpolate",
+      ["linear"],
+      ["to-number", ["get", "DOM_APARTAMENTO"], 0],
+      0,
+      "#eff6ff",
+      820,
+      "#1d4ed8",
+    ]);
+  });
+
   it("só referencia fonte declarada", () => {
     const fontes = new Set(Object.keys(fontesDeDados()));
     for (const spec of camadasDoMapa()) {

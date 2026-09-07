@@ -51,5 +51,6 @@ export type {
   IdDeGrupo,
   Identidade,
   PinturaPorCategoria,
+  PinturaPorNumero,
   Simbolo,
 } from "./esquema";

@@ -15,7 +15,8 @@ import logging
 import subprocess
 from pathlib import Path
 
-from .config import DatasetConfig, GeodataSource, OutputConfig, geodata_dsn
+from .config import DatasetConfig, GeodataSource, H3GeodataSource, OutputConfig, geodata_dsn
+from .h3 import convert_h3_dataset
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ OGR_TIPO = {"polygon": "MULTIPOLYGON", "line": "MULTILINESTRING", "point": "POIN
 
 
 def convert_dataset(ds: DatasetConfig, output: OutputConfig) -> Path:
+    if isinstance(ds.source, H3GeodataSource):
+        return convert_h3_dataset(ds, output)
     dst = ds.processed_path(output)
     if not ds.do_geodata:
         src = ds.source_path()

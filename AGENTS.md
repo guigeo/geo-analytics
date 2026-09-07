@@ -364,7 +364,7 @@ recusa se encontrar esse em particular num `.env` que sobe.
 a lista de tiles **escrita à mão** — camada nova entra lá também, ou ele afirma menos do
 que quem o lê imagina.
 
-### A malha H3 existe, tem variável própria, e só no banco LOCAL
+### A malha H3 está no ar, com um tema inicial
 
 O `CENSO_H3` (2026-09-05) re-agregou o Censo 2022 em 68.448 células H3 res 9 sobre a
 concentração urbana São Paulo/SP; o `CNEFE_H3` (2026-09-06) pôs dentro delas a primeira
@@ -377,11 +377,14 @@ espalhado por rateio areal, e a linha carrega quanto foi esticado); a do CNEFE �
 (o endereço tem coordenada e cai na célula), e a medida de incerteza dela é a qualidade da
 coordenada na origem, não o esticamento.
 
-**Nada disso aparece nesta aplicação, e continua sendo de propósito** — sem tile, sem
-camada no catálogo, sem tool do agente. A tela é feature própria, e agora ela tem o que
-mostrar. **E as cargas rodaram só no `geodata` local:** o banco central não tem essas
-tabelas. Antes de escrever qualquer consulta que dependa delas, conferir onde o
-`GEODATA_DSN` da sessão aponta.
+Em 2026-09-07 a `TELA_H3` publicou a primeira leitura no mapa: **domicílios em
+apartamento** por célula H3 r9. O tile `h3_domicilios` tem 68.454 células — as 68.448 do
+Censo e seis células CNEFE de borda, que preservam 18 endereços — e cobre 37 municípios da
+concentração urbana de São Paulo. A escala azul contínua vai de 0 a 820 (p99; acima disso
+satura), a legenda explica a cor e o clique mostra casas, total e qualidade da coordenada.
+`h3_no_ponto` põe o mesmo dado no agente; fora do recorte, ele declara a cobertura limitada.
+A réplica das cinco tabelas H3 está também no `geodata` da VPS. Antes de escrever consulta
+que dependa delas, ainda conferir onde o `GEODATA_DSN` da sessão aponta.
 
 **O bruto do CNEFE não está aqui nem lá: são 10 M endereços que vivem só no home lab**, e
 o que viajou foi a tabela por célula, pelo `scripts/lab-trazer-cnefe-h3.sh` — o primeiro
@@ -404,8 +407,8 @@ setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** func
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma
   feature.
-- **Espaço na VPS:** 6,0 GB livres de 38 GB (84% usado), medido em 2026-09-06, já com o
-  zoneamento publicado (71 MB no banco, 12,1 MB de tile — não moveram o ponteiro). É o que
+- **Espaço na VPS:** 6,8 GB livres de 38 GB (81% usado), medido em 2026-09-07, já com a
+  réplica H3 e o tile de 12,8 MB publicados. É o que
   barra o eixo de ruas nacional (OSM) e o que adiaria uma malha H3 nacional (~2 GB em
   res 8).
 - **Custo do argon2, medido na VPS em 2026-09-06:** 163 ms por verificação no padrão
@@ -413,21 +416,11 @@ setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** func
   login, e o padrão ficou. Se um dia incomodar, `ARGON2_MEMORIA_KIB=32768` cai para 78 ms
   e não invalida senha nenhuma (o argon2 guarda os parâmetros dentro do próprio hash).
 
-- **A PRÓXIMA FEATURE é a tela da malha H3** — o dado existe desde 2026-09-06 e não há
-  nada na aplicação. Escopo levantado, não iniciado: gerar o polígono do hexágono (a malha
-  guarda só o **centro**), tilar, camada no catálogo com a cobertura declarada (37 de 5.571
-  municípios — ligada fora da concentração urbana de SP ela não pinta nada e não dá erro),
-  e publicar. Estrear com **casa contra apartamento**, que é densa e cobre a malha inteira;
-  o seletor de variável e "onde se constrói" ficam para depois.
-- **Duas capacidades que a casca NÃO tem, e a tela do H3 depende das duas** (medido em
-  2026-09-06):
-  1. **Pintura por valor numérico.** Só existe `pinturaPorCategoria`, que veio do
-     `ZONEAMENTO_SP` e vira um `match` do MapLibre em `map/layers.ts`. Contagem por
-     hexágono é escala contínua. Pela regra 1 do ADR isso é **casca, não configuração** —
-     não existe cliente plausível que queira ver contagem sem escala de cor.
-  2. **Legenda.** Não existe nenhuma. O zoneamento pinta **38 códigos de zona** e nada na
-     tela diz o que cada cor significa. Para camada categórica já é ruim; para escala
-     contínua é inútil. Consertar serve as duas.
+- **A TELA_H3 foi publicada em 2026-09-07.** Ela estreou com um único tema, apartamentos,
+  para colher percepção de uso antes de abrir seletor de variável ou o recorte de "onde se
+  constrói". A casca agora tem pintura por valor numérico e legenda reutilizáveis; isso
+  também torna mais legível o zoneamento categórico. Artefatos em
+  `.claude/sdd/archive/TELA_H3/`.
 - **Expectativa a alinhar antes de mostrar o H3 a alguém:** a célula res 9 tem 0,106 km² e
   o setor urbano mediano tem 0,0275 km². **No urbano o hexágono é mais GROSSO que o setor**,
   então a camada vai parecer menos detalhada que a de setores. O ganho é que toda célula

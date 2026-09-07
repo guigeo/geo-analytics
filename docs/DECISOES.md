@@ -121,12 +121,14 @@ há papel, permissão nem dado por pessoa. O gatilho já estava nomeado no ADR d
 mora, já que hoje o portão é Caddy puro e o site sobrevive à queda do agente — está na
 emenda de 2026-09-05 à §8 do ADR-0001, no `webgis`.
 
-**A malha H3 (2026-09-05) e a variável que faltava (2026-09-06).** O Censo 2022 passou a
-existir em 68.448 células de 0,106 km² sobre a concentração urbana São Paulo/SP, e o
-`CNEFE_H3` pôs dentro delas 17 contagens do Cadastro Nacional de Endereços em 37.801
-células — a primeira variável **medida** da malha, que entra por ponto e sem rateio.
-Nenhuma das duas toca esta aplicação: seguem sem tile, sem camada e sem tool, e agora **a
-tela é o que falta**, não o dado.
+**A malha H3 (2026-09-05), a variável que faltava (2026-09-06) e a primeira tela
+(2026-09-07).** O Censo 2022 passou a existir em 68.448 células de 0,106 km² sobre a
+concentração urbana São Paulo/SP, e o `CNEFE_H3` pôs dentro delas 17 contagens do Cadastro
+Nacional de Endereços em 37.801 células — a primeira variável **medida** da malha, que
+entra por ponto e sem rateio. A `TELA_H3` publicou nos dois clientes um tile de 68.454
+células (inclui seis células CNEFE de borda) com o tema único **domicílios em apartamento**;
+a casca ganhou pintura numérica contínua, legenda e a tool `h3_no_ponto`. A cobertura de 37
+municípios é declarada no produto: fora dela a camada não inventa ausência de dados.
 
 O que a segunda ensinou e vale além dela: o CNEFE e a malha de setores do Censo 2022
 **renumeram parte dos mesmos setores**, então o `cod_setor` não serve de chave entre os

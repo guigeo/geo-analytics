@@ -159,7 +159,7 @@ A primeira dobra abre por escala e contraste interno.
 | ID | Premissa | Se estiver errada | Validada? |
 |----|----------|-------------------|-----------|
 | A-001 | Os tempos medidos neste Mac valem na VPS | Lá a memória é menor; a primeira execução **fria** de área grande custou 3,9 s aqui contra 640 ms quente. Pode obrigar a baixar o teto | [ ] Herdada do AGENTS.md, "Em aberto" |
-| A-002 | A pintura por valor da `TELA_H3` serve com valores vindos da **consulta**, não do tile | Se não servir, o contraste interno precisa de caminho próprio no mapa e a Fase 3 cresce | [ ] |
+| A-002 | A pintura por valor da `TELA_H3` serve com valores vindos da **consulta**, não do tile | Se não servir, o contraste interno precisa de caminho próprio no mapa e a Fase 3 cresce | [x] **Resolvida no DESIGN** (Decisão 4): a expressão de `layers.ts:41` está amarrada a tile com valor embutido, mas o caminho certo é `match` por `CD_SETOR` na fonte PMTiles, no molde do `highlight.ts`. A Fase 3 não cresce |
 | A-003 | Os desenhos reais dos clientes tocam dezenas de setores, não milhares | Se houver desenho gigante em uso, o teto vira recusa frequente em vez de guarda de exceção | [ ] |
 | A-004 | `pct_classe_a/b/c/de` agrega por média ponderada em `domicilios_ocupados`, como o `_PESO_DA_MEDIA` já declara | Se a composição não fechar 100% sob a área, o bloco precisa de outra forma | [x] Lido em `queries.py:70` |
 | A-005 | A interseção do zoneamento por área tem custo comparável ao do Censo | Se os 61.784 polígonos pesarem sob área grande, o bloco ganha teto próprio | [ ] |

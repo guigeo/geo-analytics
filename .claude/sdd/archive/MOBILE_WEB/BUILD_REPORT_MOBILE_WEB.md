@@ -28,7 +28,12 @@ em gavetas sobre ele. Desktop mantém a grade anterior de três colunas.
 | `npm run build` | passou |
 | `curl -I http://127.0.0.1:5173/` | 200, Vite local respondeu |
 
-## Pendência antes de publicar
+## Publicação
 
-Conferir o fluxo no celular físico: teclado virtual, toque, rotação e aparência do mapa com
-tiles reais. Nenhum `ship` foi executado.
+Publicado em 2026-09-07 somente no cliente `geo-analytics` pelo `make ship-app`.
+O deploy conferiu o host de tiles, as 10 camadas declaradas e o portão de sessão; depois da
+subida, `https://geo-intelligence.averisen.com/` respondeu 200, `/api/auth/eu` respondeu
+401 sem sessão e o HTML trouxe o carimbo do commit `3794607`.
+
+Permanece útil conferir o fluxo em telefone físico — teclado virtual, toque, rotação e
+aparência do mapa com tiles reais — como validação de uso, não como bloqueio de publicação.

@@ -30,10 +30,10 @@ em gavetas sobre ele. Desktop mantém a grade anterior de três colunas.
 
 ## Publicação
 
-Publicado em 2026-09-07 somente no cliente `geo-analytics` pelo `make ship-app`.
-O deploy conferiu o host de tiles, as 10 camadas declaradas e o portão de sessão; depois da
-subida, `https://geo-intelligence.averisen.com/` respondeu 200, `/api/auth/eu` respondeu
-401 sem sessão e o HTML trouxe o carimbo do commit `3794607`.
+Publicado em 2026-09-07 nos dois clientes pelo `make ship-app`: primeiro `geo-analytics`,
+depois `eb-prime`. Os deploys conferiram host de tiles, todas as camadas declaradas e o
+portão de sessão; os dois domínios responderam 200, `/api/auth/eu` respondeu 401 sem sessão
+e os HTMLs trouxeram os carimbos `3794607` e `38c2d9f`, respectivamente.
 
 Permanece útil conferir o fluxo em telefone físico — teclado virtual, toque, rotação e
 aparência do mapa com tiles reais — como validação de uso, não como bloqueio de publicação.

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Bot, Layers, PanelLeftOpen, PanelRightOpen } from "lucide-react";
+import { Bot, Layers, Moon, PanelLeftOpen, PanelRightOpen, Satellite, Sun } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { MapView, type MapFocus, type SelectedFeature, type Viewport } from "@/map/MapView";
@@ -26,6 +26,10 @@ import {
   semUltimoVertice,
 } from "@/desenho/estado";
 import { ErroDoAcervo } from "@/desenho/api";
+import { MobileLayout } from "@/layout/MobileLayout";
+import { useMobile } from "@/hooks/use-mobile";
+import { MenuDaConta } from "@/auth/MenuDaConta";
+import { Button } from "@/components/ui/button";
 
 /**
  * Toda sessão começa com TUDO desligado — decidido em 2026-09-02, e é regra da casca,
@@ -44,6 +48,7 @@ const LARGURA_CHAT_PADRAO = 340;
 const LARGURA_ABA = 44;
 
 export function App() {
+  const movel = useMobile();
   const { theme, toggle } = useTheme();
   const [satellite, setSatellite] = useState(false);
   const [satelliteOverlay, setSatelliteOverlay] = useState(true);
@@ -205,7 +210,7 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-screen flex-col bg-background text-foreground">
+      <div className="flex h-[100dvh] flex-col bg-background text-foreground">
         <Header
           theme={theme}
           onToggleTheme={toggle}
@@ -221,48 +226,53 @@ export function App() {
           onAlternarDesenho={alternarDesenho}
           mapaCheio={mapaCheio}
           onAlternarMapaCheio={() => setMapaCheio((m) => !m)}
+          movel={movel}
         />
 
         {/* A faixa do traçado nasce SOB o cabeçalho e empurra o mapa, em vez de
             cobri-lo. Enquanto ela não existe, não ocupa altura nenhuma. */}
-        <BarraDoDesenho
-          estado={desenho}
-          onDesfazer={() => setVerticesDesenho(semUltimoVertice(desenho).coordenadas)}
-          onCancelar={cancelarDesenho}
-          onSalvar={() => setPreenchendo(true)}
-          onMudarRaio={setRaioDesenho}
-          acervoIndisponivel={acervo.erro?.indisponivel ?? false}
-        />
-        <div
-          className="grid min-h-0 flex-1"
-          style={{ gridTemplateColumns: `${colunaEsquerda} 1fr ${colunaDireita}` }}
-        >
-          {/* Uma coluna, um painel. Eram dois — camadas em cima, desenhos embaixo —,
-              e os dois tinham o mesmo título, porque respondiam à mesma pergunta: o
-              que está no mapa. Dois cabeçalhos para uma pergunta é o que fazia a
-              coluna parecer cheia estando quase vazia. */}
-          {/* A esquerda mostra a árvore OU o formulário de salvar — nunca os dois.
-              O formulário era a última peça a pousar sobre o mapa, e pousava bem em
-              cima do que se acabou de desenhar, que é o que se quer olhar ao decidir
-              como chamá-lo.
-
-              Recolhida, vira a mesma aba de 44px do chat. O formulário ABERTO manda
-              na coluna e ignora o recolhimento: salvamento pela metade que some atrás
-              de uma aba é armadilha — a pessoa não sabe que ainda deve algo. */}
-          {!esquerdaAberta ? (
-            <button
-              type="button"
-              onClick={() => setCamadasRecolhidas(false)}
-              aria-label="Abrir o painel de camadas"
-              aria-expanded={false}
-              className="flex flex-col items-center gap-2 border-r border-border bg-background py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <PanelLeftOpen aria-hidden="true" className="size-4" />
-              <Layers aria-hidden="true" className="size-5 text-primary" />
-            </button>
-          ) : (
-            <div className="relative min-h-0">
-              {preenchendo && modoDesenho ? (
+        {!movel && (
+          <BarraDoDesenho
+            estado={desenho}
+            onDesfazer={() => setVerticesDesenho(semUltimoVertice(desenho).coordenadas)}
+            onCancelar={cancelarDesenho}
+            onSalvar={() => setPreenchendo(true)}
+            onMudarRaio={setRaioDesenho}
+            acervoIndisponivel={acervo.erro?.indisponivel ?? false}
+          />
+        )}
+        {movel ? (
+          <MobileLayout
+            mapa={
+              <div className="relative size-full overflow-hidden">
+                <MapView
+                  visible={visible}
+                  theme={theme}
+                  satellite={satellite}
+                  satelliteOverlay={satelliteOverlay}
+                  onSelect={setSelected}
+                  selected={selected}
+                  highlights={destaques}
+                  focus={focus}
+                  onViewportChange={(v) => {
+                    viewportRef.current = v;
+                  }}
+                  medicao={medicao}
+                  onVerticeMedicao={(c) => setVerticesMedicao((prev) => [...prev, c])}
+                  onEncerrarMedicao={encerrarMedicao}
+                  desenho={desenho}
+                  onVerticeDesenho={(c) => {
+                    setVerticesDesenho(comVertice(desenho, c).coordenadas);
+                  }}
+                  onCancelarDesenho={cancelarDesenho}
+                  onEncerrarDesenho={encerrarDesenho}
+                  desenhos={acervo.desenhos}
+                  desenhosOcultos={desenhosOcultos}
+                />
+              </div>
+            }
+            camadas={(fechar) =>
+              preenchendo && modoDesenho ? (
                 <FormularioDesenho
                   tipo={modoDesenho}
                   area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
@@ -285,96 +295,205 @@ export function App() {
                       atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
                     )
                   }
-                  onFocalizar={focalizarDesenho}
+                  onFocalizar={(item) => {
+                    focalizarDesenho(item);
+                    fechar();
+                  }}
                   onApagar={(item) => {
                     void acervo.apagar(item.id);
                   }}
                   erroDoAcervo={acervo.erro}
                   onRecarregar={acervo.recarregar}
-                  onRecolher={() => setCamadasRecolhidas(true)}
+                  onRecolher={fechar}
                 />
-              )}
-              <Redimensionador
-                largura={larguraEsquerda}
-                onLargura={setLarguraEsquerda}
-                minima={200}
-                maxima={560}
-                padrao={LARGURA_PADRAO}
-                rotulo="Redimensionar o painel de camadas"
+              )
+            }
+            chat={(fechar) => (
+              <ChatPanel
+                onDestaques={setDestaques}
+                getContexto={getContexto}
+                pergunta={pergunta}
+                onRecolher={fechar}
+              />
+            )}
+            mais={
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="button"
+                  variant={satellite ? "secondary" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => setSatellite((atual) => !atual)}
+                >
+                  <Satellite aria-hidden="true" className="size-4" />
+                  {satellite ? "Voltar ao mapa" : "Imagem de satélite"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={toggle}
+                >
+                  {theme === "dark" ? (
+                    <Sun aria-hidden="true" className="size-4" />
+                  ) : (
+                    <Moon aria-hidden="true" className="size-4" />
+                  )}
+                  {theme === "dark" ? "Tema claro" : "Tema escuro"}
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  Medição e criação de desenhos estão disponíveis na versão para computador.
+                </p>
+                <div className="flex items-center justify-between rounded-md border border-border px-2 py-1">
+                  <span className="text-sm">Conta</span>
+                  <MenuDaConta />
+                </div>
+              </div>
+            }
+          />
+        ) : (
+          <div
+            className="grid min-h-0 flex-1"
+            style={{ gridTemplateColumns: `${colunaEsquerda} 1fr ${colunaDireita}` }}
+          >
+            {/* Uma coluna, um painel. Eram dois — camadas em cima, desenhos embaixo —,
+              e os dois tinham o mesmo título, porque respondiam à mesma pergunta: o
+              que está no mapa. Dois cabeçalhos para uma pergunta é o que fazia a
+              coluna parecer cheia estando quase vazia. */}
+            {/* A esquerda mostra a árvore OU o formulário de salvar — nunca os dois.
+              O formulário era a última peça a pousar sobre o mapa, e pousava bem em
+              cima do que se acabou de desenhar, que é o que se quer olhar ao decidir
+              como chamá-lo.
+
+              Recolhida, vira a mesma aba de 44px do chat. O formulário ABERTO manda
+              na coluna e ignora o recolhimento: salvamento pela metade que some atrás
+              de uma aba é armadilha — a pessoa não sabe que ainda deve algo. */}
+            {!esquerdaAberta ? (
+              <button
+                type="button"
+                onClick={() => setCamadasRecolhidas(false)}
+                aria-label="Abrir o painel de camadas"
+                aria-expanded={false}
+                className="flex flex-col items-center gap-2 border-r border-border bg-background py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <PanelLeftOpen aria-hidden="true" className="size-4" />
+                <Layers aria-hidden="true" className="size-5 text-primary" />
+              </button>
+            ) : (
+              <div className="relative min-h-0">
+                {preenchendo && modoDesenho ? (
+                  <FormularioDesenho
+                    tipo={modoDesenho}
+                    area={areaFormatada(modoDesenho, verticesDesenho, raioDesenho)}
+                    categorias={acervo.categorias}
+                    salvando={salvandoDesenho}
+                    erro={erroAoSalvar}
+                    onSalvar={(dados) => {
+                      void salvarDesenho(dados);
+                    }}
+                    onCancelar={() => setPreenchendo(false)}
+                  />
+                ) : (
+                  <LayerPanel
+                    visible={visible}
+                    onToggle={toggleLayer}
+                    itens={itens}
+                    ocultos={desenhosOcultos}
+                    onAlternarItem={(id) =>
+                      setDesenhosOcultos((atual) =>
+                        atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+                      )
+                    }
+                    onFocalizar={focalizarDesenho}
+                    onApagar={(item) => {
+                      void acervo.apagar(item.id);
+                    }}
+                    erroDoAcervo={acervo.erro}
+                    onRecarregar={acervo.recarregar}
+                    onRecolher={() => setCamadasRecolhidas(true)}
+                  />
+                )}
+                <Redimensionador
+                  largura={larguraEsquerda}
+                  onLargura={setLarguraEsquerda}
+                  minima={200}
+                  maxima={560}
+                  padrao={LARGURA_PADRAO}
+                  rotulo="Redimensionar o painel de camadas"
+                />
+              </div>
+            )}
+            {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
+            <div className="relative overflow-hidden">
+              <MapView
+                visible={visible}
+                theme={theme}
+                satellite={satellite}
+                satelliteOverlay={satelliteOverlay}
+                onSelect={setSelected}
+                selected={selected}
+                highlights={destaques}
+                focus={focus}
+                onViewportChange={(v) => {
+                  viewportRef.current = v;
+                }}
+                medicao={medicao}
+                onVerticeMedicao={(c) => setVerticesMedicao((prev) => [...prev, c])}
+                onEncerrarMedicao={encerrarMedicao}
+                desenho={desenho}
+                onVerticeDesenho={(c) => {
+                  setVerticesDesenho(comVertice(desenho, c).coordenadas);
+                }}
+                onCancelarDesenho={cancelarDesenho}
+                onEncerrarDesenho={encerrarDesenho}
+                desenhos={acervo.desenhos}
+                desenhosOcultos={desenhosOcultos}
+              />
+              <PainelMedicao
+                medicao={medicao}
+                onEncerrar={encerrarMedicao}
+                onRecomecar={() => setVerticesMedicao([])}
               />
             </div>
-          )}
-          {/* O mapa "acende" no centro: leve elevação em volta da célula. */}
-          <div className="relative overflow-hidden">
-            <MapView
-              visible={visible}
-              theme={theme}
-              satellite={satellite}
-              satelliteOverlay={satelliteOverlay}
-              onSelect={setSelected}
-              selected={selected}
-              highlights={destaques}
-              focus={focus}
-              onViewportChange={(v) => {
-                viewportRef.current = v;
-              }}
-              medicao={medicao}
-              onVerticeMedicao={(c) => setVerticesMedicao((prev) => [...prev, c])}
-              onEncerrarMedicao={encerrarMedicao}
-              desenho={desenho}
-              onVerticeDesenho={(c) => {
-                setVerticesDesenho(comVertice(desenho, c).coordenadas);
-              }}
-              onCancelarDesenho={cancelarDesenho}
-              onEncerrarDesenho={encerrarDesenho}
-              desenhos={acervo.desenhos}
-              desenhosOcultos={desenhosOcultos}
-            />
-            <PainelMedicao
-              medicao={medicao}
-              onEncerrar={encerrarMedicao}
-              onRecomecar={() => setVerticesMedicao([])}
-            />
-          </div>
-          {/* A direita é só o chat, e ele vai do topo ao rodapé. Os atributos, que
+            {/* A direita é só o chat, e ele vai do topo ao rodapé. Os atributos, que
               cobravam metade desta coluna para passar a sessão dizendo "clique numa
               feição", viraram popup ancorado na feição — `map/PopupAtributos.tsx`.
 
               Recolhida, a coluna vira uma aba de 44px e o resto vira mapa: barra
               estática é área cobrada o tempo todo por algo que nem sempre se usa. */}
-          <div className={cn("relative min-h-0", mapaCheio && "hidden")}>
-            {chatRecolhido ? (
-              <button
-                type="button"
-                onClick={() => setChatRecolhido(false)}
-                aria-label="Abrir o chat"
-                aria-expanded={false}
-                className="flex size-full flex-col items-center gap-2 border-l border-border bg-background py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <PanelRightOpen aria-hidden="true" className="size-4" />
-                <Bot aria-hidden="true" className="size-5 text-primary" />
-              </button>
-            ) : (
-              <div className="relative size-full border-l border-border bg-background">
-                <ChatPanel
-                  onDestaques={setDestaques}
-                  getContexto={getContexto}
-                  pergunta={pergunta}
-                  onRecolher={() => setChatRecolhido(true)}
-                />
-                <Redimensionador
-                  largura={larguraChat}
-                  onLargura={setLarguraChat}
-                  minima={280}
-                  maxima={640}
-                  padrao={LARGURA_CHAT_PADRAO}
-                  rotulo="Redimensionar o chat"
-                  lado="esquerda"
-                />
-              </div>
-            )}
+            <div className={cn("relative min-h-0", mapaCheio && "hidden")}>
+              {chatRecolhido ? (
+                <button
+                  type="button"
+                  onClick={() => setChatRecolhido(false)}
+                  aria-label="Abrir o chat"
+                  aria-expanded={false}
+                  className="flex size-full flex-col items-center gap-2 border-l border-border bg-background py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <PanelRightOpen aria-hidden="true" className="size-4" />
+                  <Bot aria-hidden="true" className="size-5 text-primary" />
+                </button>
+              ) : (
+                <div className="relative size-full border-l border-border bg-background">
+                  <ChatPanel
+                    onDestaques={setDestaques}
+                    getContexto={getContexto}
+                    pergunta={pergunta}
+                    onRecolher={() => setChatRecolhido(true)}
+                  />
+                  <Redimensionador
+                    largura={larguraChat}
+                    onLargura={setLarguraChat}
+                    minima={280}
+                    maxima={640}
+                    padrao={LARGURA_CHAT_PADRAO}
+                    rotulo="Redimensionar o chat"
+                    lado="esquerda"
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </TooltipProvider>
   );

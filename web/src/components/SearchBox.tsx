@@ -3,15 +3,18 @@ import { Landmark, Loader2, MapPin, Search, Signpost } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { buscar, loadIndex, type SearchHit } from "@/search";
 import { geocodificar } from "@/search/geocode";
+import { cn } from "@/lib/utils";
 
 interface Props {
   onSelect: (hit: SearchHit) => void;
+  /** No desktop a busca some em telas estreitas; a casca móvel a torna central. */
+  movel?: boolean;
 }
 
 const MIN_QUERY_ENDERECO = 4;
 const DEBOUNCE_MS = 400;
 
-export function SearchBox({ onSelect }: Props) {
+export function SearchBox({ onSelect, movel = false }: Props) {
   const [query, setQuery] = useState("");
   const [localHits, setLocalHits] = useState<SearchHit[]>([]);
   const [addressHits, setAddressHits] = useState<SearchHit[]>([]);
@@ -93,7 +96,7 @@ export function SearchBox({ onSelect }: Props) {
   }
 
   return (
-    <div className="relative ml-2 hidden max-w-sm flex-1 sm:block">
+    <div className={cn("relative flex-1", movel ? "min-w-0" : "ml-2 hidden max-w-sm sm:block")}>
       <Search className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={query}

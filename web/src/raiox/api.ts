@@ -95,7 +95,8 @@ export interface Qualidade extends ComProveniencia {
 
 export interface ZonaNaArea {
   cod_zona: string;
-  nome_zona: string;
+  /** Nulo nas feições que não são zona de uso — praça, canteiro, logradouro. */
+  nome_zona: string | null;
   e_zona: boolean | null;
   lei: string | null;
   cod_municipio: string;

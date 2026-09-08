@@ -1163,7 +1163,12 @@ class GeoQuery:
             "disponivel": row["cd_mun"] == "3550308" and bool(zonas), "zonas": zonas,
             "aviso": None if row["cd_mun"] == "3550308" and zonas else (
                 f"regulação de uso do solo não carregada para {row['nm_mun']}"
-            ), "fonte": zonas[0]["lei"] if zonas else None, "periodo": "vigente",
+            # Sem cobertura a fonte NAO e nula: e a mesma camada, que existe e nao
+            # alcanca este municipio. Nomea-la e o que separa "nao ha dado aqui" de
+            # "nao ha dado nenhum" — e um None aqui derrubava a rota inteira, porque
+            # o contrato exige que todo bloco declare de onde veio.
+            ), "fonte": zonas[0]["lei"] if zonas else "GeoSampa — zoneamento municipal",
+            "periodo": "vigente",
             "metodo": "interseção exata da área com as zonas", "cobertura": "Município de São Paulo",
             "avisos": [],
         }

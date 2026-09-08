@@ -208,7 +208,11 @@ class Qualidade(ComProveniencia):
 
 class ZonaNaArea(BaseModel):
     cod_zona: str
-    nome_zona: str
+    # `None` e a verdade para 10.714 feicoes da camada: as Praca/Canteiro, que a carga
+    # do ZONEAMENTO_SP preservou de proposito com `e_zona = false` e sem descricao por
+    # extenso. Exigir `str` aqui derrubava o Raio-X de qualquer area do centro de Sao
+    # Paulo — 500 na demonstracao, e sem nada de errado no dado.
+    nome_zona: str | None = None
     e_zona: bool | None = None
     lei: str | None = None
     cod_municipio: str

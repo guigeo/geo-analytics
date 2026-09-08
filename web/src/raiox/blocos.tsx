@@ -387,7 +387,11 @@ export function BlocoDeRegulacao({ dados }: { dados: BlocoRegulacao }) {
           {dados.zonas.map((zona) => (
             <li key={zona.cod_zona} className="flex items-baseline gap-3 text-sm">
               <span className="font-mono text-xs font-semibold">{zona.cod_zona}</span>
-              <span className="flex-1 text-muted-foreground">{zona.nome_zona}</span>
+              <span className="flex-1 text-muted-foreground">
+                {/* Praça e canteiro entram no polígono como qualquer zona, mas não
+                    regulam uso. Dizer isso vale mais que repetir o código. */}
+                {zona.nome_zona ?? (zona.e_zona === false ? "não regula uso do solo" : "—")}
+              </span>
               <span className="tabular-nums">{percentual(zona.percentual)}</span>
             </li>
           ))}

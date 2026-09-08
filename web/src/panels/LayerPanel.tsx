@@ -5,6 +5,7 @@ import {
   Layers,
   PanelLeftClose,
   RadioTower,
+  Radar,
   RotateCcw,
   Trash2,
   type LucideIcon,
@@ -33,6 +34,8 @@ interface Props {
   /** Voa até o desenho. É o que o nome faz quando clicado. */
   onFocalizar: (item: ItemDoAcervo) => void;
   onApagar: (item: ItemDoAcervo) => void;
+  /** Abre o Raio-X do desenho. Ausente no ponto: sem área não há o que agregar. */
+  onRaioX: (item: ItemDoAcervo) => void;
   /** Acervo fora do ar não é acervo vazio (AT-012): são estados diferentes na tela. */
   erroDoAcervo: ErroDoAcervo | null;
   onRecarregar: () => void;
@@ -67,6 +70,7 @@ export function LayerPanel({
   onAlternarItem,
   onFocalizar,
   onApagar,
+  onRaioX,
   erroDoAcervo,
   onRecarregar,
   onRecolher,
@@ -170,6 +174,7 @@ export function LayerPanel({
                     ligada={!ocultos.includes(item.id)}
                     onAlternar={() => onAlternarItem(item.id)}
                     onFocalizar={() => onFocalizar(item)}
+                    onRaioX={() => onRaioX(item)}
                     onApagar={() => onApagar(item)}
                   />
                 ))
@@ -257,12 +262,14 @@ function LinhaDoAcervo({
   onAlternar,
   onFocalizar,
   onApagar,
+  onRaioX,
 }: {
   item: ItemDoAcervo;
   ligada: boolean;
   onAlternar: () => void;
   onFocalizar: () => void;
   onApagar: () => void;
+  onRaioX: () => void;
 }) {
   // Um booleano por linha, e não um id no pai: a confirmação é estado da linha, e
   // guardá-la em cima faria abrir numa linha abrir em todas.
@@ -314,6 +321,23 @@ function LinhaDoAcervo({
             onCheckedChange={onAlternar}
             aria-label={`Mostrar ${item.nome} no mapa`}
           />
+          {/*
+            Ponto não ganha o botão. Sem área não há o que agregar, e oferecer a ação
+            para depois recusar com 422 seria ensinar o produto pelo erro.
+          */}
+          {item.tipo !== "ponto" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`Gerar Raio-X de ${item.nome}`}
+              title="Gerar Raio-X"
+              className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+              onClick={onRaioX}
+            >
+              <Radar aria-hidden="true" />
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"

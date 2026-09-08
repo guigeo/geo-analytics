@@ -1011,7 +1011,11 @@ class GeoQuery:
                 select count(*) as setores,
                        count(*) filter (where f < {limiar}) as parciais,
                        round(sum(pop_total * f)) as pop_total,
-                       round(sum(pop_total * f) filter (where f >= {limiar})) as pop_contida,
+                       -- coalesce, e nao NULL: quando nenhum setor entra inteiro o valor
+                       -- e ZERO, e a diferenca importa na tela. NULL vira travessao, que
+                       -- se le como "nao sei"; o que se sabe aqui e que nao ha nenhum.
+                       coalesce(round(sum(pop_total * f) filter (where f >= {limiar})), 0)
+                           as pop_contida,
                        round(sum(pop_total * f) filter (where f < {limiar})) as pop_de_rateio,
                        round(sum(domicilios_ocupados * f)) as domicilios_ocupados,
                        round((sum(renda_media * domicilios_ocupados * f) /
@@ -1073,8 +1077,13 @@ class GeoQuery:
                 from dist_base b cross join dist d
             ),
             faixas_resumo as (
+                -- `width_bucket` devolve NULL para setor sem a metrica, e essa linha
+                -- viraria uma faixa de limites nulos com zero habitantes: uma barra que
+                -- nao significa nada na legenda. Setor sem dado nao e uma faixa a mais,
+                -- e a legenda ja tem a cor propria dele.
                 select faixa, minimo, maximo, round(sum(pop_total * fracao)) as populacao
                 from faixas_base
+                where faixa is not null
                 group by faixa, minimo, maximo
             ),
             faixas as (

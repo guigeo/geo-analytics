@@ -1,0 +1,48 @@
+/*
+ * A folha de impressão do Raio-X.
+ *
+ * Existe porque encaminhar é o que transforma demonstração em decisão, e porque
+ * imprimir custa uma folha de estilo enquanto gerar PDF custa fila, worker,
+ * armazenamento e retenção — a fase que o ADR adiou de propósito. O que se adiou foi o
+ * motor do documento, não a possibilidade de mandar o diagnóstico para alguém.
+ *
+ * A regra é uma só: some tudo que é da aplicação, fica tudo que é do diagnóstico.
+ */
+@media print {
+  /* Mapa, painéis, chat, cabeçalho da aplicação: nada disso é o relatório. */
+  body > #root > *:not(.raiox-pagina) {
+    display: none !important;
+  }
+
+  .raiox-pagina {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  .raiox-sem-impressao {
+    display: none !important;
+  }
+
+  /* Um bloco não se parte no meio de uma página: cortar a tabela de setores ao meio
+     deixaria metade dos números sem o rodapé de fonte que lhes dá sentido. */
+  .raiox-bloco {
+    break-inside: avoid;
+    border: 1px solid #cbd5e1 !important;
+    background: #fff !important;
+  }
+
+  /* A lista de setores rola na tela e não pode rolar no papel: no PDF ela some pela
+     metade sem avisar, que é a pior forma de perder dado. */
+  .raiox-lista-setores {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}

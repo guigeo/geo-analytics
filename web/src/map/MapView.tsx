@@ -9,6 +9,7 @@ import { EMPTY_SELECTION, SELECTION_SOURCE_ID } from "./selection";
 import { PopupAtributos } from "./PopupAtributos";
 import { Atributos } from "@/components/Atributos";
 import { applyHighlights, type Destaques } from "./highlight";
+import { aplicarPinturaRaioX, type PinturaRaioX } from "./pinturaRaioX";
 import { ensureIcon, loadIcons } from "./icons";
 import {
   geometriaDaMedicao,
@@ -129,6 +130,8 @@ interface Props {
   desenhosOcultos: readonly string[];
   /** A feição selecionada. O MapView a recebe de volta porque é ele quem ancora o popup. */
   selected: SelectedFeature | null;
+  /** Cor por setor do Raio-X aberto. `null` apaga a pintura. */
+  raioX?: PinturaRaioX | null;
 }
 
 export function MapView({
@@ -150,6 +153,7 @@ export function MapView({
   desenhos,
   desenhosOcultos,
   selected,
+  raioX,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -157,6 +161,9 @@ export function MapView({
   const visibleRef = useRef(visible);
   // Destaques atuais em ref: reaplicados apos setStyle (troca de tema) sem re-registrar nada.
   const highlightsRef = useRef<Destaques | null>(highlights ?? null);
+  // Mesmo motivo do ref acima: a pintura do Raio-X precisa sobreviver ao setStyle da
+  // troca de tema, que reconstrói o style inteiro e levaria as cores junto.
+  const raioXRef = useRef<PinturaRaioX | null>(raioX ?? null);
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
   // Medição em ref pelo mesmo motivo da visibilidade: os handlers do mapa são
@@ -445,6 +452,13 @@ export function MapView({
     assimQuePuder(map, () => applyHighlights(map, highlightsRef.current));
   }, [highlights]);
 
+  useEffect(() => {
+    raioXRef.current = raioX ?? null;
+    const map = mapRef.current;
+    if (!map) return;
+    assimQuePuder(map, () => aplicarPinturaRaioX(map, raioXRef.current));
+  }, [raioX]);
+
   // Troca de tema ou satélite: reconstrói o style (basemap claro/escuro/satélite
   // + sprite) sem recriar o mapa. O handler de clique vive no mapa, então sobrevive
   // ao setStyle; só a visibilidade das camadas precisa ser reaplicada quando o novo
@@ -463,6 +477,7 @@ export function MapView({
     map.once("idle", () => {
       applyVisibility(map, visibleRef.current);
       applyHighlights(map, highlightsRef.current);
+      aplicarPinturaRaioX(map, raioXRef.current);
       // O setStyle troca as fontes por novas e vazias: sem isto, alternar tema ou
       // ligar o satélite no meio de uma medição apaga o desenho e deixa o painel
       // anunciando uma área que não está mais na tela.

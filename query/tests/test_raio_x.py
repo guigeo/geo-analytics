@@ -83,3 +83,31 @@ def test_raio_x_recusa_area_acima_do_teto(gq: GeoQuery) -> None:
     wkb = _buffer(gq, lado)
     with pytest.raises(ValueError, match="2,000"):
         gq.raio_x_por_geometria(wkb)
+
+
+@_PRECISA_GEODATA
+def test_populacao_contida_e_zero_e_nao_desconhecido(gq: GeoQuery) -> None:
+    """Sem nenhum setor inteiro, a contida vale 0 — não NULL.
+
+    A diferença não é de estilo: na tela, NULL vira travessão e se lê "não sei",
+    enquanto o que se sabe aqui é que nenhum setor entrou inteiro. Medido num buffer
+    de 200 m em São Caetano do Sul: 7 setores tocados, 7 parciais, contida 0.
+    """
+    resultado = gq.raio_x_por_geometria(_buffer(gq, 120))
+    escala = resultado["escala"]
+    assert escala["populacao_contida"] is not None
+    assert escala["populacao_contida"] + escala["populacao_rateada"] == escala["populacao"]
+
+
+@_PRECISA_GEODATA
+def test_faixas_nao_carregam_balde_de_limites_nulos(gq: GeoQuery) -> None:
+    """Setor sem a métrica não vira uma quinta faixa vazia.
+
+    `width_bucket` devolve NULL para valor nulo, e essa linha chegava à tela como uma
+    barra de "— a —" com zero habitantes. Setor sem dado tem cor própria na legenda;
+    não é faixa.
+    """
+    faixas = gq.raio_x_por_geometria(_buffer(gq, 500))["contraste"]["faixas"]
+    assert faixas
+    assert all(f["faixa"] is not None for f in faixas)
+    assert all(f["inferior"] is not None and f["superior"] is not None for f in faixas)

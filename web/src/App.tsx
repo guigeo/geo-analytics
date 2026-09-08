@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Bot, Layers, Moon, PanelLeftOpen, PanelRightOpen, Satellite, Sun } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +29,9 @@ import { ErroDoAcervo } from "@/desenho/api";
 import { MobileLayout } from "@/layout/MobileLayout";
 import { useMobile } from "@/hooks/use-mobile";
 import { MenuDaConta } from "@/auth/MenuDaConta";
+import { PaginaRaioX } from "@/raiox/PaginaRaioX";
+import { abrirRaioX, aoMudarRaioX, fecharRaioX, raioXNaUrl } from "@/raiox/rota";
+import type { PinturaRaioX } from "@/map/pinturaRaioX";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -60,6 +63,11 @@ export function App() {
   // existe para a MESMA pergunta poder ser pedida duas vezes — sem ela, o efeito
   // do ChatPanel não veria mudança nenhuma na segunda.
   const [pergunta, setPergunta] = useState<PerguntaExterna | null>(null);
+  // O Raio-X aberto vem da URL, e não de um estado solto: recarregar a página cai no
+  // mesmo diagnóstico, e o voltar do navegador fecha em vez de sair da aplicação.
+  const [raioXAberto, setRaioXAberto] = useState<string | null>(() => raioXNaUrl());
+  const [pinturaRaioX, setPinturaRaioX] = useState<PinturaRaioX | null>(null);
+  useEffect(() => aoMudarRaioX(setRaioXAberto), []);
   // Medição: o modo e os vértices são o estado; a medida em si é derivada deles
   // por `criarEstadoMedicao`, que é função pura. Guardar o valor calculado daria
   // duas fontes para o mesmo número.
@@ -186,6 +194,17 @@ export function App() {
     }
   };
 
+  const gerarRaioX = (d: ItemDoAcervo) => {
+    abrirRaioX(d.id);
+    setRaioXAberto(d.id);
+    focalizarDesenho(d);
+  };
+
+  const encerrarRaioX = () => {
+    fecharRaioX();
+    setRaioXAberto(null);
+  };
+
   const focalizarDesenho = (d: ItemDoAcervo) => {
     const bbox = bboxDe(d.geometria);
     // Um ponto tem caixa degenerada, e o `maxZoom` é quem decide o enquadramento;
@@ -210,7 +229,7 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-[100dvh] flex-col bg-background text-foreground">
+      <div className="relative flex h-[100dvh] flex-col bg-background text-foreground">
         <Header
           theme={theme}
           onToggleTheme={toggle}
@@ -268,6 +287,7 @@ export function App() {
                   onEncerrarDesenho={encerrarDesenho}
                   desenhos={acervo.desenhos}
                   desenhosOcultos={desenhosOcultos}
+                  raioX={pinturaRaioX}
                 />
               </div>
             }
@@ -301,6 +321,10 @@ export function App() {
                   }}
                   onApagar={(item) => {
                     void acervo.apagar(item.id);
+                  }}
+                  onRaioX={(item) => {
+                    gerarRaioX(item);
+                    fechar();
                   }}
                   erroDoAcervo={acervo.erro}
                   onRecarregar={acervo.recarregar}
@@ -407,6 +431,7 @@ export function App() {
                     onApagar={(item) => {
                       void acervo.apagar(item.id);
                     }}
+                    onRaioX={gerarRaioX}
                     erroDoAcervo={acervo.erro}
                     onRecarregar={acervo.recarregar}
                     onRecolher={() => setCamadasRecolhidas(true)}
@@ -447,6 +472,7 @@ export function App() {
                 onEncerrarDesenho={encerrarDesenho}
                 desenhos={acervo.desenhos}
                 desenhosOcultos={desenhosOcultos}
+                raioX={pinturaRaioX}
               />
               <PainelMedicao
                 medicao={medicao}
@@ -493,6 +519,26 @@ export function App() {
               )}
             </div>
           </div>
+        )}
+
+        {/*
+          A página cobre a aplicação em vez de substituí-la: o mapa segue vivo por
+          baixo, pintado com os setores deste diagnóstico, e fechar devolve a pessoa
+          onde ela estava. Sai do fluxo dos painéis de propósito — o Raio-X é uma
+          leitura, não mais uma coluna.
+        */}
+        {raioXAberto && (
+          <PaginaRaioX
+            desenhoId={raioXAberto}
+            nome={itens.find((i) => i.id === raioXAberto)?.nome ?? "Área salva"}
+            aoFechar={encerrarRaioX}
+            aoPintarMapa={setPinturaRaioX}
+            aoFocalizarSetor={(codSetor) => setDestaques({ camada: "setor", codigos: [codSetor] })}
+            aoPerguntar={(texto) => {
+              setPergunta({ texto, key: Date.now() });
+              encerrarRaioX();
+            }}
+          />
         )}
       </div>
     </TooltipProvider>

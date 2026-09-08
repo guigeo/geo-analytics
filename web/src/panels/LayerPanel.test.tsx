@@ -18,6 +18,7 @@ const semAcervo = {
   onAlternarItem: vi.fn(),
   onFocalizar: vi.fn(),
   onApagar: vi.fn(),
+  onRaioX: vi.fn(),
   erroDoAcervo: null,
   onRecarregar: vi.fn(),
   onRecolher: vi.fn(),

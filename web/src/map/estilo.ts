@@ -24,6 +24,7 @@ import {
 } from "./basemap";
 import { camadasDoMapa, fontesDeDados } from "./layers";
 import { highlightLayers } from "./highlight";
+import { camadasDoRaioX } from "./pinturaRaioX";
 import { selectionLayers, selectionSource, SELECTION_SOURCE_ID } from "./selection";
 import { camadasMedicao, fonteMedicao, MEDICAO_SOURCE_ID } from "./medicao";
 import {
@@ -67,6 +68,9 @@ export function montarEstilo({
         ? [satelliteLayer(), ...(sobreporVias ? basemapOverlayLayers(tema) : [])]
         : basemapLayers(tema)),
       ...camadasDoMapa(camadas),
+      // A pintura do Raio-X vem ANTES do destaque do agente: as duas podem estar de pé
+      // ao mesmo tempo, e o destaque é resposta a um gesto de agora — precisa vencer.
+      ...camadasDoRaioX(camadas),
       ...highlightLayers(camadas),
       // Os desenhos ficam acima do dado universal e abaixo da seleção: são dado do
       // CLIENTE, então valem mais que o recorte do IBGE debaixo deles — mas menos

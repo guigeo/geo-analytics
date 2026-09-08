@@ -312,6 +312,16 @@ class InfoAreaDesenhadaArgs(BaseModel):
     )
 
 
+class ObterRaioXArgs(BaseModel):
+    """O diagnóstico completo e fixo de uma área salva, pelo id do desenho.
+
+    Use quando a conversa já é sobre o Raio-X daquela área. Não aceita métrica: o
+    contrato é o mesmo da tela para o chat nunca reagregar outro conjunto de números.
+    """
+
+    desenho_id: str = Field(min_length=1, description="Id da área salva no acervo")
+
+
 # --- resultado + dispatch -------------------------------------------------------
 
 
@@ -794,6 +804,38 @@ def _info_area_desenhada(ctx: Contexto, a: InfoAreaDesenhadaArgs) -> ToolResult:
     )
 
 
+def _obter_raio_x(ctx: Contexto, a: ObterRaioXArgs) -> ToolResult:
+    """Entrega ao chat o mesmo objeto do Raio-X, sem passar a geometria ao modelo."""
+    if ctx.acervo is None:
+        return ToolResult(
+            payload={"erro": "o acervo de desenhos nao esta disponivel neste ambiente"}, error=True
+        )
+    try:
+        desenho = ctx.acervo.wkb_por_id(a.desenho_id)
+    except AcervoIndisponivel:
+        return ToolResult(
+            payload={"erro": "nao foi possivel ler o acervo de desenhos agora"}, error=True
+        )
+    if desenho is None:
+        return ToolResult(payload={"erro": "nenhum desenho com este id"}, error=True)
+    if desenho["tipo"] == "ponto":
+        return ToolResult(
+            payload={"erro": "ponto não tem área; o Raio-X precisa de polígono ou raio"}, error=True
+        )
+    try:
+        resultado = ctx.geodata.raio_x_por_geometria(desenho["wkb"])
+    except ValueError as exc:
+        return ToolResult(payload={"erro": str(exc)}, error=True)
+    classe = resultado.get("classe_social", {})
+    classe["avisos"] = _avisos_classe_social(
+        {
+            "pct_classe_a": classe.get("pct_a"),
+            "classe_social_situacao": classe.get("situacao"),
+        }
+    )
+    return ToolResult(payload=resultado, rows=[resultado])
+
+
 TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "listar_metricas": (ListarMetricasArgs, _listar_metricas),
     "buscar_municipio": (BuscarMunicipioArgs, _buscar_municipio),
@@ -827,6 +869,7 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     # pelo qual entrou por ultimo: o produto responde sobre o Brasil publicado, e sobre
     # o desenho do cliente por cima disso.
     "info_area_desenhada": (InfoAreaDesenhadaArgs, _info_area_desenhada),
+    "obter_raio_x": (ObterRaioXArgs, _obter_raio_x),
 }
 
 

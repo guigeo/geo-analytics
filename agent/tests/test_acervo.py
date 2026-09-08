@@ -163,6 +163,15 @@ def test_wkb_por_nome(acervo: Acervo, limpo: list[str]) -> None:
     assert len(bytes(achado["wkb"])) > 0
 
 
+def test_wkb_por_id_devolve_geometria_e_area(acervo: Acervo, limpo: list[str]) -> None:
+    desenho = acervo.criar(tipo="poligono", nome=f"wkb-id-{uuid.uuid4().hex[:8]}", geometria=QUADRADO)
+    limpo.append(desenho["id"])
+    achado = acervo.wkb_por_id(str(desenho["id"]))
+    assert achado is not None
+    assert bytes(achado["wkb"])
+    assert achado["area_m2"] > 0
+
+
 def test_geometria_vazia_e_recusada(acervo: Acervo) -> None:
     with pytest.raises(DesenhoInvalido):
         acervo.criar(tipo="ponto", nome="x", geometria={"type": "Point", "coordinates": []})

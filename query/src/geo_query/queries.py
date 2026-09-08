@@ -20,6 +20,7 @@ passa a rotear sozinho.
 from __future__ import annotations
 
 import contextlib
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 import h3
@@ -27,6 +28,7 @@ import psycopg
 from psycopg import sql
 
 from .db import connect
+from .sintese import montar_sintese
 
 Ordem = Literal["asc", "desc"]
 Nivel = Literal["setor", "municipio", "bairro", "distrito"]
@@ -101,6 +103,40 @@ _SEM_AGREGACAO: dict[str, str] = {
 # porque ST_Intersection sobre geography devolve 0,9999... para setor inteiro cujo
 # poligono encosta na borda, e chamar isso de parcial inflaria o aviso.
 _LIMIAR_INTEIRO = "0.999"
+
+# A regra do rateio mora aqui e em nenhum outro lugar. O cruzamento livre do chat e
+# o Raio-X têm contratos diferentes, mas "setor cortado" não pode significar uma coisa
+# em cada um. ST_Within vem antes para o caminho comum não pagar a interseção cara.
+_CTE_FRACAO = """
+    with area as (select ST_GeomFromWKB(%s, 4674) as g),
+    frac as (
+        select s.cod_setor,
+               case when ST_Within(s.geom, a.g) then 1.0
+                    else ST_Area(ST_Intersection(s.geom, a.g)::geography)
+                         / nullif(ST_Area(s.geom::geography), 0)
+               end as f
+        from ibge.setor_censitario s, area a
+        where ST_Intersects(s.geom, a.g)
+    )
+"""
+
+# Os dois números vêm da medição do desenho do município de São Paulo. A área é uma
+# recusa barata antes de varrer o geodata; a lista degrada sem jogar fora o diagnóstico.
+TETO_AREA_RAIO_X_KM2 = 2_000
+TETO_SETORES_RAIO_X = 500
+
+_METRICAS_RAIO_X = (
+    "pop_total",
+    "domicilios_ocupados",
+    "renda_media",
+    "media_moradores",
+    "pop_masculino",
+    "pop_feminino",
+    "pct_classe_a",
+    "pct_classe_b",
+    "pct_classe_c",
+    "pct_classe_de",
+)
 
 
 def _sem_acento(expr: str) -> sql.SQL:
@@ -902,20 +938,8 @@ class GeoQuery:
             juncao = sql.SQL("res")
             saida = sql.SQL("res.*")
 
-        consulta = sql.SQL("""
-            with area as (select ST_GeomFromWKB(%s, 4674) as g),
-            frac as (
-                select s.cod_setor,
-                       -- ST_Within primeiro: o caso comum e barato, e o ST_Intersection
-                       -- (caro) so roda na borda. E o que faz o rateio custar pouco em
-                       -- area grande, onde quase todo setor esta inteiro dentro.
-                       case when ST_Within(s.geom, a.g) then 1.0
-                            else ST_Area(ST_Intersection(s.geom, a.g)::geography)
-                                 / nullif(ST_Area(s.geom::geography), 0)
-                       end as f
-                from ibge.setor_censitario s, area a
-                where ST_Intersects(s.geom, a.g)
-            ),
+        consulta = sql.SQL(_CTE_FRACAO + """
+            ,
             res as (
                 select {colunas}
                 from frac join ibge_tabular.setor_resumo r using (cod_setor)
@@ -938,6 +962,212 @@ class GeoQuery:
 
         row = self._rows(consulta, params)[0]
         return self._com_derivadas(row, pedidas)
+
+    def zoneamento_por_geometria(self, wkb: bytes) -> list[dict[str, Any]]:
+        """Percentual da área que cai em cada zona de uso do solo.
+
+        A ausência de linhas não é tratada como erro aqui: cabe ao contrato declarar
+        explicitamente que a cobertura não existe para o município de referência.
+        """
+        return self._rows(
+            sql.SQL("""
+                with area as (select ST_GeomFromWKB(%s, 4674) as g)
+                select z.cod_zona, z.nome_zona, z.e_zona, z.lei, z.cod_municipio,
+                       round((100 * ST_Area(ST_Intersection(z.geom, a.g)::geography)
+                              / nullif(ST_Area(a.g::geography), 0))::numeric, 2) as percentual
+                from regulacao.zoneamento z, area a
+                where ST_Intersects(z.geom, a.g)
+                order by percentual desc nulls last, z.cod_zona
+            """),
+            [wkb],
+        )
+
+    def raio_x_por_geometria(self, wkb: bytes) -> dict[str, Any]:
+        """Monta o contrato determinístico do Raio-X a partir de uma área salva.
+
+        A lista e o agregado nascem da mesma varredura de ``frac``. A área é medida
+        antes da varredura para barrar cedo um pedido que o produto decidiu não servir.
+        """
+        area = self._rows(
+            "select ST_Area(ST_GeomFromWKB(%s, 4674)::geography) / 1000000 as area_km2",
+            [wkb],
+        )[0]["area_km2"]
+        if float(area or 0) > TETO_AREA_RAIO_X_KM2:
+            raise ValueError(
+                f"a área pedida tem {float(area):.1f} km²; o Raio-X aceita até "
+                f"{TETO_AREA_RAIO_X_KM2:,} km²"
+            )
+
+        limiar = sql.SQL(_LIMIAR_INTEIRO)
+        consulta = sql.SQL(_CTE_FRACAO + """
+            , base as (
+                select f.cod_setor, f.f, r.cod_municipio, r.pop_total,
+                       r.domicilios_ocupados, r.renda_media, r.media_moradores,
+                       r.pop_masculino, r.pop_feminino,
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de
+                from frac f join ibge_tabular.setor_resumo r using (cod_setor)
+            ),
+            res as (
+                select count(*) as setores,
+                       count(*) filter (where f < {limiar}) as parciais,
+                       round(sum(pop_total * f)) as pop_total,
+                       round(sum(pop_total * f) filter (where f >= {limiar})) as pop_contida,
+                       round(sum(pop_total * f) filter (where f < {limiar})) as pop_de_rateio,
+                       round(sum(domicilios_ocupados * f)) as domicilios_ocupados,
+                       round((sum(renda_media * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as renda_media,
+                       round((sum(media_moradores * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as media_moradores,
+                       round(sum(pop_masculino * f)) as pop_masculino,
+                       round(sum(pop_feminino * f)) as pop_feminino,
+                       round((sum(pct_classe_a * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as pct_classe_a,
+                       round((sum(pct_classe_b * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as pct_classe_b,
+                       round((sum(pct_classe_c * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as pct_classe_c,
+                       round((sum(pct_classe_de * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as pct_classe_de,
+                       round(min(f)::numeric, 4) as fracao_menor
+                from base
+            ),
+            municipio_escolhido as (
+                select cod_municipio
+                from base
+                group by cod_municipio
+                order by sum(pop_total * f) desc nulls last, cod_municipio
+                limit 1
+            ),
+            referencia as (
+                select m.cod_municipio as cd_mun, m.nome as nm_mun, m.nome_uf as nm_uf,
+                       r.pop_total as mun_pop_total, r.domicilios_ocupados as mun_domicilios_ocupados,
+                       r.densidade_hab_km2 as mun_densidade_hab_km2,
+                       r.renda_media as mun_renda_media, r.media_moradores as mun_media_moradores,
+                       r.pop_masculino as mun_pop_masculino, r.pop_feminino as mun_pop_feminino,
+                       r.pct_classe_a as mun_pct_classe_a, r.pct_classe_b as mun_pct_classe_b,
+                       r.pct_classe_c as mun_pct_classe_c, r.pct_classe_de as mun_pct_classe_de,
+                       r.classe_social_situacao
+                from municipio_escolhido e
+                join ibge_tabular.municipio_resumo r using (cod_municipio)
+                join ibge.municipio m using (cod_municipio)
+            ),
+            dist_base as (
+                select cod_setor, f as fracao, renda_media as valor, pop_total
+                from base
+            ),
+            dist as (
+                select count(*) as total, min(valor) as minimo, max(valor) as maximo,
+                       case when count(*) > {teto} then '[]'::json
+                            else coalesce(json_agg(json_build_object(
+                                'cod_setor', cod_setor, 'fracao', fracao,
+                                'valor', valor, 'pop_total', pop_total
+                            ) order by valor desc nulls last), '[]'::json)
+                       end as setores_lista
+                from dist_base
+            ),
+            faixas_base as (
+                select case when d.maximo is null or d.minimo = d.maximo then 1
+                            else width_bucket(b.valor, d.minimo, d.maximo + 0.000001, 4)
+                       end as faixa,
+                       b.valor, b.pop_total, b.fracao, d.minimo, d.maximo
+                from dist_base b cross join dist d
+            ),
+            faixas_resumo as (
+                select faixa, minimo, maximo, round(sum(pop_total * fracao)) as populacao
+                from faixas_base
+                group by faixa, minimo, maximo
+            ),
+            faixas as (
+                select coalesce(json_agg(json_build_object(
+                    'faixa', faixa,
+                    'inferior', round((minimo + (faixa - 1) * (maximo - minimo) / 4)::numeric, 2),
+                    'superior', round((minimo + faixa * (maximo - minimo) / 4)::numeric, 2),
+                    'populacao', populacao
+                ) order by faixa), '[]'::json) as itens
+                from faixas_resumo
+            )
+            select res.*, ref.*, dist.total as setores_total, dist.minimo, dist.maximo,
+                   dist.setores_lista, coalesce(faixas.itens, '[]'::json) as faixas,
+                   round((ST_Area(a.g::geography) / 1000000)::numeric, 3) as area_km2
+            from res cross join referencia ref cross join dist
+            cross join area a left join faixas on true
+        """).format(limiar=limiar, teto=sql.Literal(TETO_SETORES_RAIO_X))
+        row = self._rows(consulta, [wkb])[0]
+        row["densidade_hab_km2"] = round(
+            float(row["pop_total"] or 0) / float(row["area_km2"] or 1), 1
+        )
+        truncada = int(row["setores_total"] or 0) > TETO_SETORES_RAIO_X
+        referencia = {
+            "cd_mun": row["cd_mun"], "nm_mun": row["nm_mun"], "nm_uf": row["nm_uf"],
+            "pop_total": row["mun_pop_total"],
+            "domicilios_ocupados": row["mun_domicilios_ocupados"],
+            "densidade_hab_km2": row["mun_densidade_hab_km2"],
+            "renda_media": row["mun_renda_media"], "media_moradores": row["mun_media_moradores"],
+            "pop_masculino": row["mun_pop_masculino"], "pop_feminino": row["mun_pop_feminino"],
+            "pct_classe_a": row["mun_pct_classe_a"], "pct_classe_b": row["mun_pct_classe_b"],
+            "pct_classe_c": row["mun_pct_classe_c"], "pct_classe_de": row["mun_pct_classe_de"],
+        }
+        escala = {
+            "area_km2": row["area_km2"], "setores": row["setores"],
+            "populacao": row["pop_total"], "populacao_contida": row["pop_contida"],
+            "populacao_rateada": row["pop_de_rateio"], "setores_parciais": row["parciais"],
+            "domicilios_ocupados": row["domicilios_ocupados"],
+            "densidade_hab_km2": row["densidade_hab_km2"], "municipio": referencia,
+            "fonte": "Censo Demográfico 2022 — IBGE", "periodo": "2022",
+            "metodo": "interseção exata com rateio areal na borda",
+            "cobertura": "setores censitários do IBGE", "avisos": [],
+        }
+        contraste = {
+            "metrica": "renda_media", "rotulo": "Renda média mensal do responsável (R$)",
+            "minimo": row["minimo"], "maximo": row["maximo"], "faixas": row["faixas"],
+            "setores": row["setores_lista"], "truncada": truncada,
+            "aviso": (
+                f"a lista foi omitida porque a área toca mais de {TETO_SETORES_RAIO_X} setores"
+                if truncada else None
+            ), "fonte": "Censo Demográfico 2022 — IBGE", "periodo": "2022",
+            "metodo": "valor por setor, ordenado por renda média", "cobertura": "setores tocados",
+            "avisos": [],
+        }
+        perfil = {
+            "renda_media": row["renda_media"], "media_moradores": row["media_moradores"],
+            "pop_masculino": row["pop_masculino"], "pop_feminino": row["pop_feminino"],
+            "municipio": referencia, "fonte": "Censo Demográfico 2022 — IBGE", "periodo": "2022",
+            "metodo": "médias ponderadas por domicílios ocupados", "cobertura": "setores tocados",
+            "avisos": [],
+        }
+        classe_social = {
+            "pct_a": row["pct_classe_a"], "pct_b": row["pct_classe_b"],
+            "pct_c": row["pct_classe_c"], "pct_de": row["pct_classe_de"],
+            "municipio": referencia, "situacao": row["classe_social_situacao"],
+            "fonte": "Estimativa própria a partir do Censo 2022", "periodo": "2022",
+            "metodo": "composição ponderada por domicílios ocupados", "cobertura": "setores tocados",
+            "avisos": [],
+        }
+        qualidade = {
+            "fracao_menor": row["fracao_menor"], "setores_parciais": row["parciais"],
+            "populacao_rateada": row["pop_de_rateio"], "fonte": "Censo Demográfico 2022 — IBGE",
+            "periodo": "2022", "metodo": "rateio areal para setores cortados",
+            "cobertura": "setores tocados", "avisos": [],
+        }
+        zonas = self.zoneamento_por_geometria(wkb)
+        regulacao = {
+            "disponivel": row["cd_mun"] == "3550308" and bool(zonas), "zonas": zonas,
+            "aviso": None if row["cd_mun"] == "3550308" and zonas else (
+                f"regulação de uso do solo não carregada para {row['nm_mun']}"
+            ), "fonte": zonas[0]["lei"] if zonas else None, "periodo": "vigente",
+            "metodo": "interseção exata da área com as zonas", "cobertura": "Município de São Paulo",
+            "avisos": [],
+        }
+        qualidade["avisos"] = [
+            f"{row['parciais']} setores entram parcialmente por rateio areal"
+        ] if row["parciais"] else []
+        resultado = {
+            "versao_calculo": "1", "gerado_em": datetime.now(UTC).isoformat(),
+            "escala": escala, "contraste": contraste, "perfil": perfil,
+            "classe_social": classe_social, "qualidade": qualidade, "regulacao": regulacao,
+        }
+        resultado["sintese"] = montar_sintese(escala, contraste)
+        return resultado
 
     @staticmethod
     def _com_derivadas(row: dict[str, Any], pedidas: list[str]) -> dict[str, Any]:

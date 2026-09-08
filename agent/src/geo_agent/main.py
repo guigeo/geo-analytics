@@ -14,7 +14,7 @@ import openai
 from fastapi import FastAPI, HTTPException, Request, Response
 from geo_query import GeoQuery
 
-from . import rotas_auth, rotas_desenhos, sessao
+from . import rotas_auth, rotas_desenhos, rotas_raio_x, sessao
 from .acervo import Acervo, nome_do_schema
 from .agent import RateLimiter, SessionStore, run_turn
 from .contas import Contas
@@ -76,6 +76,8 @@ async def lifespan(app: FastAPI):
         )
     state["acervo"] = Acervo(dsn=settings.acervo_dsn, schema=nome_do_schema(cliente_ativo.id))
     rotas_desenhos.estado["acervo"] = state["acervo"]
+    rotas_raio_x.estado["acervo"] = state["acervo"]
+    rotas_raio_x.estado["geodata"] = state["gq"]
 
     # Conta e sessao sobre a MESMA conexao do acervo: mesmo banco, mesmo papel, mesmo
     # schema. Uma segunda conexao seria um segundo jeito de o mesmo processo falhar.
@@ -107,6 +109,7 @@ app.add_middleware(ExigeSessao)
 app.add_middleware(ContextoDaRequisicao)
 app.include_router(rotas_auth.router)
 app.include_router(rotas_desenhos.router)
+app.include_router(rotas_raio_x.router)
 
 
 @app.get("/api/health")

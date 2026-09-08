@@ -268,6 +268,24 @@ class Acervo:
         )
         return rows[0] if rows else None
 
+    def wkb_por_id(self, id_: str) -> dict[str, Any] | None:
+        """A geometria de um desenho pelo id, em WKB, para o Raio-X.
+
+        É irmã de ``wkb_por_nome``: a rota recebe id estável na URL e precisa conferir
+        a área antes de consultar o geodata. A leitura segue sendo retomável; nada
+        desta feature escreve no acervo.
+        """
+        rows = self._le(
+            sql.SQL("""
+                select id, nome, tipo, ST_AsBinary(geom) as wkb,
+                       ST_Area(geom::geography) as area_m2
+                from {}
+                where id = %s
+            """).format(self._tabela()),
+            [id_],
+        )
+        return rows[0] if rows else None
+
     # --- escrita -------------------------------------------------------------
 
     def criar(

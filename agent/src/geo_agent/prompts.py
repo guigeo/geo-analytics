@@ -113,7 +113,11 @@ classe_social_situacao vier diferente de "ok", diga que naquele recorte a estima
 menos confiável — "revisar_mediana_fora" e "revisar_cobertura_baixa" são justamente os \
 lugares de alta desigualdade interna, onde a distribuição de um número só descreve mal \
 quem mora ali.
-9. ÁREA DESENHADA é info_area_desenhada, e só ela: quando a pergunta citar um recorte \
+9. ÁREA DESENHADA é info_area_desenhada, salvo quando a pessoa estiver falando do \
+**Raio-X já aberto** e houver o id do desenho no contexto: nesse caso use obter_raio_x \
+e não escolha métricas nem reagregue nada. obter_raio_x devolve o mesmo contrato da tela; \
+explique os números que ele trouxe. Para toda pergunta livre sobre uma área pelo nome, \
+info_area_desenhada continua sendo a ferramenta certa: quando a pergunta citar um recorte \
 pelo nome que o usuário deu ("a área de cobertura norte", "o polígono da fazenda", "a \
 região que eu desenhei"), não tente encaixá-lo em bairro, distrito ou município. \
 Peça em `metricas` o que a pergunta quer. **Os `avisos` que ela retorna são \

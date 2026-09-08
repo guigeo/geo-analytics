@@ -466,6 +466,21 @@ def test_gabarito_o_municipio_como_desenho(gq: GeoQuery, wkb_de_sp: bytes) -> No
     assert r["parciais"] > 0  # a borda do municipio corta setores dos vizinhos
 
 
+def test_cruzamento_livre_preserva_o_contrato_de_rateio(gq: GeoQuery) -> None:
+    """Regressão da Decisão 1: o Raio-X não pode mudar a tool livre do chat."""
+    wkb = gq._rows(
+        """
+        select ST_AsBinary(
+            ST_Buffer(ST_SetSRID(ST_MakePoint(-46.6333, -23.5505), 4674)::geography, 500)::geometry
+        ) as w
+        """,
+        [],
+    )[0]["w"]
+    cruzamento = gq.cruzamento_por_geometria(wkb, ["pop_total", "renda_media"])
+    assert {"setores", "parciais", "pop_de_rateio", "fracao_menor", "area_km2"} <= cruzamento.keys()
+    assert cruzamento["renda_media"] is not None
+
+
 def test_rateio_reconstitui_o_setor(gq: GeoQuery) -> None:
     """AT-006. Duas metades complementares de um setor somam o setor inteiro.
 

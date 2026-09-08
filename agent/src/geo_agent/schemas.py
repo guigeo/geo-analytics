@@ -117,6 +117,124 @@ class PaginaDeDesenhos(BaseModel):
     tamanho: int
 
 
+class ReferenciaMunicipal(BaseModel):
+    """Os valores do município que tornam legível cada número da área."""
+
+    cd_mun: str
+    nm_mun: str
+    nm_uf: str
+    pop_total: float | None = None
+    domicilios_ocupados: float | None = None
+    densidade_hab_km2: float | None = None
+    renda_media: float | None = None
+    media_moradores: float | None = None
+    pop_masculino: float | None = None
+    pop_feminino: float | None = None
+    pct_classe_a: float | None = None
+    pct_classe_b: float | None = None
+    pct_classe_c: float | None = None
+    pct_classe_de: float | None = None
+
+
+class ComProveniencia(BaseModel):
+    """Campos que acompanham todo bloco para a ressalva não virar decisão da tela."""
+
+    fonte: str
+    periodo: str
+    metodo: str
+    cobertura: str
+    avisos: list[str] = Field(default_factory=list)
+
+
+class FaixaDoRaioX(BaseModel):
+    faixa: int
+    inferior: float | None = None
+    superior: float | None = None
+    populacao: float | None = None
+
+
+class SetorDoRaioX(BaseModel):
+    cod_setor: str
+    fracao: float
+    valor: float | None = None
+    pop_total: float | None = None
+
+
+class BlocoEscala(ComProveniencia):
+    area_km2: float
+    setores: int
+    populacao: float | None = None
+    populacao_contida: float | None = None
+    populacao_rateada: float | None = None
+    setores_parciais: int
+    domicilios_ocupados: float | None = None
+    densidade_hab_km2: float | None = None
+    municipio: ReferenciaMunicipal
+
+
+class BlocoContraste(ComProveniencia):
+    metrica: str
+    rotulo: str
+    minimo: float | None = None
+    maximo: float | None = None
+    faixas: list[FaixaDoRaioX] = Field(default_factory=list)
+    setores: list[SetorDoRaioX] = Field(default_factory=list)
+    truncada: bool = False
+    aviso: str | None = None
+
+
+class BlocoPerfil(ComProveniencia):
+    renda_media: float | None = None
+    media_moradores: float | None = None
+    pop_masculino: float | None = None
+    pop_feminino: float | None = None
+    municipio: ReferenciaMunicipal
+
+
+class BlocoClasseSocial(ComProveniencia):
+    pct_a: float | None = None
+    pct_b: float | None = None
+    pct_c: float | None = None
+    pct_de: float | None = None
+    municipio: ReferenciaMunicipal
+    situacao: str | None = None
+
+
+class Qualidade(ComProveniencia):
+    fracao_menor: float | None = None
+    setores_parciais: int
+    populacao_rateada: float | None = None
+
+
+class ZonaNaArea(BaseModel):
+    cod_zona: str
+    nome_zona: str
+    e_zona: bool | None = None
+    lei: str | None = None
+    cod_municipio: str
+    percentual: float | None = None
+
+
+class BlocoRegulacao(ComProveniencia):
+    disponivel: bool
+    zonas: list[ZonaNaArea] = Field(default_factory=list)
+    aviso: str | None = None
+
+
+class RaioX(BaseModel):
+    """Contrato estável do diagnóstico de uma área, produzido sem LLM."""
+
+    versao_calculo: str
+    gerado_em: datetime
+    sintese: str
+    escala: BlocoEscala
+    contraste: BlocoContraste
+    perfil: BlocoPerfil
+    classe_social: BlocoClasseSocial
+    qualidade: Qualidade
+    regulacao: BlocoRegulacao
+
+
 class GeocodeHit(BaseModel):
     """Resultado do proxy de geocoding (Nominatim/OSM) — busca de endereço no front."""
 

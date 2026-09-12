@@ -11,7 +11,7 @@
 | **Feature** | `SELETOR_H3` |
 | **Data** | 2026-09-13 |
 | **Autor** | Claude Code, a partir da conversa com Guilherme Ramos |
-| **Status** | Pronto para `/define` |
+| **Status** | ✅ Arquivada em 2026-09-13 |
 | **Antecessora** | `TELA_H3` (2026-09-07) — a casca que pinta por valor e desenha legenda |
 | **Posição na fila** | Item 2 das oito frentes ordenadas em 2026-09-12 (`docs/DECISOES.md`) |
 

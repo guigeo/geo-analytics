@@ -10,7 +10,7 @@
 | **Feature** | `SELETOR_H3` |
 | **Data** | 2026-09-13 |
 | **Autor** | Claude Code, a partir de `DEFINE_SELETOR_H3.md` |
-| **Status** | Pronto para `/build` |
+| **Status** | ✅ Arquivada em 2026-09-13 — construída e **não publicada** (ver `SHIPPED_2026-09-13.md`) |
 | **Entrada** | `.claude/sdd/features/DEFINE_SELETOR_H3.md` |
 
 ---

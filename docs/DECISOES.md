@@ -228,8 +228,8 @@ publicado.
 
 | # | Item | O que custa | Dado novo? |
 |---|---|---|---|
-| 1 | **Publicar o Raio-X** | só deploy — o código está pronto e testado desde 2026-09-11 | não |
-| 2 | **Seletor de variável na tela H3** | frontend; a casca já pinta por valor e tem legenda | não |
+| ~~1~~ | ~~**Publicar o Raio-X**~~ — **no ar desde 2026-09-12**, só no cliente 1 | só deploy | não |
+| ~~2~~ | ~~**Seletor de variável na tela H3**~~ — **feito em 2026-09-13** (`SELETOR_H3`), não publicado | frontend; a casca já pintava por valor e tinha legenda | não |
 | 3 | **Mais variáveis no agente** (`h3_no_ponto`) | backend pequeno + prompt | não |
 | 4 | **Saneamento como alerta no Raio-X** | 3 variáveis e um corte em 90% | não |
 | 5 | **Escola e saúde no Raio-X** | carga nova de ~35,7 mil pontos, do lab | sim, leve |
@@ -285,3 +285,14 @@ A escolha foi feita olhando: um estudo com quatro tratamentos do cabeçalho de g
 selo com ícone, régua tipográfica e trilho colorido) lado a lado, nos dois temas. Ganhou o
 selo com ícone. O painel é da **casca compartilhada**, então tudo isto vale para os dois
 clientes.
+
+**A premissa do item 2 estava errada, e a correção vale para o item 2b.** A tabela acima
+dizia que o seletor não exigia dado novo porque "são 40 variáveis do Censo e 17 do CNEFE no
+`geodata`". Verdade no banco, falso no produto: o tile publicado projeta **três** colunas
+temáticas — `DOM_APARTAMENTO`, `DOM_CASA`, `DOMICILIOS_PARTICULARES` — mais as seis
+`COORD_*` (`pipeline/datasets.yaml`). As outras 54 exigem novo SQL, `make tiles` e
+`make ship-tiles`, com o tile hoje em 12,8 MB. Por isso a feature entregue foi o seletor
+sobre o que já viaja, e a lista maior virou **etapa 2**: decidir as variáveis de uma vez —
+regerar tile é caro de repetir — e medir o peso antes de publicar. O item 3 da fila
+(`h3_no_ponto`) é a mesma lacuna vista do outro lado: o agente consulta o banco direto, e
+por isso alcança o que a tela não alcança.

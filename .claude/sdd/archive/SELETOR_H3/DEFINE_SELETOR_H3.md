@@ -11,7 +11,7 @@
 | **Feature** | `SELETOR_H3` |
 | **Data** | 2026-09-13 |
 | **Autor** | Claude Code, a partir de `BRAINSTORM_SELETOR_H3.md` |
-| **Status** | Pronto para `/design` |
+| **Status** | ✅ Arquivada em 2026-09-13 — construída e **não publicada** (ver `SHIPPED_2026-09-13.md`) |
 | **Clareza** | 14/15 |
 | **Entrada** | `.claude/sdd/features/BRAINSTORM_SELETOR_H3.md` |
 

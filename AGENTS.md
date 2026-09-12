@@ -441,8 +441,23 @@ nunca vai para a resposta; e avenida larga se consulta **com número**, porque o
 Avenida Paulista cai em `Praça/Canteiro` — uma das 10.714 feições sem zona — enquanto o 1578
 cai em ZEU.
 
-**Os artefatos do SDD ainda estão em `.claude/sdd/features/`**, não em `archive/`: a feature
-foi publicada antes do `/ship`. Quem for arquivar, arquive com o que esta seção diz.
+**Arquivada em 2026-09-13**, em `.claude/sdd/archive/RAIO_X_DA_AREA/` — a feature foi
+publicada antes do `/ship`, e o `SHIPPED` de lá registra que ela está em um cliente só.
+
+### Três coisas prontas na `main` e fora do ar (2026-09-13)
+
+Decisão do Guilherme: **segurar o deploy** até alguém de fora olhar. Não é esquecimento, e
+não é o caso do `ZONEAMENTO_SP` — mas o relógio corre igual, e quem retomar deve tratar
+"não publicado" como estado declarado.
+
+| Commit | O quê |
+|---|---|
+| `a88ede7` | Painel de camadas redesenhado: olho no lugar do interruptor, procedência (`fonte`), selo com ícone por tema, e símbolo de carta nas linhas |
+| `91f7fc8` | `SELETOR_H3`: a malha H3 pinta a variável escolhida (apartamento / casa / particulares), uma camada e vários temas |
+| `6561268` | O basemap é sempre claro; o tema escuro ficou só na moldura |
+
+Como publicar é publicar o `HEAD` da `main`, a próxima subida do cliente 2 leva as três
+**mais** o Raio-X, que hoje está só no cliente 1.
 
 ### Em aberto
 

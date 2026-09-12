@@ -13,6 +13,8 @@ const grupos = agruparCamadas(camadas);
 
 /** O acervo vazio e de pé: nem lista, nem erro. É o estado do cliente 1. */
 const semAcervo = {
+  temaAtivo: {} as Record<string, string>,
+  onEscolherTema: vi.fn(),
   itens: [] as ItemDoAcervo[],
   ocultos: [] as string[],
   onAlternarItem: vi.fn(),
@@ -319,5 +321,74 @@ describe("LayerPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /tentar de novo/i }));
     expect(onRecarregar).toHaveBeenCalledOnce();
+  });
+
+  it("a camada de várias variáveis oferece a escolha, mesmo desligada", () => {
+    // AT-004. O seletor responde "o que esta camada mostra", que é o que se quer
+    // saber ANTES de ligar; a legenda, que responde pelas cores, continua só quando
+    // a camada está acesa.
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Indicadores territoriais");
+    expect(
+      screen.getByRole("button", { name: /variável de domicílios por célula/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: /^Legenda:/ })).not.toBeInTheDocument();
+  });
+
+  it("nasce no primeiro tema, e a legenda é a dele", () => {
+    // AT-003: o mesmo tema que o style leva na criação.
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    render(<LayerPanel visible={{ [h3.id]: true }} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Indicadores territoriais");
+    expect(
+      screen.getByRole("group", { name: `Legenda: ${h3.temasNumericos![0].rotulo}` }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("820+")).toBeInTheDocument();
+  });
+
+  it("escolher outra variável avisa qual, com a camada e o tema", () => {
+    // AT-001. Quem repinta é o mapa, a partir do estado lá em cima — o painel só diz
+    // o que foi escolhido.
+    const onEscolherTema = vi.fn();
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    render(
+      <LayerPanel
+        visible={{ [h3.id]: true }}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        onEscolherTema={onEscolherTema}
+      />,
+    );
+    abrir("Indicadores territoriais");
+    fireEvent.click(screen.getByRole("button", { name: /variável de domicílios por célula/i }));
+    const segundo = h3.temasNumericos![1];
+    fireEvent.click(screen.getByRole("option", { name: new RegExp(segundo.rotulo, "i") }));
+    expect(onEscolherTema).toHaveBeenCalledWith(h3.id, segundo.id);
+  });
+
+  it("a legenda mostra o tema ativo, e os limites dele", () => {
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    const segundo = h3.temasNumericos![1];
+    render(
+      <LayerPanel
+        visible={{ [h3.id]: true }}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        temaAtivo={{ [h3.id]: segundo.id }}
+      />,
+    );
+    abrir("Indicadores territoriais");
+    expect(
+      screen.getByRole("group", { name: `Legenda: ${segundo.rotulo}` }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(`${segundo.maximo}+`)).toBeInTheDocument();
+  });
+
+  it("camada de tema único não ganha seletor", () => {
+    // O zoneamento pinta por categoria: oferecer escolha ali seria prometer o que a
+    // camada não tem.
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Regulação urbana");
+    expect(screen.queryByRole("button", { name: /variável de zoneamento/i })).toBeNull();
   });
 });

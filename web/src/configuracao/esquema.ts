@@ -76,19 +76,30 @@ export const EsquemaPinturaPorCategoria = z.object({
     .min(1),
 });
 
-/** Escala sequencial para valor numérico — a regra cartográfica vem da camada. */
-export const EsquemaPinturaPorNumero = z
+/**
+ * Um tema numérico: uma variável da camada, com a escala com que ela se pinta.
+ *
+ * A camada declara uma LISTA deles (`temasNumericos`) e o painel escolhe qual está
+ * ativo. Camada de tema único declara lista de um — foi o que substituiu o antigo
+ * `pinturaPorNumero`, em 2026-09-13: manter os dois campos obrigaria cada leitor (mapa,
+ * legenda, esquema) a responder "qual vence quando os dois existem?".
+ */
+export const EsquemaTemaNumerico = z
   .object({
+    /** Id do tema dentro da camada. É o que o estado da aplicação guarda. */
+    id: z
+      .string()
+      .regex(/^[a-z][a-z0-9_]*$/, "id de tema aceita minúsculas, dígitos e _, começando por letra"),
     campo: z.string().min(1),
     minimo: z.number(),
     maximo: z.number(),
     corInicial: Cor,
     corFinal: Cor,
-    /** Texto da legenda; não é código de um cliente. */
+    /** Nome visível: vai no seletor e na legenda. Não é código de um cliente. */
     rotulo: z.string().min(1),
   })
   .refine(({ minimo, maximo }) => maximo > minimo, {
-    message: "máximo da pintura numérica precisa ser maior que o mínimo",
+    message: "máximo do tema numérico precisa ser maior que o mínimo",
     path: ["maximo"],
   });
 
@@ -138,7 +149,11 @@ export const EsquemaCamada = z
     /** Pinta cada valor de um atributo com a paleta declarada. */
     pinturaPorCategoria: EsquemaPinturaPorCategoria.optional(),
     /** Pinta valor numérico em escala contínua. */
-    pinturaPorNumero: EsquemaPinturaPorNumero.optional(),
+    /**
+     * Os temas numéricos da camada, em ordem de apresentação. O primeiro é o que a
+     * aplicação abre — e é o que vai no style, porque a camada precisa nascer pintada.
+     */
+    temasNumericos: z.array(EsquemaTemaNumerico).min(1).optional(),
     /** Atributo estável pelo qual o agente destaca a feição no PMTiles. */
     campoDestaque: z.string().min(1).optional(),
     /** Onde a camada existe, medido na fonte e exibido junto dela. */
@@ -218,17 +233,28 @@ export const EsquemaCamada = z
         message: `camada "${camada.id}": opacidadePreenchimento não se aplica a ponto`,
       });
     }
-    if (camada.pinturaPorCategoria && camada.pinturaPorNumero) {
+    if (camada.pinturaPorCategoria && camada.temasNumericos) {
       ctx.addIssue({
         code: "custom",
         message: `camada "${camada.id}": escolha pintura por categoria ou por número, nunca as duas`,
       });
     }
-    if (camada.pinturaPorNumero && camada.geometria !== "poligono") {
+    if (camada.temasNumericos && camada.geometria !== "poligono") {
       ctx.addIssue({
         code: "custom",
         message: `camada "${camada.id}": pintura numérica só se aplica a polígono`,
       });
+    }
+    // Id repetido seria escolha ambígua no seletor e tema perdido no estado: os dois
+    // falham calados, e é por isso que a validação é aqui e não na tela.
+    if (camada.temasNumericos) {
+      const ids = camada.temasNumericos.map((t) => t.id);
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({
+          code: "custom",
+          message: `camada "${camada.id}": os temas numéricos têm ids repetidos`,
+        });
+      }
     }
   });
 
@@ -411,7 +437,7 @@ export type ConfiguracaoAcervo = z.infer<typeof EsquemaAcervo>;
 export type Atributo = z.infer<typeof EsquemaAtributo>;
 export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type PinturaPorCategoria = z.infer<typeof EsquemaPinturaPorCategoria>;
-export type PinturaPorNumero = z.infer<typeof EsquemaPinturaPorNumero>;
+export type TemaNumerico = z.infer<typeof EsquemaTemaNumerico>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
 export type Simbolo = z.infer<typeof EsquemaSimbolo>;

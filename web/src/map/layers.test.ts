@@ -7,7 +7,14 @@
 // mudar nesse caminho, e é o snapshot no fim deste arquivo que provou isso: ele
 // foi escrito ANTES da mudança e passou sem ser reescrito depois.
 import { describe, expect, it } from "vitest";
-import { camadasDoMapa, fontesDeDados, IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
+import {
+  camadasDoMapa,
+  expressaoDeCorNumerica,
+  fontesDeDados,
+  IDS_CLICAVEIS,
+  SUFIXOS_SUBCAMADA,
+  temaDaCamada,
+} from "./layers";
 import { camadas } from "@/configuracao";
 
 describe("contrato das camadas", () => {
@@ -134,6 +141,49 @@ describe("saída congelada", () => {
     expect(faixa?.layout?.visibility).toBe("none");
     // E ela é sub-camada: o toggle do painel alcança pelo sufixo.
     expect(SUFIXOS_SUBCAMADA).toContain("__faixa");
+  });
+
+  it("a camada de temas nasce pintando o primeiro deles", () => {
+    // O style e o estado inicial do App têm de concordar: se divergirem, a legenda
+    // diz uma variável e o mapa pinta outra até a primeira troca.
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    const spec = camadasDoMapa().find((s) => s.id === h3.id);
+    expect(spec).toHaveProperty(
+      ["paint", "fill-color"],
+      expressaoDeCorNumerica(h3.temasNumericos![0]),
+    );
+  });
+
+  it("uma camada por malha, e não uma por variável", () => {
+    // AT-007: a alternativa descartada (uma camada por tema) apareceria aqui como
+    // três ids de h3 no style, e três linhas no painel.
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    const ids = camadasDoMapa().map((s) => s.id);
+    expect(ids.filter((id) => id === h3.id)).toHaveLength(1);
+    // Nenhum id carrega o nome de um tema — o contorno (`__outline`) é sub-camada da
+    // malha, e continua sendo uma só para as três variáveis.
+    for (const tema of h3.temasNumericos!) {
+      expect(ids.some((id) => id.includes(tema.id))).toBe(false);
+    }
+    expect(h3.temasNumericos!.length).toBeGreaterThan(1);
+  });
+
+  it("cada tema tem a sua expressão, com o campo e o teto dele", () => {
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    for (const tema of h3.temasNumericos!) {
+      const expr = expressaoDeCorNumerica(tema) as unknown[];
+      expect(expr).toContain(tema.corFinal);
+      expect(expr).toContain(tema.maximo);
+      expect(JSON.stringify(expr)).toContain(tema.campo);
+    }
+  });
+
+  it("id de tema que não existe mais cai no primeiro, e não deixa a camada sem cor", () => {
+    const h3 = camadas.find((c) => c.temasNumericos)!;
+    expect(temaDaCamada(h3, "variavel_que_saiu_do_catalogo")).toEqual(h3.temasNumericos![0]);
+    expect(temaDaCamada(h3, undefined)).toEqual(h3.temasNumericos![0]);
+    const semTema = camadas.find((c) => !c.temasNumericos)!;
+    expect(temaDaCamada(semTema, "qualquer")).toBeNull();
   });
 
   it("mantém as camadas", () => {

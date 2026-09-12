@@ -39,6 +39,15 @@ import { Button } from "@/components/ui/button";
  * não escolha de cliente. Quem entra escolhe o nível que quer, em vez de achar o mapa
  * já com município desenhado por cima do que veio ver.
  */
+/**
+ * A tela abre no PRIMEIRO tema de cada camada — o mesmo que o style leva na criação.
+ * Se os dois discordassem, a legenda diria uma coisa e o mapa pintaria outra até a
+ * primeira troca.
+ */
+const temaInicial = Object.fromEntries(
+  camadas.flatMap((c) => (c.temasNumericos ? [[c.id, c.temasNumericos[0].id]] : [])),
+) as Record<string, string>;
+
 const visibilidadeInicial = Object.fromEntries(camadas.map((c) => [c.id, false])) as Record<
   string,
   boolean
@@ -56,6 +65,9 @@ export function App() {
   const [satellite, setSatellite] = useState(false);
   const [satelliteOverlay, setSatelliteOverlay] = useState(true);
   const [visible, setVisible] = useState<Record<string, boolean>>(visibilidadeInicial);
+  // O tema de cada camada que tem mais de uma variável. Fica aqui, e não no painel,
+  // porque o mapa precisa dele tanto quanto a legenda — mesmo caminho de `visible`.
+  const [temaAtivo, setTemaAtivo] = useState<Record<string, string>>(temaInicial);
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [destaques, setDestaques] = useState<Destaques | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
@@ -115,6 +127,8 @@ export function App() {
   const colunaDireita = mapaCheio ? "0px" : `${chatRecolhido ? LARGURA_ABA : larguraChat}px`;
 
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+  const escolherTema = (idDaCamada: string, idDoTema: string) =>
+    setTemaAtivo((prev) => ({ ...prev, [idDaCamada]: idDoTema }));
 
   const medicao = criarEstadoMedicao(modoMedicao, verticesMedicao);
   const desenho = criarEstadoDesenho(modoDesenho, verticesDesenho, raioDesenho);
@@ -266,6 +280,7 @@ export function App() {
               <div className="relative size-full overflow-hidden">
                 <MapView
                   visible={visible}
+                  temaAtivo={temaAtivo}
                   theme={theme}
                   satellite={satellite}
                   satelliteOverlay={satelliteOverlay}
@@ -308,6 +323,8 @@ export function App() {
                 <LayerPanel
                   visible={visible}
                   onToggle={toggleLayer}
+                  temaAtivo={temaAtivo}
+                  onEscolherTema={escolherTema}
                   itens={itens}
                   ocultos={desenhosOcultos}
                   onAlternarItem={(id) =>
@@ -420,6 +437,8 @@ export function App() {
                   <LayerPanel
                     visible={visible}
                     onToggle={toggleLayer}
+                    temaAtivo={temaAtivo}
+                    onEscolherTema={escolherTema}
                     itens={itens}
                     ocultos={desenhosOcultos}
                     onAlternarItem={(id) =>
@@ -451,6 +470,7 @@ export function App() {
             <div className="relative overflow-hidden">
               <MapView
                 visible={visible}
+                temaAtivo={temaAtivo}
                 theme={theme}
                 satellite={satellite}
                 satelliteOverlay={satelliteOverlay}

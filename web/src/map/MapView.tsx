@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { registerPMTiles } from "../lib/pmtiles";
 import type { BasemapTheme } from "./basemap";
-import { IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
+import {
+  expressaoDeCorNumerica,
+  IDS_CLICAVEIS,
+  SUFIXOS_SUBCAMADA,
+  temaDaCamada,
+} from "./layers";
 import { montarEstilo } from "./estilo";
 import { camadas, configuracaoMapa } from "@/configuracao";
 import { EMPTY_SELECTION, SELECTION_SOURCE_ID } from "./selection";
@@ -89,6 +94,8 @@ export interface MapFocus {
 
 interface Props {
   visible: Record<string, boolean>;
+  /** Qual tema numérico cada camada está pintando. Ver `temasNumericos` no catálogo. */
+  temaAtivo: Record<string, string>;
   theme: BasemapTheme;
   /** Satélite (Esri, raster) no lugar do basemap vetorial. */
   satellite: boolean;
@@ -136,6 +143,7 @@ interface Props {
 
 export function MapView({
   visible,
+  temaAtivo,
   theme,
   satellite,
   satelliteOverlay,
@@ -348,6 +356,24 @@ export function MapView({
     if (!map) return;
     assimQuePuder(map, () => applyVisibility(map, visible));
   }, [visible]);
+
+  // Trocar de variável é REPINTAR, não recarregar: a fonte e a camada continuam as
+  // mesmas, e por isso o mapa não se mexe — nenhum `fitBounds`, nenhum piscar. É o que
+  // sustenta o AT-002, e é a razão de a feature não ter virado uma camada por variável.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    assimQuePuder(map, () => {
+      let achou = false;
+      for (const c of camadas) {
+        const tema = temaDaCamada(c, temaAtivo[c.id]);
+        if (!tema || !map.getLayer(c.id)) continue;
+        map.setPaintProperty(c.id, "fill-color", expressaoDeCorNumerica(tema));
+        achou = true;
+      }
+      return achou;
+    });
+  }, [temaAtivo]);
 
   useEffect(() => {
     const map = mapRef.current;

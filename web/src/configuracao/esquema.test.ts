@@ -148,4 +148,32 @@ describe("tema do cliente", () => {
     });
     expect(r.success, JSON.stringify(r.error?.issues)).toBe(true);
   });
+
+  it("recusa temas numéricos com id repetido", () => {
+    // Id repetido é escolha ambígua no seletor e tema perdido no estado — os dois
+    // falham calados, que é exatamente o tipo de coisa que o boot tem de pegar.
+    const r = comCliente((c) => {
+      const camada = c.camadas.find((x) => x.temasNumericos)!;
+      camada.temasNumericos = [camada.temasNumericos![0], { ...camada.temasNumericos![0] }];
+    });
+    expect(r.success).toBe(false);
+    expect(JSON.stringify(r.error?.issues)).toContain("ids repetidos");
+  });
+
+  it("recusa lista de temas vazia", () => {
+    const r = comCliente((c) => {
+      c.camadas.find((x) => x.temasNumericos)!.temasNumericos = [];
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("recusa tema numérico fora de polígono", () => {
+    const r = comCliente((c) => {
+      const linha = c.camadas.find((x) => x.geometria === "linha")!;
+      const temas = c.camadas.find((x) => x.temasNumericos)!.temasNumericos!;
+      linha.temasNumericos = temas;
+    });
+    expect(r.success).toBe(false);
+    expect(JSON.stringify(r.error?.issues)).toContain("só se aplica a polígono");
+  });
 });

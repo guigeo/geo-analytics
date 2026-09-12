@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import {
   ChartLine,
+  Check,
   ChevronRight,
+  ChevronsUpDown,
   CloudOff,
   Eye,
   EyeOff,
@@ -22,7 +24,10 @@ import {
   configuracaoAcervo,
   type DefinicaoCamada,
   type IdDeGrupo,
+  type TemaNumerico,
 } from "@/configuracao";
+import { temaDaCamada } from "@/map/layers";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ItemDoAcervo } from "@/desenho/camadas";
 import type { ErroDoAcervo } from "@/desenho/api";
 import { Button } from "@/components/ui/button";
@@ -35,6 +40,9 @@ import { agruparCamadas } from "./grupos";
 interface Props {
   visible: Record<string, boolean>;
   onToggle: (id: string) => void;
+  /** Qual variável cada camada de vários temas está pintando. */
+  temaAtivo: Record<string, string>;
+  onEscolherTema: (idDaCamada: string, idDoTema: string) => void;
   /**
    * Os desenhos do cliente, folhas do último combo. Vêm da mesma coleção que o mapa
    * consome — se viessem de uma lista própria, painel e mapa poderiam discordar.
@@ -100,6 +108,8 @@ const ICONE_DO_GRUPO: Record<IdDeGrupo, LucideIcon> = {
 export function LayerPanel({
   visible,
   onToggle,
+  temaAtivo,
+  onEscolherTema,
   itens,
   ocultos,
   onAlternarItem,
@@ -166,8 +176,19 @@ export function LayerPanel({
                   {c.cobertura && (
                     <p className="ml-9 pb-1 text-xs text-muted-foreground">{c.cobertura}</p>
                   )}
-                  {visible[c.id] && c.pinturaPorNumero && (
-                    <LegendaNumerica pintura={c.pinturaPorNumero} />
+                  {/* O seletor aparece mesmo com a camada apagada: ele responde "o que
+                      esta camada mostra", que é o que se quer saber ANTES de ligar. A
+                      legenda responde "o que estas cores querem dizer", e essa só faz
+                      sentido com a camada acesa. */}
+                  {c.temasNumericos && c.temasNumericos.length > 1 && (
+                    <SeletorDeTema
+                      camada={c}
+                      ativo={temaDaCamada(c, temaAtivo[c.id])}
+                      onEscolher={(idDoTema) => onEscolherTema(c.id, idDoTema)}
+                    />
+                  )}
+                  {visible[c.id] && temaDaCamada(c, temaAtivo[c.id]) && (
+                    <LegendaNumerica tema={temaDaCamada(c, temaAtivo[c.id])!} />
                   )}
                 </div>
               ))}
@@ -577,26 +598,90 @@ function AmostraDeLinha({ camada }: { camada: DefinicaoCamada }) {
   );
 }
 
-/** Escala curta: cabe no painel sem transformar a árvore em uma segunda cartografia. */
-function LegendaNumerica({
-  pintura,
+/**
+ * O seletor de variável de uma camada com vários temas.
+ *
+ * Lista suspensa, e não botões lado a lado: "Domicílios particulares" escrito por
+ * extenso não cabe em três colunas num painel de 308 px, e a etapa 2 da malha H3 vai
+ * trazer dez ou vinte variáveis — o controle já nasce no formato que aguenta isso.
+ * Cada item traz a miniatura da própria rampa, que é o que diz, antes do clique, que
+ * mudar de variável muda a cor do mapa inteiro.
+ */
+function SeletorDeTema({
+  camada,
+  ativo,
+  onEscolher,
 }: {
-  pintura: NonNullable<DefinicaoCamada["pinturaPorNumero"]>;
+  camada: DefinicaoCamada;
+  ativo: TemaNumerico | null;
+  onEscolher: (idDoTema: string) => void;
 }) {
+  const [aberto, setAberto] = useState(false);
+  const temas = camada.temasNumericos ?? [];
+  if (!ativo) return null;
+
+  return (
+    <div className="ml-9 pb-2">
+      <Popover open={aberto} onOpenChange={setAberto}>
+        <PopoverTrigger
+          className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-left transition-colors hover:bg-accent"
+          aria-label={`Variável de ${camada.rotulo}`}
+        >
+          <Rampa tema={ativo} className="h-3 w-5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-xs">{ativo.rotulo}</span>
+          <ChevronsUpDown aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-60 p-1">
+          <div role="listbox" aria-label={`Variáveis de ${camada.rotulo}`}>
+            {temas.map((tema) => (
+              <button
+                key={tema.id}
+                type="button"
+                role="option"
+                aria-selected={tema.id === ativo.id}
+                onClick={() => {
+                  onEscolher(tema.id);
+                  setAberto(false);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
+                  tema.id === ativo.id && "font-medium",
+                )}
+              >
+                <Rampa tema={tema} className="h-3 w-6 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{tema.rotulo}</span>
+                {tema.id === ativo.id && (
+                  <Check aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+                )}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+/** A rampa de um tema, do mínimo ao máximo. Serve de amostra e de legenda. */
+function Rampa({ tema, className }: { tema: TemaNumerico; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("rounded-sm ring-1 ring-black/10", className)}
+      style={{ background: `linear-gradient(to right, ${tema.corInicial}, ${tema.corFinal})` }}
+    />
+  );
+}
+
+/** Escala curta: cabe no painel sem transformar a árvore em uma segunda cartografia. */
+function LegendaNumerica({ tema }: { tema: TemaNumerico }) {
   const formatar = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   return (
-    <div className="ml-9 pb-2 pt-0.5" role="group" aria-label={`Legenda: ${pintura.rotulo}`}>
-      <p className="text-xs text-muted-foreground">{pintura.rotulo}</p>
-      <div
-        aria-hidden="true"
-        className="mt-1 h-2 w-full rounded-sm ring-1 ring-black/10"
-        style={{
-          background: `linear-gradient(to right, ${pintura.corInicial}, ${pintura.corFinal})`,
-        }}
-      />
+    <div className="ml-9 pb-2 pt-0.5" role="group" aria-label={`Legenda: ${tema.rotulo}`}>
+      <Rampa tema={tema} className="block h-2 w-full" />
       <div className="mt-0.5 flex justify-between text-xs tabular-nums text-muted-foreground">
-        <span>{formatar.format(pintura.minimo)}</span>
-        <span>{formatar.format(pintura.maximo)}+</span>
+        <span>{formatar.format(tema.minimo)}</span>
+        <span>{formatar.format(tema.maximo)}+</span>
       </div>
     </div>
   );

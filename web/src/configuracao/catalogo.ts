@@ -187,23 +187,50 @@ export const CATALOGO = {
   },
   h3_domicilios: {
     id: "h3_domicilios",
-    rotulo: "Domicílios em apartamento (H3)",
+    rotulo: "Domicílios por célula (H3)",
     fonte: "CNEFE 2022 · célula H3 r9",
     grupo: "indicadores",
     camadaFonte: "h3_domicilios",
     geometria: "poligono",
     cor: "#1d4ed8",
     campoDestaque: "H3_R9",
-    // Medido no geodata local em 2026-09-07: 0 / p95 216 / p99 820 / máximo 5.524.
-    // Acima de 820 a cor satura: preserva contraste nos 99% restantes sem esconder dado.
-    pinturaPorNumero: {
-      campo: "DOM_APARTAMENTO",
-      minimo: 0,
-      maximo: 820,
-      corInicial: "#eff6ff",
-      corFinal: "#1d4ed8",
-      rotulo: "Domicílios em apartamento",
-    },
+    // Os três temas que o tile carrega. Cada um tem o SEU teto, medido no geodata em
+    // 2026-09-13 com a mesma união do tile (malha do Censo ∪ células CNEFE, ausência
+    // como zero): o p99 corta a cauda longa sem esconder dado — acima dele a cor
+    // satura. Usar um teto só para os três achataria justamente a variável mais rara.
+    //
+    // Uma matiz por tema, e não a mesma rampa com outros números: duas leituras
+    // diferentes não podem produzir a mesma tela. O âmbar foi recusado por lembrar o
+    // laranja do setor censitário, que é a camada que costuma ficar ligada por baixo.
+    temasNumericos: [
+      {
+        id: "apartamento",
+        campo: "DOM_APARTAMENTO",
+        minimo: 0,
+        maximo: 820,
+        corInicial: "#eff6ff",
+        corFinal: "#1d4ed8",
+        rotulo: "Domicílios em apartamento",
+      },
+      {
+        id: "casa",
+        campo: "DOM_CASA",
+        minimo: 0,
+        maximo: 925,
+        corInicial: "#ecfdf5",
+        corFinal: "#047857",
+        rotulo: "Domicílios em casa",
+      },
+      {
+        id: "particulares",
+        campo: "DOMICILIOS_PARTICULARES",
+        minimo: 0,
+        maximo: 1223,
+        corInicial: "#f5f3ff",
+        corFinal: "#6d28d9",
+        rotulo: "Domicílios particulares",
+      },
+    ],
     cobertura: "37 municípios da concentração urbana de São Paulo",
     opacidadePreenchimento: 0.72,
     contorno: { cor: "#1e40af", largura: 0.25 },

@@ -11,6 +11,8 @@ import { MapView } from "./MapView";
 import { criarEstadoMedicao, MEDICAO_SOURCE_ID, type Coordenada } from "./medicao";
 import { criarEstadoDesenho } from "@/desenho/estado";
 import { COLECAO_VAZIA, DESENHOS_SOURCE_ID, TRACADO_SOURCE_ID } from "@/desenho/fonte";
+import { camadas } from "@/configuracao";
+import { expressaoDeCorNumerica } from "./layers";
 
 const handlers = new Map<string, (e: unknown) => void>();
 const setData = vi.fn();
@@ -49,8 +51,17 @@ const mapaDublado = {
   // Antes do style ser parseado NAO EXISTE fonte — e era esse o caso que o codigo
   // antigo tratava esperando por `load`, um evento que ja tinha passado.
   getSource: (id: string) => (style.carregado ? (FONTES[id] ?? { setData: vi.fn() }) : undefined),
-  getLayer: (id: string) => (style.carregado && id.startsWith("desenhos-") ? { id } : undefined),
+  // As camadas do catálogo existem no style tanto quanto as do desenho: um dublê que
+  // só conhecesse "desenhos-" faria a repintura por tema passar batida — o efeito
+  // desistiria calado, e o teste ficaria verde sem exercitar nada.
+  getLayer: (id: string) =>
+    style.carregado && (id.startsWith("desenhos-") || camadas.some((c) => c.id === id))
+      ? { id }
+      : undefined,
   setLayoutProperty: vi.fn(),
+  setPaintProperty: vi.fn(),
+  fitBounds: vi.fn(),
+  addSource: vi.fn(),
   setFilter: vi.fn(),
   queryRenderedFeatures: () => [],
   isStyleLoaded: () => style.carregado,
@@ -87,6 +98,7 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
   const resultado = render(
     <MapView
       visible={{}}
+      temaAtivo={{}}
       theme="light"
       satellite={false}
       satelliteOverlay={false}
@@ -151,6 +163,7 @@ describe("MapView e a medição", () => {
     rerender(
       <MapView
         visible={{}}
+        temaAtivo={{}}
         theme="light"
         satellite={false}
         satelliteOverlay={false}
@@ -438,5 +451,48 @@ describe("MapView e o clique no desenho", () => {
     expect(onVerticeDesenho).toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();
     mapaDublado.queryRenderedFeatures = (() => []) as never;
+  });
+});
+
+describe("MapView e a troca de variável", () => {
+  const h3 = camadas.find((c) => c.temasNumericos)!;
+
+  it("repinta a camada que já está no mapa, e não mexe no enquadramento", () => {
+    // AT-002. Trocar de variável é `setPaintProperty`: sem fonte nova, não há o que
+    // reenquadrar — é daí que vem "o mapa não se mexe", e não de código que salve a
+    // posição antes de trocar.
+    const segundo = h3.temasNumericos![1];
+    const { rerender } = montar({ visible: { [h3.id]: true }, temaAtivo: {} });
+    vi.clearAllMocks();
+
+    rerender(
+      <MapView
+        visible={{ [h3.id]: true }}
+        temaAtivo={{ [h3.id]: segundo.id }}
+        theme="light"
+        satellite={false}
+        satelliteOverlay={false}
+        onSelect={vi.fn()}
+        medicao={criarEstadoMedicao(null)}
+        onVerticeMedicao={vi.fn()}
+        onEncerrarMedicao={vi.fn()}
+        desenho={criarEstadoDesenho(null)}
+        onVerticeDesenho={vi.fn()}
+        onCancelarDesenho={vi.fn()}
+        onEncerrarDesenho={vi.fn()}
+        desenhos={COLECAO_VAZIA}
+        desenhosOcultos={[]}
+        selected={null}
+      />,
+    );
+
+    expect(mapaDublado.setPaintProperty).toHaveBeenCalledWith(
+      h3.id,
+      "fill-color",
+      expressaoDeCorNumerica(segundo),
+    );
+    expect(mapaDublado.fitBounds).not.toHaveBeenCalled();
+    expect(mapaDublado.addSource).not.toHaveBeenCalled();
+    expect(mapaDublado.setStyle).not.toHaveBeenCalled();
   });
 });

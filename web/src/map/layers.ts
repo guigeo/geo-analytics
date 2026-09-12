@@ -15,7 +15,7 @@ import type {
   LayerSpecification,
   SourceSpecification,
 } from "maplibre-gl";
-import { camadas, type DefinicaoCamada } from "@/configuracao";
+import { camadas, type DefinicaoCamada, type TemaNumerico } from "@/configuracao";
 import { tileUrl } from "./tileHost";
 
 /** Sufixos das sub-camadas companheiras (o toggle herda do id base). */
@@ -38,19 +38,44 @@ function corDoPreenchimento(camada: DefinicaoCamada): DataDrivenPropertyValueSpe
       NEUTRO_SEM_ZONA,
     ] as unknown as DataDrivenPropertyValueSpecification<string>;
   }
-  if (camada.pinturaPorNumero) {
-    const { campo, minimo, maximo, corInicial, corFinal } = camada.pinturaPorNumero;
-    return [
-      "interpolate",
-      ["linear"],
-      ["to-number", ["get", campo], minimo],
-      minimo,
-      corInicial,
-      maximo,
-      corFinal,
-    ] as unknown as DataDrivenPropertyValueSpecification<string>;
-  }
+  if (camada.temasNumericos) return expressaoDeCorNumerica(camada.temasNumericos[0]);
   return camada.cor;
+}
+
+/**
+ * A cor de um tema numérico, como expressão do MapLibre.
+ *
+ * É a MESMA função na criação do style e na troca em runtime (`setPaintProperty`), de
+ * propósito: com duas, o mapa criado e o mapa repintado poderiam divergir sem erro
+ * nenhum — bastaria alguém corrigir a escala de um lado.
+ */
+export function expressaoDeCorNumerica(
+  tema: TemaNumerico,
+): DataDrivenPropertyValueSpecification<string> {
+  return [
+    "interpolate",
+    ["linear"],
+    ["to-number", ["get", tema.campo], tema.minimo],
+    tema.minimo,
+    tema.corInicial,
+    tema.maximo,
+    tema.corFinal,
+  ] as unknown as DataDrivenPropertyValueSpecification<string>;
+}
+
+/**
+ * O tema ativo de uma camada, ou o primeiro.
+ *
+ * O fallback não é zelo: id guardado no estado pode não existir mais depois de uma
+ * mudança no catálogo, e sem ele a camada ficaria sem cor — apagada no mapa, sem erro.
+ */
+export function temaDaCamada(
+  camada: DefinicaoCamada,
+  idDoTema: string | undefined,
+): TemaNumerico | null {
+  const temas = camada.temasNumericos;
+  if (!temas?.length) return null;
+  return temas.find((t) => t.id === idDoTema) ?? temas[0];
 }
 
 export function fontesDeDados(

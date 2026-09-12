@@ -221,3 +221,35 @@ do Sul, onde os 82.528 endereços do CNEFE já serviram de piloto antes.
 
 **Só os 37 municípios do CNEFE estão em casa**, ~10,2 M endereços, e só no lab. Os ~111 M do
 Brasil exigiriam baixar o resto por UF — cabe nos 865 GB do lab, não no Mac nem na VPS.
+
+**Ordem de execução acordada em 2026-09-12, do mais barato ao mais caro.** O critério é
+esforço crescente, e a primeira linha de cada item é o que de fato custa. Nada aqui está
+publicado.
+
+| # | Item | O que custa | Dado novo? |
+|---|---|---|---|
+| 1 | **Publicar o Raio-X** | só deploy — o código está pronto e testado desde 2026-09-11 | não |
+| 2 | **Seletor de variável na tela H3** | frontend; a casca já pinta por valor e tem legenda | não |
+| 3 | **Mais variáveis no agente** (`h3_no_ponto`) | backend pequeno + prompt | não |
+| 4 | **Saneamento como alerta no Raio-X** | 3 variáveis e um corte em 90% | não |
+| 5 | **Escola e saúde no Raio-X** | carga nova de ~35,7 mil pontos, do lab | sim, leve |
+| 6 | **Comparar duas áreas** | só tela; a conta já roda por área | não |
+| 7 | **Basemap z15 no Brasil** | 5,5 GB na VPS — barrado por disco | não |
+| 8 | **Empresas (Receita × CNEFE)** | semanas: baixar, padronizar, casar, agregar, publicar | sim, pesado |
+
+Os itens 1 a 4 e o 6 **não exigem dado novo nenhum**: o que falta neles é leitura e tela
+sobre o que já está no `geodata`. São 40 variáveis do Censo em `indicadores.censo_h3_r9` e
+17 do CNEFE em `cnefe_h3_r9`, com os rótulos legíveis em `ibge_tabular.variavel` e
+`indicadores.cnefe_variavel` — nenhuma carga no `servidor-dados-gis` é necessária para
+resolver a lacuna que hoje deixa a tela mostrando **uma** variável e o agente alcançando
+**três**.
+
+O item 5 tem um ganho que não é de quantidade: são 17.337 endereços de ensino e 18.365 de
+saúde nos 37 municípios (medido em 2026-09-12), poucos o bastante para viajarem como pontos.
+Com o ponto, a contagem dentro do desenho é **exata por interseção** — seria a primeira
+variável do Raio-X que não passa por rateio, e portanto a primeira que o bloco de qualidade
+não precisa ressalvar.
+
+O item 8 começa por medição, não por carga: rodar o casamento de endereço em São Caetano do
+Sul e contar a taxa de acerto antes de prometer a feature. Se passar de 80%, o caminho está
+pago.

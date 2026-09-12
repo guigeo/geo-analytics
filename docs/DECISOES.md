@@ -253,3 +253,31 @@ não precisa ressalvar.
 O item 8 começa por medição, não por carga: rodar o casamento de endereço em São Caetano do
 Sul e contar a taxa de acerto antes de prometer a feature. Se passar de 80%, o caminho está
 pago.
+
+**Redesenho do painel de camadas — aprovado em 2026-09-12, para fazer em 2026-09-13.** A
+queixa do Guilherme foi "está pobrinho"; o diagnóstico é que tudo no painel tem o mesmo peso
+visual — grupo, linha, nome truncado, switch —, e nada ali diz o que a camada mostra nem o
+que está ligado. A pobreza é de informação, não de pixel. Quatro mudanças, em ordem de
+impacto por esforço:
+
+1. **Olho de visibilidade no lugar do switch.** Onze interruptores empilhados são o que mais
+   pesa na tela, e switch é idioma de tela de configuração; olho é idioma de mapa (QGIS,
+   ArcGIS, Figma) e ocupa um terço do espaço.
+2. **Legenda na própria linha** — a rampa de cor dos hexágonos em miniatura, as categorias do
+   zoneamento. É o único item que enfeita e informa ao mesmo tempo: dá para saber o que
+   aparece antes de ligar.
+3. **Seção "Ativas" no topo**, com contador no cabeçalho e "limpar tudo". Com três camadas
+   ligadas em grupos diferentes, hoje é preciso abrir os grupos para achá-las.
+4. **Hierarquia tipográfica**: nome em destaque e, num segundo nível, a fonte com o ano —
+   "Censo 2022", "CNEFE 2022", "Lei 18.177/2024". Essa sozinha faz o painel comunicar
+   procedência, que é o que o produto vende.
+
+Busca de camada e opacidade por camada ficam para quando a lista crescer. **Descartado de
+propósito:** vidro fosco, gradiente e sombra grande — painel de trabalho fica aberto horas ao
+lado de um mapa colorido, e isso briga com o dado. Elegância aqui é espaçamento, tipografia e
+cor com parcimônia.
+
+Duas restrições que valem para qualquer versão: o painel é da **casca compartilhada**, então a
+mudança vale para os dois clientes; e tem de ficar bom no tema claro e no escuro. Combinado
+começar por uma **página de comparação com duas ou três versões lado a lado**, para escolher
+olhando antes de tocar o app.

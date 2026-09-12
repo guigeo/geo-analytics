@@ -180,3 +180,44 @@ z15 apenas nas manchas urbanas — o IBGE agrupa 660 municípios em 185 concentr
 `pmtiles extract` aceita `--region` com GeoJSON. O segundo obriga o estilo a montar o tema
 duas vezes (nacional até z13, detalhado de z14 em diante), que é o custo de código que o
 arquivo único não tem.
+
+**Melhorias do Raio-X aprovadas em 2026-09-12, nenhuma publicada.** Discutidas com o
+Guilherme sobre o Raio-X já construído (seis blocos: escala, contraste, perfil, classe
+social, qualidade e regulação), e aprovadas nesta ordem:
+
+1. **Saneamento como alerta, não como bloco.** Água, esgoto e lixo entram na conta, mas só
+   viram linha na tela onde há **falta** — corte proposto em 90% dos domicílios ocupados.
+   A medição que decidiu o formato (2026-09-12, `ibge_tabular.setor` com
+   `domicilios_ocupados` no denominador): na concentração urbana de SP a mediana é 100%
+   para água e 99,6% para esgoto, então um bloco fixo diria "normal" em quase toda área —
+   mas a cauda é grossa, com **5.483 setores abaixo de 70% em esgoto de rede** e o
+   percentil 5 em 18,6%. Em São Caetano do Sul é 100% nos 421 setores, nas três variáveis:
+   lá o alerta nunca deve aparecer, e esse é o comportamento correto. Atenção ao
+   denominador — com `V0003` (domicílios particulares, que inclui vago e de uso ocasional)
+   a mesma conta dava mediana de 86% e inventava um problema que não existe.
+2. **Escola e saúde do CNEFE na área.** Contagem de endereços de ensino e de saúde dentro
+   do desenho, que é dado **medido** (endereço com coordenada), não rateado. Comércio ficou
+   **de fora** por decisão do Guilherme, e `end_em_obra` fica de fora por um motivo mais
+   forte: é a única variável cuja defasagem inverte o sentido — obra de 2022 hoje é prédio
+   pronto. Escola e posto de saúde mudam pouco em quatro anos e envelhecem bem.
+3. **Comparar duas áreas desenhadas.** A de maior valor e a mais barata em dado: zero dado
+   novo, a conta do Raio-X já roda por área. O custo é de tela. Muda o uso do produto —
+   hoje ele descreve um lugar, com isso ajuda a escolher entre dois.
+
+**A variável de empresas (Receita/CNPJ), e por que o CNEFE é o caminho.** Quer-se contagem de
+empresas por célula H3. O cadastro da Receita não tem coordenada, e o geocodificador já está
+no acervo: o CNEFE traz logradouro, número e CEP ao lado da coordenada medida — a carga do
+`CNEFE_H3` guardou o bruto fiel à fonte exatamente para isso (ver "O que ainda não existe"
+em `../servidor-dados-gis/docs/cnefe.md`). Três decisões já tomadas: **precisão de quadra
+basta**, porque o destino é a célula de 0,106 km²; o **endereço cadastral do CNPJ não é o
+operacional** (matriz em contabilidade, holding em residência) e isso entra como disclaimer,
+não como bloqueio; e o volume se corta **antes** de geocodificar — só estabelecimento ativo,
+só no recorte, o que derruba de ~60 M para a ordem de 2-3 M e tira o trabalho do Databricks,
+onde o Guilherme já mediu que custa caro. O trabalho sujo é padronizar abreviação de
+logradouro dos dois lados. Um bônus ainda não usado: `DSC_ESTABELECIMENTO` está preenchido em
+100% das espécies 4, 5, 6 e 8, então há **duas** chaves possíveis contra a Receita — endereço
+e nome. Piloto barato para medir a taxa de casamento antes de prometer a feature: São Caetano
+do Sul, onde os 82.528 endereços do CNEFE já serviram de piloto antes.
+
+**Só os 37 municípios do CNEFE estão em casa**, ~10,2 M endereços, e só no lab. Os ~111 M do
+Brasil exigiriam baixar o resto por UF — cabe nos 865 GB do lab, não no Mac nem na VPS.

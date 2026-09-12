@@ -216,7 +216,7 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   tem dois caminhos — resumo materializado quando a coluna existe lá, formato longo quando
   não (medido; ver `webgis/docs/HERANCA.md` §7.4).
 - **`agent/`** — projeto `uv`. Backend do chat: FastAPI + SDK `openai` PURO (sem framework de
-  agente — decisão de aprendizado). `tools.py` = 15 tools (args Pydantic → JSON Schema;
+  agente — decisão de aprendizado). `tools.py` = 20 tools (args Pydantic → JSON Schema;
   `TOOL_REGISTRY` despacha p/ o `GeoQuery`); `agent.py` = loop de tool-calling explícito
   (teto 6 iterações; erro de tool volta ao LLM p/ autocorreção 1x) + sessões em memória
   (TTL 1 h). **Grounding:** `destaques`/`dados` da resposta saem das rows das tools
@@ -398,6 +398,34 @@ endereços caem dentro de um setor da malha e **nenhum** com o mesmo código. Cr
 setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** funciona. Ver
 `../servidor-dados-gis/docs/cnefe.md`.
 
+### O Raio-X da Área, e por que ele está em UM cliente só
+
+Publicado em **2026-09-12, apenas no cliente 1** (`geo-intelligence.averisen.com`). Qualquer
+área do acervo gera um diagnóstico de seis blocos — escala, **contraste interno**, perfil,
+classe social, qualidade da leitura e regulação —, **sem LLM no caminho**: o contrato
+`RaioX` (`agent/src/geo_agent/schemas.py`) e a síntese (`query/src/geo_query/sintese.py`) são
+determinísticos, então a mesma área responde sempre o mesmo, e cada bloco carrega fonte,
+período, método, cobertura e avisos. A página imprime (`window.print()`), e o mapa pinta o
+contraste.
+
+**O cliente 2 está intocado de propósito** — frontend de 2026-09-07 —, porque o Guilherme
+quer anunciar o Raio-X a ele como novidade. A consequência arquitetural importa: **publicar é
+publicar o `HEAD` da `main`** (§10 do ADR-0001, tronco único), então não existe deploy que
+leve as novidades sem levar o Raio-X. Para separar os dois é preciso uma chave por cliente em
+`web/src/clientes/<cliente>.ts`, como já acontece com tema e cidade de exemplo. Enquanto essa
+chave não existir, qualquer deploy do `eb-prime` entrega o Raio-X junto.
+
+**A tool `localizar_endereco` nasceu disso** (2026-09-12): o geocoding existia preso dentro de
+`info_local`, e como `zoneamento_no_ponto` e `h3_no_ponto` só aceitam `lon`/`lat`, o agente
+pedia a coordenada ao cliente — que não tem como obtê-la. A tool resolve endereço em ponto com
+o PostGIS como juiz do candidato, e o prompt ganhou duas regras medidas: coordenada é insumo e
+nunca vai para a resposta; e avenida larga se consulta **com número**, porque o eixo da
+Avenida Paulista cai em `Praça/Canteiro` — uma das 10.714 feições sem zona — enquanto o 1578
+cai em ZEU.
+
+**Os artefatos do SDD ainda estão em `.claude/sdd/features/`**, não em `archive/`: a feature
+foi publicada antes do `/ship`. Quem for arquivar, arquive com o que esta seção diz.
+
 ### Em aberto
 
 - **Remedir o cruzamento na VPS (A-001).** Os tempos foram medidos neste Mac; lá a memória é
@@ -407,7 +435,8 @@ setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** func
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma
   feature.
-- **Espaço na VPS:** 6,8 GB livres de 38 GB (81% usado), medido em 2026-09-07, já com a
+- **Espaço na VPS:** 4,2 GB livres de 38 GB (89% usado), medido em 2026-09-12 — eram 6,8 GB
+  em 2026-09-07, e o número cai mais rápido do que a memória de quem o cita. Já com a
   réplica H3 e o tile de 12,8 MB publicados. É o que
   barra o eixo de ruas nacional (OSM) e o que adiaria uma malha H3 nacional (~2 GB em
   res 8).

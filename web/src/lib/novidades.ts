@@ -28,6 +28,22 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "raio-x-da-area-2026-09",
+    data: "2026-09-12",
+    titulo: "Raio-X da área, em uma página",
+    texto:
+      "Qualquer área do seu acervo agora gera um diagnóstico completo: população, " +
+      "domicílios e densidade; a renda e o tamanho das famílias; a classe social " +
+      "estimada; e o zoneamento que incide ali. O bloco que muda a conversa é o " +
+      "Contraste interno — em vez de uma média só, ele mostra a diferença ENTRE as " +
+      "partes da sua área, que é onde mora a decisão. Tudo sem IA no meio: os números " +
+      "vêm do cálculo, então a mesma área dá sempre a mesma resposta, e cada bloco diz " +
+      "de onde veio e o que não sabe. Dá para imprimir a página inteira e levar para a " +
+      "reunião. Abra pelo seu acervo, na ação Raio-X de uma área.",
+    // Sem `pergunta`: o Raio-X parte de uma área DESENHADA, e num acervo vazio o chip
+    // responderia "não achei" — o mesmo motivo da novidade do acervo, mais abaixo.
+  },
+  {
     id: "malha-h3-2026-09",
     data: "2026-09-07",
     titulo: "O mapa em hexágonos do mesmo tamanho",

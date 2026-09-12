@@ -146,3 +146,37 @@ desenhada no `benchmark.yaml` (o ambiente já recebe o acervo).
 (86% usado)**, medido em 2026-09-05 — eram 3,9 GB em 2026-08-31, e antes disso o parágrafo
 dizia ~6 GB, que já estava errado. Hetzner
 Volume continua sendo a rota mais barata, e não upgrade de plano.
+
+**Melhoria esperando espaço: o basemap detalhado.** O mapa de fundo hoje publicado para o
+Brasil para no zoom 13, e a fonte (Protomaps) tem rua de bairro e contorno de prédio até o
+zoom 15 — então, de 14 em diante, o que a tela mostra é o tile de 13 esticado, sem detalhe
+novo. Medido em 2026-09-12, gerando os três arquivos com `pmtiles extract` sobre o build
+`20250602` (o mesmo do nacional em produção, de propósito: build diferente faz as ruas
+divergirem entre as duas camadas):
+
+| Recorte | Zoom máximo | Tamanho |
+|---|---|---|
+| Brasil (publicado hoje) | 13 | 1,4 GB |
+| Brasil | 14 | 2,7 GB |
+| Brasil | **15 (teto da fonte)** | **5,5 GB** |
+| Concentração urbana de SP | 15 | 132 MB |
+
+**A melhoria é publicar o de 5,5 GB assim que houver espaço na VPS** — decisão do Guilherme
+em 2026-09-12, depois de comparar os três no host local: o ganho de detalhe é visível e o
+custo não é desempenho. Medido no próprio arquivo: o peso médio do tile quase não muda
+(43 KB em z13, 45 KB em z15); o que cresce é o pico em área densa (63 KB → 205 KB), e o
+navegador passa a buscar tile de verdade em dois níveis onde antes reaproveitava o esticado.
+A troca **não exige mudança no front**: é o mesmo nome de arquivo e a mesma source.
+
+O gatilho é o disco: **4,2 GB livres de 38 GB (89% usado), medido em 2026-09-12** — eram
+5,2 GB em 2026-09-05. Publicar o de 5,5 GB exige ~4,1 GB livres só durante o envio (o antigo
+sai depois), e o envio tem de ser para nome temporário com `mv` no fim, senão o mapa fica
+quebrado em produção enquanto sobe. Note que `make ship-tiles` do `webgis` **não serve** para
+esse caso: ele sincroniza o diretório inteiro com `--delete`, então um host local com mapas
+de teste ao lado estouraria o disco da VPS.
+
+Dois caminhos intermediários, se o espaço não vier: o Brasil em z14 (2,7 GB, cabe hoje) ou o
+z15 apenas nas manchas urbanas — o IBGE agrupa 660 municípios em 185 concentrações urbanas, e
+`pmtiles extract` aceita `--region` com GeoJSON. O segundo obriga o estilo a montar o tema
+duas vezes (nacional até z13, detalhado de z14 em diante), que é o custo de código que o
+arquivo único não tem.

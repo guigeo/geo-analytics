@@ -176,6 +176,15 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   5.571 municípios, e **São Paulo tem zero**. Se a camada não é nacional, a cobertura é
   parte dela, e a declaração é dado, não texto num componente (emenda de 2026-09-03 à
   regra 8 do ADR-0001).
+  **A camada também declara como se apresenta**, e o painel obedece em vez de ter lista
+  por id: `fonte` é a procedência que aparece debaixo do nome ("IBGE · Censo 2022") e é
+  **opcional de propósito** — antenas, rodovias e ferrovias não têm origem registrada em
+  lugar nenhum do repositório, e escrever "a confirmar" na tela do cliente seria pior do
+  que a lacuna (há teste travando isso). `tracejado` e `faixaCentral` valem para as duas
+  pontas ao mesmo tempo: viram o símbolo na legenda do painel (trilho com dormentes,
+  pista com divisória) **e** o traço no mapa. A faixa é uma sub-camada `__faixa`, e todo
+  sufixo novo entra em `SUFIXOS_SUBCAMADA` — é a lista que o `MapView` percorre para
+  acender a camada inteira, e sub-camada fora dela é sub-camada que nunca aparece.
   **Qual cliente é o build vem de `VITE_CLIENTE`** (padrão `geo-analytics`), resolvido pelo
   alias `cliente-ativo` no `vite.config.ts` — composição de build, §8 do ADR-0001. Um bundle
   por cliente, e o de um não contém a configuração do outro. Duas de pé ao mesmo tempo:

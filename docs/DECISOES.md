@@ -254,30 +254,34 @@ O item 8 começa por medição, não por carga: rodar o casamento de endereço e
 Sul e contar a taxa de acerto antes de prometer a feature. Se passar de 80%, o caminho está
 pago.
 
-**Redesenho do painel de camadas — aprovado em 2026-09-12, para fazer em 2026-09-13.** A
-queixa do Guilherme foi "está pobrinho"; o diagnóstico é que tudo no painel tem o mesmo peso
-visual — grupo, linha, nome truncado, switch —, e nada ali diz o que a camada mostra nem o
-que está ligado. A pobreza é de informação, não de pixel. Quatro mudanças, em ordem de
-impacto por esforço:
+**Redesenho do painel de camadas — feito em 2026-09-13.** A queixa do Guilherme foi "está
+pobrinho"; o diagnóstico é que tudo no painel tinha o mesmo peso visual — grupo, linha, nome
+truncado, switch —, e nada ali dizia o que a camada mostra nem o que estava ligado. A pobreza
+era de informação, não de pixel. O que entrou:
 
-1. **Olho de visibilidade no lugar do switch.** Onze interruptores empilhados são o que mais
-   pesa na tela, e switch é idioma de tela de configuração; olho é idioma de mapa (QGIS,
-   ArcGIS, Figma) e ocupa um terço do espaço.
-2. **Legenda na própria linha** — a rampa de cor dos hexágonos em miniatura, as categorias do
-   zoneamento. É o único item que enfeita e informa ao mesmo tempo: dá para saber o que
-   aparece antes de ligar.
-3. **Seção "Ativas" no topo**, com contador no cabeçalho e "limpar tudo". Com três camadas
-   ligadas em grupos diferentes, hoje é preciso abrir os grupos para achá-las.
-4. **Hierarquia tipográfica**: nome em destaque e, num segundo nível, a fonte com o ano —
-   "Censo 2022", "CNEFE 2022", "Lei 18.177/2024". Essa sozinha faz o painel comunicar
-   procedência, que é o que o produto vende.
+1. **Olho de visibilidade no lugar do switch.** Onze interruptores empilhados eram o que mais
+   pesava na tela, e switch é idioma de tela de configuração. A linha inteira virou o
+   controle, e continua sendo um `role="switch"`: mudou o desenho, não o que ela faz.
+2. **Procedência debaixo do nome** — "IBGE · Censo 2022", "CNEFE 2022 · célula H3 r9", a lei
+   do zoneamento —, num campo `fonte` novo do esquema. A decisão que vale além dela: camada
+   sem origem registrada **não ganha linha nenhuma**. Antenas, rodovias e ferrovias não têm
+   fonte em lugar nenhum do repositório, e um "a confirmar" na tela do cliente seria pior do
+   que a lacuna.
+3. **Selo com ícone por tema** no cabeçalho do combo, que acende quando ele abre, e a conta
+   das camadas ligadas ali dentro. É ela que avisa, com o grupo fechado, que há coisa acesa.
+4. **Símbolo de carta nas linhas.** Ferrovia é trilho com dormentes e rodovia é pista com
+   faixa central — na legenda **e** no mapa, pelos mesmos campos (`tracejado`,
+   `faixaCentral`). A faixa é sub-camada `__faixa` e só aparece do zoom 9 em diante: no país
+   inteiro a estrada tem menos de um pixel, e a divisória viraria sujeira.
 
-Busca de camada e opacidade por camada ficam para quando a lista crescer. **Descartado de
-propósito:** vidro fosco, gradiente e sombra grande — painel de trabalho fica aberto horas ao
-lado de um mapa colorido, e isso briga com o dado. Elegância aqui é espaçamento, tipografia e
-cor com parcimônia.
+**O que foi construído e descartado, para a discussão não recomeçar do zero:** uma seção
+"Ativas" no topo do painel, com contador e "limpar tudo". Ela respondia "o que está ligado"
+de uma vez só, e caiu no uso: ligar uma camada a levava para cima e **empurrava a lista
+inteira para baixo** — o painel se mexia debaixo do clique. A conta por combo dá a mesma
+resposta sem deslocar nada. Também seguem fora, por decisão de 12/09: vidro fosco, gradiente
+e sombra grande; busca de camada e opacidade por camada esperam a lista crescer.
 
-Duas restrições que valem para qualquer versão: o painel é da **casca compartilhada**, então a
-mudança vale para os dois clientes; e tem de ficar bom no tema claro e no escuro. Combinado
-começar por uma **página de comparação com duas ou três versões lado a lado**, para escolher
-olhando antes de tocar o app.
+A escolha foi feita olhando: um estudo com quatro tratamentos do cabeçalho de grupo (cartão,
+selo com ícone, régua tipográfica e trilho colorido) lado a lado, nos dois temas. Ganhou o
+selo com ícone. O painel é da **casca compartilhada**, então tudo isto vale para os dois
+clientes.

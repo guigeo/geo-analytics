@@ -5,10 +5,10 @@
 
 > **É AQUI que se starta a sessão.** Regra única, decidida em 2026-08-31: todo trabalho
 > começa neste repositório, seja ele feature, correção ou dúvida. É onde mora o código e
-> o framework SDD. Os outros dois são alcançáveis daqui pelo disco (`../webgis`,
-> `../servidor-dados-gis`), e o contrário também.
+> o framework SDD. Os outros três são alcançáveis daqui pelo disco (`../webgis`,
+> `../servidor-dados-gis`, `../site-geo-intelligence`), e o contrário também.
 
-**Este repositório é um de três**, e os papéis se contradizem de propósito — o que vale
+**Este repositório é um de quatro**, e os papéis se contradizem de propósito — o que vale
 aqui não vale no vizinho:
 
 | Repositório | Papel | O que se faz lá |
@@ -16,10 +16,18 @@ aqui não vale no vizinho:
 | `geo-analytics` (aqui) | **primeira aplicação derivada** — config e dado de cliente, e o agente | frontend, pipeline de tiles, agente, features |
 | `../webgis` | a casca, a infraestrutura compartilhada e **o registro das decisões** | ADR, host de tiles, vigias, publicação de tiles |
 | `../servidor-dados-gis` | dono do **dado universal** — cargas re-executáveis do IBGE/Censo | carga, schema do banco, e o `app_clientes` do acervo |
+| `../site-geo-intelligence` | frente institucional do Geo Intelligence | conteúdo, demonstração e publicação do site em `geo.averisen.com` |
 
 A contradição é literal e importa: no `servidor-dados-gis` **toda carga tem de ser
 reexecutável**; o `app_clientes`, que o agente daqui escreve, existe exatamente para **não**
 ser. Antes de tratar um como o outro, ver a emenda de 2026-08-31 à regra 4 do ADR-0001.
+
+**O site acompanha o produto, não é um quarto fork da aplicação.** Mudança que altere uma
+capacidade visível, sua disponibilidade ou a forma correta de apresentá-la entra também na
+tarefa do `site-geo-intelligence`: o site anuncia somente o que está publicado e com as
+ressalvas que mudam o sentido da funcionalidade. Mudança interna, de infraestrutura ou sem
+efeito na comunicação não exige alteração lá. O site não hospeda mapa, agente, dados de
+cliente, autenticação nem tiles; esses donos continuam sendo os três repositórios acima.
 
 **Primeiro passo de toda sessão, antes de propor qualquer coisa:** se a tarefa toca
 decisão, arquitetura, infraestrutura, deploy ou produção, **leia `../webgis/AGENTS.md` e o

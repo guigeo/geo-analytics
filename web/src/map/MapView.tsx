@@ -92,11 +92,24 @@ export interface MapFocus {
   maxZoom?: number;
 }
 
+/**
+ * O mapa é SEMPRE claro, mesmo com a aplicação no tema escuro (decisão de 2026-09-13).
+ *
+ * O tema escuro é da moldura — painéis, chat, cabeçalho —, e não do dado. Basemap
+ * escuro muda o que o mapa comunica: a água deixa de ser azul-clara, o verde de área
+ * protegida some no fundo, e as rampas do H3, do zoneamento e do Raio-X foram todas
+ * calibradas contra papel claro. Escurecer o mapa obrigaria a manter uma segunda
+ * cartografia inteira, e é ela que estaria errada metade do tempo.
+ *
+ * O efeito colateral bom: trocar de tema deixou de remontar o style do mapa. A
+ * remontagem continua existindo para o satélite, e com ela a reposição das fontes.
+ */
+const TEMA_DO_BASEMAP: BasemapTheme = "light";
+
 interface Props {
   visible: Record<string, boolean>;
   /** Qual tema numérico cada camada está pintando. Ver `temasNumericos` no catálogo. */
   temaAtivo: Record<string, string>;
-  theme: BasemapTheme;
   /** Satélite (Esri, raster) no lugar do basemap vetorial. */
   satellite: boolean;
   /** Com satélite ligado: mantém vias/limites/rótulos por cima (modo híbrido). */
@@ -144,7 +157,6 @@ interface Props {
 export function MapView({
   visible,
   temaAtivo,
-  theme,
   satellite,
   satelliteOverlay,
   onSelect,
@@ -198,7 +210,7 @@ export function MapView({
   const desenhosOcultosRef = useRef(desenhosOcultos);
   desenhosOcultosRef.current = desenhosOcultos;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
-  const initialThemeRef = useRef(theme);
+
   const initialSatelliteRef = useRef(satellite);
   const initialSatelliteOverlayRef = useRef(satelliteOverlay);
 
@@ -210,7 +222,7 @@ export function MapView({
       container: containerRef.current,
       style: montarEstilo({
         camadas,
-        tema: initialThemeRef.current,
+        tema: TEMA_DO_BASEMAP,
         satelite: initialSatelliteRef.current,
         sobreporVias: initialSatelliteOverlayRef.current,
       }),
@@ -489,16 +501,21 @@ export function MapView({
   // + sprite) sem recriar o mapa. O handler de clique vive no mapa, então sobrevive
   // ao setStyle; só a visibilidade das camadas precisa ser reaplicada quando o novo
   // style carrega.
-  const firstThemeRender = useRef(true);
+  const primeiraMontagemDoEstilo = useRef(true);
   useEffect(() => {
-    if (firstThemeRender.current) {
-      firstThemeRender.current = false;
+    if (primeiraMontagemDoEstilo.current) {
+      primeiraMontagemDoEstilo.current = false;
       return;
     }
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(
-      montarEstilo({ camadas, tema: theme, satelite: satellite, sobreporVias: satelliteOverlay }),
+      montarEstilo({
+        camadas,
+        tema: TEMA_DO_BASEMAP,
+        satelite: satellite,
+        sobreporVias: satelliteOverlay,
+      }),
     );
     map.once("idle", () => {
       applyVisibility(map, visibleRef.current);
@@ -526,7 +543,7 @@ export function MapView({
         if (map.getLayer(id)) map.setFilter(id, filtroDoAcervo(id, desenhosOcultosRef.current));
       }
     });
-  }, [theme, satellite, satelliteOverlay]);
+  }, [satellite, satelliteOverlay]);
 
   return (
     <>

@@ -281,7 +281,6 @@ export function App() {
                 <MapView
                   visible={visible}
                   temaAtivo={temaAtivo}
-                  theme={theme}
                   satellite={satellite}
                   satelliteOverlay={satelliteOverlay}
                   onSelect={setSelected}
@@ -471,7 +470,6 @@ export function App() {
               <MapView
                 visible={visible}
                 temaAtivo={temaAtivo}
-                theme={theme}
                 satellite={satellite}
                 satelliteOverlay={satelliteOverlay}
                 onSelect={setSelected}

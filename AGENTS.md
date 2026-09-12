@@ -191,6 +191,15 @@ cd agent && uv run pytest -m benchmark -v   # 17 casos reais (requer agent/.env;
   `make dev-lado-a-lado`.
   `map/layers.ts` **não define mais as camadas**: ele só traduz camada configurada para
   especificação do MapLibre, e o snapshot em `map/layers.test.ts` congela essa saída.
+  **O mapa é sempre claro, mesmo com a aplicação no escuro** (decisão de 2026-09-13, em
+  `map/MapView.tsx`): o tema escuro é da moldura — painéis, chat, cabeçalho —, e não do dado.
+  A água azul, o verde de área protegida e as rampas do H3, do zoneamento e do Raio-X foram
+  calibrados contra papel claro; basemap escuro exigiria manter uma segunda cartografia, e
+  metade do tempo seria ela a errada. O tema vive numa constante única (`TEMA_DO_BASEMAP`),
+  com teste afirmando que nenhum estilo é montado com outro valor — `estilo.ts` e
+  `basemap.ts` continuam sabendo desenhar escuro, mas ninguém pede. Efeito colateral: trocar
+  de tema **não remonta mais o style**; essa remontagem (e a reposição das fontes que vem com
+  ela) só acontece ao ligar ou desligar o satélite.
   `map/basemap.ts` monta o basemap vetorial (Protomaps) e o satélite (raster XYZ Esri World
   Imagery, sem API key) — toggle no header; `basemapOverlayLayers()` filtra só `line`/`symbol`
   do basemap (vias, limites, rótulos, POIs) pra manter por cima do raster em modo híbrido

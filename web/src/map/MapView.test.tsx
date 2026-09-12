@@ -78,6 +78,18 @@ vi.mock("maplibre-gl", () => ({
   },
 }));
 vi.mock("../lib/pmtiles", () => ({ registerPMTiles: vi.fn() }));
+// Espia COM implementação real: o que interessa é com que tema o estilo é montado.
+const espiaDeEstilo = vi.hoisted(() => vi.fn());
+vi.mock("./estilo", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./estilo")>();
+  return {
+    ...real,
+    montarEstilo: (opcoes: Parameters<typeof real.montarEstilo>[0]) => {
+      espiaDeEstilo(opcoes);
+      return real.montarEstilo(opcoes);
+    },
+  };
+});
 // Só as duas funções que tocam o mapa. O módulo também exporta os ícones que o
 // catálogo de camadas importa — dublá-lo inteiro derruba a configuração no boot.
 vi.mock("./icons", async (importOriginal) => ({
@@ -99,7 +111,6 @@ function montar(props: Partial<React.ComponentProps<typeof MapView>> = {}) {
     <MapView
       visible={{}}
       temaAtivo={{}}
-      theme="light"
       satellite={false}
       satelliteOverlay={false}
       onSelect={onSelect}
@@ -164,7 +175,6 @@ describe("MapView e a medição", () => {
       <MapView
         visible={{}}
         temaAtivo={{}}
-        theme="light"
         satellite={false}
         satelliteOverlay={false}
         onSelect={vi.fn()}
@@ -469,7 +479,6 @@ describe("MapView e a troca de variável", () => {
       <MapView
         visible={{ [h3.id]: true }}
         temaAtivo={{ [h3.id]: segundo.id }}
-        theme="light"
         satellite={false}
         satelliteOverlay={false}
         onSelect={vi.fn()}
@@ -494,5 +503,28 @@ describe("MapView e a troca de variável", () => {
     expect(mapaDublado.fitBounds).not.toHaveBeenCalled();
     expect(mapaDublado.addSource).not.toHaveBeenCalled();
     expect(mapaDublado.setStyle).not.toHaveBeenCalled();
+  });
+});
+
+describe("MapView e o tema", () => {
+  it("monta o basemap sempre claro, com a aplicação em qualquer tema", () => {
+    // Decisão de 2026-09-13: o tema escuro é da moldura, não do dado. A água azul, o
+    // verde de área protegida e as rampas do H3, do zoneamento e do Raio-X foram
+    // calibrados contra papel claro — escurecer o mapa exigiria uma segunda
+    // cartografia, e ela estaria errada metade do tempo.
+    montar();
+    expect(espiaDeEstilo).toHaveBeenCalled();
+    for (const [opcoes] of espiaDeEstilo.mock.calls) {
+      expect(opcoes.tema).toBe("light");
+    }
+  });
+
+  it("não aceita mais um tema por fora: o mapa não tem essa alavanca", () => {
+    // Se a prop voltar, este teste não falha sozinho — mas a constante única falha:
+    // é ela que o `montarEstilo` recebe, na criação e na remontagem do satélite.
+    montar({ satellite: true });
+    for (const [opcoes] of espiaDeEstilo.mock.calls) {
+      expect(opcoes.tema).toBe("light");
+    }
   });
 });

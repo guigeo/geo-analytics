@@ -272,6 +272,21 @@ class H3NoPontoArgs(BaseModel):
     lat: float = Field(ge=-90, le=90)
 
 
+class LocalizarEnderecoArgs(BaseModel):
+    """Resolve endereço, avenida ou ponto de referência em coordenada (lon, lat).
+
+    Use ANTES de qualquer tool que peça ponto — zoneamento_no_ponto, h3_no_ponto,
+    setor_que_contem, bairro_que_contem — sempre que a pessoa disser um endereço e não
+    uma coordenada. NUNCA peça coordenada a quem pergunta: ela não tem como obtê-la.
+
+    Em avenida larga, prefira o endereço COM número: o eixo da via cai no canteiro
+    central, que no zoneamento de São Paulo não é zona nenhuma.
+    """
+
+    endereco: str = Field(min_length=3)
+    municipio: str | None = None
+
+
 class InfoLocalArgs(BaseModel):
     """Dados de um lugar citado por nome, no MELHOR recorte disponível ali.
 
@@ -477,6 +492,73 @@ def _zoneamento_no_ponto(ctx: Contexto, a: ZoneamentoNoPontoArgs) -> ToolResult:
         camada="zoneamento_sp",
         codigos=[str(row["cod_zona"])],
         rows=[row],
+    )
+
+
+def _localizar_endereco(ctx: Contexto, a: LocalizarEnderecoArgs) -> ToolResult:
+    """Endereco -> coordenada, com o PostGIS como juiz do candidato.
+
+    O geocoding ja existia, preso dentro de info_local. Faltando como tool propria, o
+    LLM nao tinha caminho do endereco para as tools de ponto e pedia a coordenada ao
+    usuario — que nao tem como obte-la. Medido em 2026-09-12, no chat do cliente 1.
+
+    O desempate e o mesmo de _info_local_por_localizacao, pelo mesmo motivo: sem
+    confinar ao municipio, "Sao Paulo" vira estado e o Nominatim devolve o interior.
+    """
+    termo = ", ".join(t for t in (a.endereco, a.municipio, "Brasil") if t)
+    try:
+        candidatos = geocode_pontos(termo, limite=5)
+    except GeocodeIndisponivel:
+        return ToolResult(
+            payload={"erro": "a busca por endereço está indisponível agora"}, error=True
+        )
+    if not candidatos:
+        return ToolResult(payload={"erro": f"não encontrei '{a.endereco}'"}, error=True)
+
+    alvo = None
+    if a.municipio:
+        achados = ctx.geodata.busca_municipios(a.municipio)
+        if achados:
+            alvo = str(achados[0]["cd_mun"])
+
+    fora_do_municipio = None
+    for lon, lat in candidatos:
+        municipio = ctx.geodata.municipio_no_ponto(lon, lat)
+        if municipio is None:
+            continue
+        if alvo is not None and str(municipio["cd_mun"]) != alvo:
+            # Guarda o primeiro que caiu fora: se nenhum cair dentro, ele e a resposta
+            # honesta ("achei, mas em outra cidade") — melhor que "nao achei".
+            fora_do_municipio = fora_do_municipio or (lon, lat, municipio)
+            continue
+        return ToolResult(
+            payload={
+                "lon": lon,
+                "lat": lat,
+                "municipio": municipio["nm_mun"],
+                "uf": municipio["nm_uf"],
+                "endereco_consultado": a.endereco,
+            }
+        )
+
+    if fora_do_municipio is not None:
+        lon, lat, municipio = fora_do_municipio
+        return ToolResult(
+            payload={
+                "lon": lon,
+                "lat": lat,
+                "municipio": municipio["nm_mun"],
+                "uf": municipio["nm_uf"],
+                "endereco_consultado": a.endereco,
+                "aviso": (
+                    f"o endereço foi localizado em {municipio['nm_mun']}, e não em "
+                    f"{a.municipio} — confirme antes de usar o resultado"
+                ),
+            }
+        )
+    return ToolResult(
+        payload={"erro": f"'{a.endereco}' não caiu em nenhum município da malha do IBGE"},
+        error=True,
     )
 
 
@@ -858,6 +940,9 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     "ranking_distritos": (RankingDistritosArgs, _ranking_distritos),
     "distrito_que_contem": (DistritoQueContemArgs, _distrito_que_contem),
     "zoneamento_no_ponto": (ZoneamentoNoPontoArgs, _zoneamento_no_ponto),
+    # Antes das tools de ponto na lista porque e o passo anterior a elas no fluxo: quem
+    # pergunta diz endereco, e coordenada nao se pede a quem pergunta.
+    "localizar_endereco": (LocalizarEnderecoArgs, _localizar_endereco),
     "h3_no_ponto": (H3NoPontoArgs, _h3_no_ponto),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),

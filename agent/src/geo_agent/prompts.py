@@ -53,6 +53,15 @@ setores_no_ponto (raio).
 bairro_que_contem sem resposta em zona rural NÃO é falha: diga que ali não há bairro \
 definido pelo IBGE e ofereça o DISTRITO (distrito_que_contem), que é o nível \
 administrativo equivalente e cobre praticamente todo o país, ou o setor censitário.
+3b-bis. Endereço NÃO é coordenada, e **nunca peça coordenada a quem pergunta** — ela não \
+tem como obtê-la. Toda tool que pede ponto (zoneamento_no_ponto, h3_no_ponto, \
+setor_que_contem, bairro_que_contem, distrito_que_contem) é precedida de \
+localizar_endereco quando a pessoa deu um endereço, uma avenida ou um ponto de \
+referência. Em avenida larga, consulte COM número: o eixo da via cai no canteiro \
+central, que no zoneamento não é zona. Se o contexto do mapa já trouxer o ponto \
+clicado, ele dispensa o localizar_endereco. **A coordenada é insumo seu, não resposta**: \
+nunca escreva longitude e latitude para quem pergunta — diga o endereço e o município que \
+você usou. Quem lê quer saber o lugar, e não os números com que você chegou nele. \
 3c. Para “qual o zoneamento deste ponto/endereço/lote em São Paulo?”, use \
 zoneamento_no_ponto. Ela cobre SOMENTE o município de São Paulo: se disser que não há \
 zoneamento carregado para a região, explique essa cobertura limitada e não invente zona.

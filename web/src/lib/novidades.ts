@@ -28,6 +28,45 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "malha-h3-2026-09",
+    data: "2026-09-07",
+    titulo: "O mapa em hexágonos do mesmo tamanho",
+    texto:
+      "Uma camada nova mostra quantos domicílios são apartamento em cada hexágono de " +
+      "0,1 km² — 68 mil deles, cobrindo os 37 municípios da Grande São Paulo. A cor vai do " +
+      "claro ao escuro conforme o número, a legenda diz o que cada tom vale, e clicar num " +
+      "hexágono abre casas, apartamentos, total e a qualidade da localização dos endereços. " +
+      "A vantagem sobre o setor censitário é a comparação: como todo hexágono tem o mesmo " +
+      "tamanho, cor mais escura significa mesmo mais densidade. Fora da Grande São Paulo a " +
+      "camada não tem dado, e diz isso em vez de mostrar vazio.",
+    // A cidade é cravada, e não vem de `configuracao.cidadeExemplo`, de propósito: a
+    // cobertura desta camada é REGIONAL (37 municípios), enquanto a cidade de exemplo é do
+    // cliente — a do cliente 1 é Curitiba, que está fora, e o chip responderia "não há dado
+    // aí". Cravar vale aqui porque a pergunta demonstra a COBERTURA da camada, não o
+    // negócio de um cliente; numa pergunta do Censo, que funciona em todo o Brasil, a
+    // cidade continua tendo de vir da configuração.
+    pergunta: "Quantos apartamentos tem no centro de São Caetano do Sul?",
+    chip: "Apartamentos em São Caetano",
+  },
+  {
+    id: "zoneamento-sp-2026-09",
+    data: "2026-09-06",
+    titulo: "Zoneamento da cidade de São Paulo",
+    texto:
+      "As zonas de uso do solo da cidade de São Paulo entraram no menu de camadas, com o " +
+      "nome da zona e a lei que a define. Clique numa zona para ver os detalhes, ou pergunte " +
+      "ao agente qual zona vale num endereço. A cobertura é a cidade de São Paulo — outras " +
+      "cidades da região, como São Caetano do Sul, têm a própria lei e não estão aqui.",
+    // O NÚMERO no endereço não é enfeite. Medido em 2026-09-12: a coordenada do eixo da
+    // Avenida Paulista cai em "Praça/Canteiro" — uma das 10.714 feições com `e_zona =
+    // false`, sem nome de zona —, e o chip demonstraria a camada respondendo "canteiro".
+    // Com número, o geocoding resolve dentro da quadra e a resposta é ZEU, Zona Eixo de
+    // Estruturação da Transformação Urbana. Vale para qualquer avenida larga: demonstração
+    // de zoneamento pede endereço com número.
+    pergunta: "Qual é o zoneamento da Avenida Paulista, 1578, em São Paulo?",
+    chip: "Zoneamento da Paulista",
+  },
+  {
     id: "classe-social-2026-09",
     data: "2026-09-03",
     titulo: "Classe social, agora no chat",

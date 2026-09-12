@@ -83,16 +83,53 @@ describe("LayerPanel", () => {
     expect(screen.queryByText(grupo.camadas[0].rotulo)).not.toBeInTheDocument();
   });
 
-  it("reflete no interruptor a visibilidade recebida", () => {
+  it("reflete no olho a visibilidade recebida", () => {
     const [grupo] = grupos;
     const visiveis = Object.fromEntries(grupo.camadas.map((c, i) => [c.id, i === 0]));
     render(<LayerPanel visible={visiveis} onToggle={vi.fn()} {...semAcervo} />);
     abrir(grupo.rotulo);
-    const interruptores = screen.getAllByRole("switch");
-    expect(interruptores[0]).toBeChecked();
-    for (const outro of interruptores.slice(1)) {
-      expect(outro).not.toBeChecked();
+    const [ligada, ...apagadas] = grupo.camadas;
+    expect(screen.getByRole("switch", { name: new RegExp(ligada.rotulo, "i") })).toBeChecked();
+    for (const c of apagadas) {
+      expect(screen.getByRole("switch", { name: new RegExp(c.rotulo, "i") })).not.toBeChecked();
     }
+  });
+
+  it("o combo fechado conta o que está ligado dentro dele", () => {
+    // É esta conta que avisa, com o grupo recolhido, que há camada acesa ali. A
+    // alternativa testada antes — levar a camada ligada para uma seção no topo —
+    // empurrava a lista para baixo no clique, e o painel se mexia sozinho.
+    const [primeiro, segundo] = grupos;
+    render(
+      <LayerPanel visible={{ [primeiro.camadas[0].id]: true }} onToggle={vi.fn()} {...semAcervo} />,
+    );
+    expect(combo(primeiro.rotulo)).toHaveTextContent("1");
+    // Grupo sem nada ligado não ganha número nenhum: zero se diz com ausência.
+    expect(combo(segundo.rotulo)).toHaveTextContent(new RegExp(`^${segundo.rotulo}$`));
+  });
+
+  it("a camada ligada fica no lugar dela, e não sobe para o topo", () => {
+    const [grupo] = grupos;
+    render(
+      <LayerPanel visible={{ [grupo.camadas[0].id]: true }} onToggle={vi.fn()} {...semAcervo} />,
+    );
+    // Com tudo recolhido, nada da camada aparece: ela mora no combo dela.
+    expect(screen.queryByText(grupo.camadas[0].rotulo)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /limpar tudo/i })).not.toBeInTheDocument();
+  });
+
+  it("mostra a procedência de quem tem, e nada no lugar de quem não tem", () => {
+    // A lacuna é a decisão: as antenas, as rodovias e as ferrovias não têm origem
+    // registrada em lugar nenhum do repositório, e escrever "a confirmar" na tela do
+    // cliente seria pior do que não escrever nada.
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Informações IBGE");
+    expect(screen.getByText("IBGE · Censo 2022")).toBeInTheDocument();
+
+    abrir("Infraestrutura");
+    const semFonte = camadas.filter((c) => c.grupo === "infraestrutura" && !c.fonte);
+    expect(semFonte.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/a confirmar/i)).not.toBeInTheDocument();
   });
 
   it("clicar no interruptor avisa qual camada", () => {
@@ -107,9 +144,9 @@ describe("LayerPanel", () => {
   it("mostra a cobertura das camadas parciais, e nada além disso", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
     abrir("Regulação urbana");
-    expect(
-      screen.getByText("São Paulo (capital) · Lei 18.177/2024 · atualizado em 28/03/2025"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("São Paulo (capital)")).toBeInTheDocument();
+    // A lei e a data saíram da cobertura e viraram a procedência, debaixo do nome.
+    expect(screen.getByText("Lei 18.177/2024 · 28/03/2025")).toBeInTheDocument();
 
     abrir("Informações IBGE");
     expect(
@@ -130,7 +167,7 @@ describe("LayerPanel", () => {
       screen.getByRole("group", { name: "Legenda: Domicílios em apartamento" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("37 municípios da concentração urbana de São Paulo · CNEFE 2022"),
+      screen.getByText("37 municípios da concentração urbana de São Paulo"),
     ).toBeInTheDocument();
     expect(screen.getByText("820+")).toBeInTheDocument();
   });

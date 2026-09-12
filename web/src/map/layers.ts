@@ -19,7 +19,7 @@ import { camadas, type DefinicaoCamada } from "@/configuracao";
 import { tileUrl } from "./tileHost";
 
 /** Sufixos das sub-camadas companheiras (o toggle herda do id base). */
-export const SUFIXOS_SUBCAMADA = ["", "__outline", "__label"] as const;
+export const SUFIXOS_SUBCAMADA = ["", "__faixa", "__outline", "__label"] as const;
 
 /** Só os ids base são clicáveis — contorno e rótulo não respondem a clique. */
 export const IDS_CLICAVEIS = camadas.map((c) => c.id);
@@ -105,10 +105,17 @@ function camadaBase(c: DefinicaoCamada, visibility: "visible" | "none"): LayerSp
       type: "line",
       source: c.id,
       "source-layer": c.camadaFonte,
-      layout: { visibility, "line-cap": "round", "line-join": "round" },
+      // Ponta reta quando há tracejado: com a ponta redonda, tracinho curto vira
+      // bolinha, e o trilho se lê como pontilhado em vez de dormente.
+      layout: {
+        visibility,
+        "line-cap": c.tracejado ? "butt" : "round",
+        "line-join": "round",
+      },
       paint: {
         "line-color": c.cor,
         "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 12, c.larguraLinha ?? 1.6],
+        ...(c.tracejado ? { "line-dasharray": [...c.tracejado] } : {}),
       },
     } satisfies LayerSpecification;
   }
@@ -137,6 +144,34 @@ function camadaContorno(
     "source-layer": c.camadaFonte,
     layout: { visibility },
     paint: { "line-color": c.contorno.cor, "line-width": c.contorno.largura },
+  } satisfies LayerSpecification;
+}
+
+/**
+ * A faixa central de uma linha: a divisória branca por cima da pista.
+ *
+ * Some no zoom baixo de propósito (`zoomMinimo`): a rodovia nacional tem menos de um
+ * pixel ali, e pintar uma faixa dentro dela só suja o traço. A largura acompanha o
+ * zoom pelo mesmo motivo — ela nasce fina e engorda junto com a pista.
+ */
+function camadaFaixaCentral(
+  c: DefinicaoCamada,
+  visibility: "visible" | "none",
+): LayerSpecification | null {
+  if (c.geometria !== "linha" || !c.faixaCentral) return null;
+  const { cor, largura, tracejado, zoomMinimo = 9 } = c.faixaCentral;
+  return {
+    id: `${c.id}__faixa`,
+    type: "line",
+    source: c.id,
+    "source-layer": c.camadaFonte,
+    minzoom: zoomMinimo,
+    layout: { visibility, "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": cor,
+      "line-width": ["interpolate", ["linear"], ["zoom"], zoomMinimo, largura * 0.5, 14, largura],
+      ...(tracejado ? { "line-dasharray": [...tracejado] } : {}),
+    },
   } satisfies LayerSpecification;
 }
 
@@ -176,6 +211,8 @@ export function camadasDoMapa(lista: DefinicaoCamada[] = camadas): LayerSpecific
     // `visibilidadeInicial` no App — a regra é da casca, não do cliente.
     const visibility = "none" as const;
     base.push(camadaBase(c, visibility));
+    const faixa = camadaFaixaCentral(c, visibility);
+    if (faixa) base.push(faixa);
     const contorno = camadaContorno(c, visibility);
     if (contorno) base.push(contorno);
     const rotulo = camadaRotulo(c, visibility);

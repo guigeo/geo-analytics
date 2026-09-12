@@ -178,7 +178,39 @@ exports[`saída congelada > mantém as camadas 1`] = `
         4,
         0.6,
         12,
-        1.8,
+        3.4,
+      ],
+    },
+    "source": "rodovias",
+    "source-layer": "rodovias",
+    "type": "line",
+  },
+  {
+    "id": "rodovias__faixa",
+    "layout": {
+      "line-cap": "butt",
+      "line-join": "round",
+      "visibility": "none",
+    },
+    "minzoom": 9,
+    "paint": {
+      "line-color": "#ffffff",
+      "line-dasharray": [
+        2,
+        2,
+      ],
+      "line-width": [
+        "interpolate",
+        [
+          "linear",
+        ],
+        [
+          "zoom",
+        ],
+        9,
+        0.45,
+        14,
+        0.9,
       ],
     },
     "source": "rodovias",
@@ -188,12 +220,16 @@ exports[`saída congelada > mantém as camadas 1`] = `
   {
     "id": "ferrovias",
     "layout": {
-      "line-cap": "round",
+      "line-cap": "butt",
       "line-join": "round",
       "visibility": "none",
     },
     "paint": {
       "line-color": "#4b5563",
+      "line-dasharray": [
+        1,
+        1,
+      ],
       "line-width": [
         "interpolate",
         [
@@ -205,7 +241,7 @@ exports[`saída congelada > mantém as camadas 1`] = `
         4,
         0.6,
         12,
-        1.4,
+        2.2,
       ],
     },
     "source": "ferrovias",

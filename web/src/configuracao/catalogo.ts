@@ -30,6 +30,7 @@ export const CATALOGO = {
   uf: {
     id: "uf",
     rotulo: "UF",
+    fonte: "IBGE · malha 2022",
     grupo: "ibge",
     camadaFonte: "uf",
     geometria: "poligono",
@@ -46,6 +47,7 @@ export const CATALOGO = {
   municipio: {
     id: "municipio",
     rotulo: "Município",
+    fonte: "IBGE · malha 2022",
     grupo: "ibge",
     camadaFonte: "municipio",
     geometria: "poligono",
@@ -63,6 +65,7 @@ export const CATALOGO = {
   distrito: {
     id: "distrito",
     rotulo: "Distrito",
+    fonte: "IBGE · malha 2022",
     grupo: "ibge",
     camadaFonte: "distrito",
     geometria: "poligono",
@@ -79,6 +82,7 @@ export const CATALOGO = {
   bairro: {
     id: "bairro",
     rotulo: "Bairro",
+    fonte: "IBGE · malha 2022",
     grupo: "ibge",
     camadaFonte: "bairro",
     geometria: "poligono",
@@ -97,6 +101,7 @@ export const CATALOGO = {
   setor: {
     id: "setor",
     rotulo: "Setor censitário",
+    fonte: "IBGE · Censo 2022",
     grupo: "ibge",
     camadaFonte: "setor",
     geometria: "poligono",
@@ -133,7 +138,9 @@ export const CATALOGO = {
     camadaFonte: "rodovias",
     geometria: "linha",
     cor: "#c2410c",
-    larguraLinha: 1.8,
+    // Mais grossa que antes (1,8) para a divisória caber dentro dela sem virar borrão.
+    larguraLinha: 3.4,
+    faixaCentral: { cor: "#ffffff", largura: 0.9, tracejado: [2, 2], zoomMinimo: 9 },
     atributos: [
       { chave: "sigla", rotulo: "Rodovia" },
       { chave: "tipovia", rotulo: "Tipo" },
@@ -148,7 +155,10 @@ export const CATALOGO = {
     camadaFonte: "ferrovias",
     geometria: "linha",
     cor: "#4b5563",
-    larguraLinha: 1.4,
+    larguraLinha: 2.2,
+    // Os "dormentes": tracinhos curtos e juntos. Com a linha mais grossa que a da
+    // rodovia, o trilho se lê como trilho mesmo em zoom baixo, e não como estrada fina.
+    tracejado: [1, 1],
     atributos: [
       { chave: "nome", rotulo: "Ferrovia" },
       { chave: "bitola", rotulo: "Bitola" },
@@ -158,13 +168,14 @@ export const CATALOGO = {
   zoneamento_sp: {
     id: "zoneamento_sp",
     rotulo: "Zoneamento de São Paulo",
+    fonte: "Lei 18.177/2024 · 28/03/2025",
     grupo: "regulacao",
     camadaFonte: "zoneamento_sp",
     geometria: "poligono",
     cor: "#1e4e8c",
     campoDestaque: "COD_ZONA",
     pinturaPorCategoria: { campo: "COD_ZONA", entradas: PALETA_ZONEAMENTO },
-    cobertura: "São Paulo (capital) · Lei 18.177/2024 · atualizado em 28/03/2025",
+    cobertura: "São Paulo (capital)",
     opacidadePreenchimento: 0.62,
     contorno: { cor: "#475569", largura: 0.35 },
     atributos: [
@@ -177,6 +188,7 @@ export const CATALOGO = {
   h3_domicilios: {
     id: "h3_domicilios",
     rotulo: "Domicílios em apartamento (H3)",
+    fonte: "CNEFE 2022 · célula H3 r9",
     grupo: "indicadores",
     camadaFonte: "h3_domicilios",
     geometria: "poligono",
@@ -192,7 +204,7 @@ export const CATALOGO = {
       corFinal: "#1d4ed8",
       rotulo: "Domicílios em apartamento",
     },
-    cobertura: "37 municípios da concentração urbana de São Paulo · CNEFE 2022",
+    cobertura: "37 municípios da concentração urbana de São Paulo",
     opacidadePreenchimento: 0.72,
     contorno: { cor: "#1e40af", largura: 0.25 },
     atributos: [

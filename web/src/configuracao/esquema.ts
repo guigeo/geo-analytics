@@ -143,11 +143,38 @@ export const EsquemaCamada = z
     campoDestaque: z.string().min(1).optional(),
     /** Onde a camada existe, medido na fonte e exibido junto dela. */
     cobertura: z.string().min(1).optional(),
+    /**
+     * Quem produziu o dado e de quando ele é — a procedência, no painel logo abaixo
+     * do nome. É opcional porque é isto que o produto vende: escrever "a confirmar"
+     * numa camada cuja origem ninguém registrou seria pior do que não escrever nada.
+     */
+    fonte: z.string().min(1).optional(),
     /** Polígonos: 0 desenha só o contorno, mas a área continua clicável. */
     opacidadePreenchimento: z.number().min(0).max(1).optional(),
     contorno: EsquemaContorno.optional(),
     /** Linhas: largura do traço no zoom alto. */
     larguraLinha: z.number().positive().optional(),
+    /**
+     * Linhas: o padrão de traço, em pares "desenha, pula" (unidades de largura da
+     * própria linha, como o MapLibre conta). A ferrovia é o caso que pediu isto — no
+     * mapa e na legenda ela é uma sequência de tracinhos, e não um fio contínuo, que
+     * é como a cartografia distingue trilho de estrada desde sempre.
+     */
+    tracejado: z.array(z.number().positive()).min(2).optional(),
+    /**
+     * Linhas: a faixa central, desenhada POR CIMA da própria linha — a pista de
+     * rodovia com a divisória no meio. É uma segunda camada no mapa (`__faixa`), e
+     * por isso só entra de um zoom em diante: no Brasil inteiro a rodovia tem menos
+     * de um pixel de largura, e uma faixa dentro dela viraria sujeira.
+     */
+    faixaCentral: z
+      .object({
+        cor: z.string().min(1),
+        largura: z.number().positive(),
+        tracejado: z.array(z.number().positive()).min(2).optional(),
+        zoomMinimo: z.number().optional(),
+      })
+      .optional(),
     /** Pontos: id de um ícone registrado no mapa. Sem ícone, vira círculo colorido. */
     icone: z.string().min(1).optional(),
     ancoraIcone: z.enum(ANCORAS_ICONE).optional(),
@@ -165,6 +192,18 @@ export const EsquemaCamada = z
       ctx.addIssue({
         code: "custom",
         message: `camada "${camada.id}": ícone só se aplica a geometria de ponto`,
+      });
+    }
+    if (camada.geometria !== "linha" && camada.faixaCentral !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `camada "${camada.id}": faixaCentral só se aplica a geometria de linha`,
+      });
+    }
+    if (camada.geometria !== "linha" && camada.tracejado !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `camada "${camada.id}": tracejado só se aplica a geometria de linha`,
       });
     }
     if (camada.geometria !== "linha" && camada.larguraLinha !== undefined) {

@@ -1,21 +1,32 @@
 import { useMemo, useState } from "react";
 import {
+  ChartLine,
   ChevronRight,
   CloudOff,
+  Eye,
+  EyeOff,
+  Grid3x3,
+  Landmark,
   Layers,
   PanelLeftClose,
+  PenLine,
   RadioTower,
   Radar,
   RotateCcw,
   Trash2,
+  Waypoints,
   type LucideIcon,
 } from "lucide-react";
-import { camadas, configuracaoAcervo, type DefinicaoCamada } from "@/configuracao";
+import {
+  camadas,
+  configuracaoAcervo,
+  type DefinicaoCamada,
+  type IdDeGrupo,
+} from "@/configuracao";
 import type { ItemDoAcervo } from "@/desenho/camadas";
 import type { ErroDoAcervo } from "@/desenho/api";
 import { Button } from "@/components/ui/button";
 import { ANTENNA_ICON } from "@/map/icons";
-import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
@@ -49,12 +60,36 @@ const ICONE_DA_LEGENDA: Record<string, LucideIcon> = {
 };
 
 /**
+ * O ícone de cada combo, no selo do cabeçalho.
+ *
+ * Mora aqui, e não em `GRUPOS_DE_CAMADA`, pelo mesmo motivo que `ICONE_DA_LEGENDA`:
+ * a configuração descreve o dado e não deve importar componente de UI. Grupo novo sem
+ * entrada aqui não quebra nada — o selo nasce com o ícone genérico de camadas.
+ */
+const ICONE_DO_GRUPO: Record<IdDeGrupo, LucideIcon> = {
+  ibge: Grid3x3,
+  indicadores: ChartLine,
+  infraestrutura: Waypoints,
+  regulacao: Landmark,
+};
+
+/**
  * O painel de camadas: um combo por tema, e o acervo do cliente no último.
  *
- * Antes era uma lista corrida de oito interruptores, todos desligados, mais um rodapé
- * explicando o painel do lado. Combo por tema resolve as duas coisas de uma vez: o
- * painel nasce curto e cada assunto vira um lugar. O rodapé saiu porque a instrução
- * que ele dava já mora no estado vazio dos Atributos — que é o painel de que ela fala.
+ * O desenho de 2026-09-13 trocou três coisas de uma vez, e as três respondem à mesma
+ * queixa — o painel não dizia o que cada linha mostra nem o que estava ligado:
+ *
+ * 1. **Olho no lugar do interruptor.** Onze interruptores empilhados eram o que mais
+ *    pesava na tela, e interruptor é idioma de tela de configuração; olho é idioma de
+ *    mapa, e ocupa um terço do espaço. A semântica continua a de um interruptor
+ *    (`role="switch"`), porque é isso que a linha faz — o que mudou é o desenho.
+ * 2. **Procedência embaixo do nome.** "IBGE · Censo 2022" é o que o produto vende, e
+ *    estava só na cabeça de quem montou a camada. Camada sem `fonte` declarada não
+ *    ganha linha nenhuma: inventar origem seria pior do que a lacuna.
+ * 3. **Seção "Ativas" no topo, e a conta no cabeçalho de cada combo.** Com três
+ *    camadas ligadas em grupos diferentes, era preciso abrir os grupos para achá-las.
+ *    A camada ligada aparece duas vezes de propósito — em cima e no lugar de sempre —,
+ *    porque a de cima serve para desligar e a de baixo para ligar a próxima.
  *
  * Toda sessão começa com TUDO recolhido e nenhuma camada ligada (decidido em
  * 2026-09-02). O aberto/fechado é do componente e não da configuração: é preferência
@@ -108,6 +143,8 @@ export function LayerPanel({
             <Combo
               key={grupo.id}
               rotulo={grupo.rotulo}
+              icone={ICONE_DO_GRUPO[grupo.id] ?? Layers}
+              ligadas={grupo.camadas.filter((c) => visible[c.id]).length}
               aberto={abertos.includes(grupo.id)}
               onAlternar={() => alternar(grupo.id)}
             >
@@ -115,6 +152,7 @@ export function LayerPanel({
                 <div key={c.id}>
                   <Linha
                     rotulo={c.rotulo}
+                    fonte={c.fonte}
                     amostra={<Amostra camada={c} />}
                     ligada={!!visible[c.id]}
                     onAlternar={() => onToggle(c.id)}
@@ -126,7 +164,7 @@ export function LayerPanel({
                       cliente pedir a referência das siglas, ela volta em outro lugar,
                       não aqui. */}
                   {c.cobertura && (
-                    <p className="ml-7 pb-1 text-xs text-muted-foreground">{c.cobertura}</p>
+                    <p className="ml-9 pb-1 text-xs text-muted-foreground">{c.cobertura}</p>
                   )}
                   {visible[c.id] && c.pinturaPorNumero && (
                     <LegendaNumerica pintura={c.pinturaPorNumero} />
@@ -147,6 +185,8 @@ export function LayerPanel({
           {(itens.length > 0 || erroDoAcervo) && (
             <Combo
               rotulo={configuracaoAcervo.rotulo}
+              icone={PenLine}
+              ligadas={itens.filter((i) => !ocultos.includes(i.id)).length}
               aberto={abertos.includes(CHAVE_DO_ACERVO)}
               onAlternar={() => alternar(CHAVE_DO_ACERVO)}
             >
@@ -190,21 +230,56 @@ export function LayerPanel({
 /** O acervo não é um `IdDeGrupo`; a chave é daqui, e o prefixo evita colidir com um. */
 const CHAVE_DO_ACERVO = "@acervo";
 
-/** Um combo: o título, a seta e o que ele guarda. */
+/**
+ * Um combo: o selo do tema, o título, o quanto dele está ligado e a seta.
+ *
+ * A conta passou por três formas até esta, e o motivo de cada troca fica registrado
+ * porque as três voltam a ser tentadoras: "1 de 5" em todo cabeçalho competia com o
+ * nome do tema; uma seção "Ativas" no topo resolvia a pergunta de uma vez, mas ligar
+ * uma camada EMPURRAVA a lista inteira para baixo, e o painel se mexia debaixo do
+ * clique. Aqui a resposta fica onde a camada está: o número só aparece quando há
+ * alguma ligada, e é ele que avisa, com o combo fechado, que há coisa acesa ali dentro.
+ */
 function Combo({
   rotulo,
+  icone: Icone,
+  ligadas,
   aberto,
   onAlternar,
   children,
 }: {
   rotulo: string;
+  icone: LucideIcon;
+  ligadas: number;
   aberto: boolean;
   onAlternar: () => void;
   children: React.ReactNode;
 }) {
   return (
     <Collapsible open={aberto} onOpenChange={onAlternar}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent">
+      <CollapsibleTrigger className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-accent">
+        {/* O selo acende quando o combo está aberto: é o segundo sinal de "este aqui
+            está aberto", e o único que sobrevive à lista rolada, quando a seta do
+            cabeçalho já saiu da tela. */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            "grid size-[1.625rem] shrink-0 place-items-center rounded-md border transition-colors",
+            aberto
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-foreground",
+          )}
+        >
+          <Icone className="size-3.5" />
+        </span>
+        {/* Mesma tipografia das camadas de dentro: um combo com letra menor lia como
+            legenda de outra coisa, e não como o primeiro nível da mesma árvore. */}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{rotulo}</span>
+        {ligadas > 0 && (
+          <span className="shrink-0 rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary">
+            {ligadas}
+          </span>
+        )}
         <ChevronRight
           aria-hidden="true"
           className={cn(
@@ -212,39 +287,66 @@ function Combo({
             aberto && "rotate-90",
           )}
         />
-        {/* Mesma tipografia das camadas de dentro: um combo com letra menor lia como
-            legenda de outra coisa, e não como o primeiro nível da mesma árvore. Quem
-            marca a hierarquia é a seta e o recuo das linhas, não o tamanho da fonte. */}
-        <span className="min-w-0 flex-1 truncate text-sm">{rotulo}</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="flex flex-col gap-0.5 pb-1 pl-2 pt-0.5">{children}</div>
+        {/* O filete à esquerda amarra as camadas ao selo do combo: sem ele, a lista
+            de dentro flutuava à mesma distância da margem que o próprio cabeçalho. */}
+        <div className="ml-[0.9375rem] flex flex-col gap-0.5 border-l border-border py-0.5 pl-2.5">
+          {children}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-/** Uma camada. O rótulo trunca e o interruptor não encolhe: é ele que se procura. */
+/**
+ * Uma camada. O nome trunca e o olho não encolhe: é ele que se procura.
+ *
+ * A linha inteira é o interruptor — um controle só, e não um botão dentro de outro.
+ * O olho é desenho; quem carrega o estado para o leitor de tela é o `role="switch"`.
+ */
 function Linha({
   rotulo,
+  fonte,
   amostra,
   ligada,
   onAlternar,
 }: {
   rotulo: string;
+  fonte?: string;
   amostra: React.ReactNode;
   ligada: boolean;
   onAlternar: () => void;
 }) {
   return (
-    <label
-      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent"
-      data-active={ligada}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={ligada}
+      onClick={onAlternar}
+      className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
     >
       {amostra}
-      <span className="min-w-0 flex-1 truncate text-sm">{rotulo}</span>
-      <Switch className="shrink-0" checked={ligada} onCheckedChange={onAlternar} />
-    </label>
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate text-sm",
+            ligada ? "font-medium text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {rotulo}
+        </span>
+        {/* Procedência só quando ela existe de verdade. Ver o comentário de `fonte`
+            no esquema: a lacuna é mais honesta que um "a confirmar". */}
+        {fonte && <span className="block truncate text-xs text-muted-foreground">{fonte}</span>}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn("shrink-0", ligada ? "text-primary" : "text-muted-foreground opacity-60")}
+      >
+        {ligada ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+      </span>
+    </button>
   );
 }
 
@@ -277,18 +379,14 @@ function LinhaDoAcervo({
 
   return (
     <div className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-3 shrink-0 ring-1 ring-black/10",
-          item.tipo === "ponto" ? "rounded-full" : "rounded-sm",
-        )}
-        style={{ background: item.cor }}
-      />
+      <AmostraDoAcervo item={item} />
       <button
         type="button"
         onClick={onFocalizar}
-        className="min-w-0 flex-1 truncate text-left text-sm"
+        className={cn(
+          "min-w-0 flex-1 truncate text-left text-sm",
+          ligada ? "font-medium text-foreground" : "text-muted-foreground",
+        )}
         title={item.nome}
       >
         {item.nome}
@@ -315,12 +413,6 @@ function LinhaDoAcervo({
         </span>
       ) : (
         <>
-          <Switch
-            className="shrink-0"
-            checked={ligada}
-            onCheckedChange={onAlternar}
-            aria-label={`Mostrar ${item.nome} no mapa`}
-          />
           {/*
             Ponto não ganha o botão. Sem área não há o que agregar, e oferecer a ação
             para depois recusar com 422 seria ensinar o produto pelo erro.
@@ -348,9 +440,40 @@ function LinhaDoAcervo({
           >
             <Trash2 aria-hidden="true" />
           </Button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ligada}
+            aria-label={`Mostrar ${item.nome} no mapa`}
+            onClick={onAlternar}
+            className={cn(
+              "grid size-6 shrink-0 place-items-center rounded-md transition-colors hover:bg-border",
+              ligada ? "text-primary" : "text-muted-foreground opacity-60",
+            )}
+          >
+            {ligada ? (
+              <Eye aria-hidden="true" className="size-4" />
+            ) : (
+              <EyeOff aria-hidden="true" className="size-4" />
+            )}
+          </button>
         </>
       )}
     </div>
+  );
+}
+
+/** A marca do desenho: bolinha no ponto, quadradinho na área. */
+function AmostraDoAcervo({ item }: { item: ItemDoAcervo }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "size-3 shrink-0 ring-1 ring-black/10",
+        item.tipo === "ponto" ? "rounded-full" : "rounded-sm",
+      )}
+      style={{ background: item.cor }}
+    />
   );
 }
 
@@ -368,11 +491,7 @@ function Amostra({ camada }: { camada: DefinicaoCamada }) {
       />
     );
   }
-  if (camada.geometria === "linha") {
-    return (
-      <span className="h-[3px] w-4 shrink-0 rounded-full" style={{ background: camada.cor }} />
-    );
-  }
+  if (camada.geometria === "linha") return <AmostraDeLinha camada={camada} />;
   if (camada.opacidadePreenchimento === 0 && camada.contorno) {
     return (
       <span
@@ -392,6 +511,72 @@ function Amostra({ camada }: { camada: DefinicaoCamada }) {
   );
 }
 
+/**
+ * Linha: o símbolo que a carta usa, e não um retângulo colorido.
+ *
+ * Um fio de 3 px dizia só "isto é uma linha" — e as duas linhas do catálogo são
+ * justamente as que a cartografia aprendeu a separar de olho: a ferrovia por dormentes
+ * (o trilho com travessas) e a rodovia por pista com faixa central.
+ *
+ * Quem decide qual desenho sai são os MESMOS campos que o mapa lê — `tracejado` e
+ * `faixaCentral` —, e não uma lista de exceção por id: camada de linha nova cai no
+ * símbolo certo sozinha, e uma mudança no mapa que não passe por aqui fica visível.
+ */
+function AmostraDeLinha({ camada }: { camada: DefinicaoCamada }) {
+  const trilho = !!camada.tracejado;
+  const faixa = camada.faixaCentral;
+  return (
+    <svg
+      width="18"
+      height="12"
+      viewBox="0 0 18 12"
+      aria-hidden="true"
+      className="shrink-0 overflow-visible"
+    >
+      {trilho ? (
+        <>
+          <line x1="0.5" y1="6" x2="17.5" y2="6" stroke={camada.cor} strokeWidth="1.6" />
+          {[2.5, 6, 9.5, 13, 16.5].map((x) => (
+            <line
+              key={x}
+              x1={x}
+              y1="2.5"
+              x2={x}
+              y2="9.5"
+              stroke={camada.cor}
+              strokeWidth="1.3"
+            />
+          ))}
+        </>
+      ) : (
+        <>
+          <line
+            x1="1.5"
+            y1="6"
+            x2="16.5"
+            y2="6"
+            stroke={camada.cor}
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+          {faixa && (
+            <line
+              x1="3"
+              y1="6"
+              x2="15"
+              y2="6"
+              stroke={faixa.cor}
+              strokeWidth="1"
+              strokeDasharray={faixa.tracejado ? "2.5 2" : undefined}
+              opacity="0.9"
+            />
+          )}
+        </>
+      )}
+    </svg>
+  );
+}
+
 /** Escala curta: cabe no painel sem transformar a árvore em uma segunda cartografia. */
 function LegendaNumerica({
   pintura,
@@ -400,7 +585,7 @@ function LegendaNumerica({
 }) {
   const formatar = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   return (
-    <div className="ml-7 pb-2 pt-0.5" role="group" aria-label={`Legenda: ${pintura.rotulo}`}>
+    <div className="ml-9 pb-2 pt-0.5" role="group" aria-label={`Legenda: ${pintura.rotulo}`}>
       <p className="text-xs text-muted-foreground">{pintura.rotulo}</p>
       <div
         aria-hidden="true"

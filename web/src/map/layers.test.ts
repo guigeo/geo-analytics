@@ -7,7 +7,7 @@
 // mudar nesse caminho, e é o snapshot no fim deste arquivo que provou isso: ele
 // foi escrito ANTES da mudança e passou sem ser reescrito depois.
 import { describe, expect, it } from "vitest";
-import { camadasDoMapa, fontesDeDados, IDS_CLICAVEIS } from "./layers";
+import { camadasDoMapa, fontesDeDados, IDS_CLICAVEIS, SUFIXOS_SUBCAMADA } from "./layers";
 import { camadas } from "@/configuracao";
 
 describe("contrato das camadas", () => {
@@ -76,9 +76,14 @@ describe("camadas do mapa", () => {
   });
 
   it("respeita a convenção de sufixo das sub-camadas", () => {
+    // A lista de sufixos sai de SUFIXOS_SUBCAMADA, e não de uma cópia aqui: é ela que
+    // o MapView percorre para acender a camada inteira, então sub-camada que não
+    // esteja lá seria justamente a que nunca acende.
     const base = new Set(camadas.map((c) => c.id));
+    const sufixos = SUFIXOS_SUBCAMADA.filter(Boolean);
     for (const spec of camadasDoMapa()) {
-      const raiz = spec.id.replace(/__(outline|label)$/, "");
+      const sufixo = sufixos.find((s) => spec.id.endsWith(s));
+      const raiz = sufixo ? spec.id.slice(0, -sufixo.length) : spec.id;
       expect(base, `camada ${spec.id}`).toContain(raiz);
     }
   });
@@ -104,6 +109,31 @@ describe("camadas do mapa", () => {
 describe("saída congelada", () => {
   it("mantém as fontes", () => {
     expect(fontesDeDados()).toMatchSnapshot();
+  });
+
+  it("linha com tracejado sai tracejada, e de ponta reta", () => {
+    // O mesmo campo que desenha os dormentes na legenda do painel: se um dia ele
+    // parar de chegar aqui, a legenda passa a prometer o que o mapa não faz.
+    const ferrovias = camadasDoMapa().find((camada) => camada.id === "ferrovias");
+    expect(ferrovias).toBeDefined();
+    expect(ferrovias).toHaveProperty(["paint", "line-dasharray"], [1, 1]);
+    expect(ferrovias).toHaveProperty(["layout", "line-cap"], "butt");
+
+    const rodovias = camadasDoMapa().find((camada) => camada.id === "rodovias");
+    expect(rodovias?.paint).not.toHaveProperty("line-dasharray");
+  });
+
+  it("a rodovia ganha a faixa central, e ela só aparece de perto", () => {
+    const faixa = camadasDoMapa().find((camada) => camada.id === "rodovias__faixa");
+    expect(faixa).toBeDefined();
+    expect(faixa).toHaveProperty(["paint", "line-color"], "#ffffff");
+    expect(faixa).toHaveProperty(["paint", "line-dasharray"], [2, 2]);
+    // Sem o minzoom, a divisória viraria sujeira dentro de um traço de um pixel.
+    expect(faixa).toHaveProperty("minzoom", 9);
+    // Nasce apagada como toda camada: quem acende é o painel.
+    expect(faixa?.layout?.visibility).toBe("none");
+    // E ela é sub-camada: o toggle do painel alcança pelo sufixo.
+    expect(SUFIXOS_SUBCAMADA).toContain("__faixa");
   });
 
   it("mantém as camadas", () => {

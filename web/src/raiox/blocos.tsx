@@ -6,12 +6,14 @@
  * página, o mapa e o chat concordarem sem ninguém conferir.
  */
 import type { ReactNode } from "react";
+import { GraduationCap, HeartPulse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   AlertaSaneamento,
   BlocoClasseSocial,
   BlocoContraste,
   BlocoEscala,
+  BlocoEquipamentos,
   BlocoPerfil,
   BlocoRegulacao,
   ComProveniencia,
@@ -351,6 +353,57 @@ export function BlocoDeClasseSocial({ dados }: { dados: BlocoClasseSocial }) {
       {dados.situacao ? (
         <p className="mt-4 text-sm text-muted-foreground">{dados.situacao}</p>
       ) : null}
+    </Bloco>
+  );
+}
+
+export function BlocoDeEquipamentos({ dados }: { dados: BlocoEquipamentos }) {
+  const itens = [
+    {
+      rotulo: "Ensino",
+      indicador: dados.ensino,
+      Icone: GraduationCap,
+      classe: "border-sky-200 bg-sky-50/70 dark:border-sky-900 dark:bg-sky-950/20",
+    },
+    {
+      rotulo: "Saúde",
+      indicador: dados.saude,
+      Icone: HeartPulse,
+      classe: "border-rose-200 bg-rose-50/70 dark:border-rose-900 dark:bg-rose-950/20",
+    },
+  ];
+
+  return (
+    <Bloco
+      titulo="Educação e saúde"
+      chamada="Endereços de estabelecimentos encontrados dentro do desenho."
+      proveniencia={dados}
+    >
+      {dados.disponivel ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {itens.map(({ rotulo, indicador, Icone, classe }) => (
+            <div key={rotulo} className={cn("rounded-lg border p-4", classe)}>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Icone className="size-4" aria-hidden="true" />
+                {rotulo}
+              </div>
+              <p className="mt-2 text-3xl font-semibold tabular-nums">
+                {inteiro(indicador.enderecos)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                endereços de estabelecimentos
+                {indicador.coordenadas_imprecisas > 0
+                  ? ` · ${inteiro(indicador.coordenadas_imprecisas)} com localização menos precisa`
+                  : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          O CNEFE de ensino e saúde ainda não cobre esta área.
+        </p>
+      )}
     </Bloco>
   );
 }

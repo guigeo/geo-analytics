@@ -109,6 +109,10 @@ _LIMIAR_INTEIRO = "0.999"
 # domicílios ocupados evita chamar a cobertura usual de problema e ainda expõe a cauda.
 LIMIAR_COBERTURA_SANEAMENTO_PCT = 90.0
 
+# A área pode roçar uma borda municipal e a aritmética geográfica voltar 99,999...%.
+# Abaixo deste corte a cobertura parcial é material e precisa aparecer no contrato.
+LIMIAR_COBERTURA_COMPLETA_EQUIPAMENTOS_PCT = 99.99
+
 
 def _alerta_saneamento(coberturas: dict[str, float | None]) -> dict[str, Any] | None:
     """Devolve somente as carências de saneamento; dado ausente nunca vira carência."""
@@ -139,6 +143,44 @@ def _alerta_saneamento(coberturas: dict[str, float | None]) -> dict[str, Any] | 
         "cobertura": "setores tocados",
         "avisos": [],
     }
+
+
+def _bloco_equipamentos(row: dict[str, Any]) -> dict[str, Any]:
+    """Traduz a medição espacial sem confundir zero com falta de cobertura."""
+    cobertura_pct = float(row.get("cobertura_pct") or 0)
+    ensino = int(row.get("ensino") or 0)
+    saude = int(row.get("saude") or 0)
+    ensino_imprecisas = int(row.get("ensino_imprecisas") or 0)
+    saude_imprecisas = int(row.get("saude_imprecisas") or 0)
+    disponivel = cobertura_pct > 0
+    avisos: list[str] = []
+
+    if not disponivel:
+        avisos.append(
+            "o CNEFE de ensino e saúde não cobre esta área; ausência de dado não significa zero"
+        )
+    elif cobertura_pct < LIMIAR_COBERTURA_COMPLETA_EQUIPAMENTOS_PCT:
+        cobertura_texto = f"{cobertura_pct:.2f}".replace(".", ",")
+        avisos.append(
+            f"{cobertura_texto}% da área está na cobertura; as contagens descrevem somente essa parte"
+        )
+
+    imprecisas = ensino_imprecisas + saude_imprecisas
+    if imprecisas:
+        avisos.append(f"{imprecisas} endereços usam coordenada estimada ou menos precisa na fonte")
+
+    return {
+        "disponivel": disponivel,
+        "cobertura_pct": round(cobertura_pct, 2),
+        "ensino": {"enderecos": ensino, "coordenadas_imprecisas": ensino_imprecisas},
+        "saude": {"enderecos": saude, "coordenadas_imprecisas": saude_imprecisas},
+        "fonte": "CNEFE 2022 — IBGE",
+        "periodo": "2022",
+        "metodo": "contagem de pontos dentro do desenho, sem rateio",
+        "cobertura": "37 municípios da concentração urbana de São Paulo",
+        "avisos": avisos,
+    }
+
 
 # A regra do rateio mora aqui e em nenhum outro lugar. O cruzamento livre do chat e
 # o Raio-X têm contratos diferentes, mas "setor cortado" não pode significar uma coisa
@@ -178,6 +220,7 @@ def validar_area_do_raio_x(area_m2: float | int | None) -> None:
         f"{TETO_AREA_RAIO_X_KM2:g} km² ({limite_m2} m²). "
         "Reduza o desenho para gerar o relatório."
     )
+
 
 _METRICAS_RAIO_X = (
     "pop_total",
@@ -1023,7 +1066,9 @@ class GeoQuery:
             juncao = sql.SQL("res")
             saida = sql.SQL("res.*")
 
-        consulta = sql.SQL(_CTE_FRACAO + """
+        consulta = sql.SQL(
+            _CTE_FRACAO
+            + """
             ,
             res as (
                 select {colunas}
@@ -1033,7 +1078,8 @@ class GeoQuery:
                    (select round((ST_Area(g::geography) / 1000000)::numeric, 3) from area)
                        as area_km2
             from {juncao}
-        """).format(
+        """
+        ).format(
             colunas=sql.SQL(",\n                       ").join(colunas),
             longo=trecho_longo,
             saida=saida,
@@ -1067,6 +1113,45 @@ class GeoQuery:
             [wkb],
         )
 
+    def equipamentos_por_geometria(self, wkb: bytes) -> dict[str, Any]:
+        """Conta endereços de ensino e saúde e mede quanto do desenho tem cobertura."""
+        row = self._rows(
+            """
+            with area as (
+                select ST_GeomFromWKB(%s, 4674) as g
+            ),
+            contagens as (
+                select count(*) filter (where e.cod_especie = 4)::integer as ensino,
+                       count(*) filter (where e.cod_especie = 5)::integer as saude,
+                       count(*) filter (
+                           where e.cod_especie = 4 and e.nv_geo_coord >= 3
+                       )::integer as ensino_imprecisas,
+                       count(*) filter (
+                           where e.cod_especie = 5 and e.nv_geo_coord >= 3
+                       )::integer as saude_imprecisas
+                  from area a
+                  left join indicadores.cnefe_equipamento e
+                    on ST_Intersects(e.geom, a.g)
+            ),
+            cobertura as (
+                select least(100.0, coalesce(
+                           100 * sum(ST_Area(ST_Intersection(m.geom, a.g)::geography))
+                               filter (where c.cod_municipio is not null)
+                           / nullif(max(ST_Area(a.g::geography)), 0),
+                           0
+                       )) as cobertura_pct
+                  from area a
+                  left join ibge.municipio m on ST_Intersects(m.geom, a.g)
+                  left join indicadores.cnefe_equipamento_cobertura c
+                    using (cod_municipio)
+            )
+            select contagens.*, cobertura.cobertura_pct
+              from contagens cross join cobertura
+            """,
+            [wkb],
+        )[0]
+        return _bloco_equipamentos(row)
+
     def raio_x_por_geometria(self, wkb: bytes) -> dict[str, Any]:
         """Monta o contrato determinístico do Raio-X a partir de uma área salva.
 
@@ -1080,7 +1165,9 @@ class GeoQuery:
         validar_area_do_raio_x(area_m2)
 
         limiar = sql.SQL(_LIMIAR_INTEIRO)
-        consulta = sql.SQL(_CTE_FRACAO + """
+        consulta = sql.SQL(
+            _CTE_FRACAO
+            + """
             , base as (
                 select f.cod_setor, f.f, r.cod_municipio, r.pop_total,
                        r.domicilios_ocupados, r.renda_media, r.media_moradores,
@@ -1194,81 +1281,124 @@ class GeoQuery:
                    round((ST_Area(a.g::geography) / 1000000)::numeric, 3) as area_km2
             from res cross join referencia ref cross join dist
             cross join area a left join faixas on true
-        """).format(limiar=limiar, teto=sql.Literal(TETO_SETORES_RAIO_X))
+        """
+        ).format(limiar=limiar, teto=sql.Literal(TETO_SETORES_RAIO_X))
         row = self._rows(consulta, [wkb])[0]
         row["densidade_hab_km2"] = round(
             float(row["pop_total"] or 0) / float(row["area_km2"] or 1), 1
         )
         truncada = int(row["setores_total"] or 0) > TETO_SETORES_RAIO_X
         referencia = {
-            "cd_mun": row["cd_mun"], "nm_mun": row["nm_mun"], "nm_uf": row["nm_uf"],
+            "cd_mun": row["cd_mun"],
+            "nm_mun": row["nm_mun"],
+            "nm_uf": row["nm_uf"],
             "pop_total": row["mun_pop_total"],
             "domicilios_ocupados": row["mun_domicilios_ocupados"],
             "densidade_hab_km2": row["mun_densidade_hab_km2"],
-            "renda_media": row["mun_renda_media"], "media_moradores": row["mun_media_moradores"],
-            "pop_masculino": row["mun_pop_masculino"], "pop_feminino": row["mun_pop_feminino"],
-            "pct_classe_a": row["mun_pct_classe_a"], "pct_classe_b": row["mun_pct_classe_b"],
-            "pct_classe_c": row["mun_pct_classe_c"], "pct_classe_de": row["mun_pct_classe_de"],
+            "renda_media": row["mun_renda_media"],
+            "media_moradores": row["mun_media_moradores"],
+            "pop_masculino": row["mun_pop_masculino"],
+            "pop_feminino": row["mun_pop_feminino"],
+            "pct_classe_a": row["mun_pct_classe_a"],
+            "pct_classe_b": row["mun_pct_classe_b"],
+            "pct_classe_c": row["mun_pct_classe_c"],
+            "pct_classe_de": row["mun_pct_classe_de"],
         }
         escala = {
-            "area_km2": row["area_km2"], "setores": row["setores"],
-            "populacao": row["pop_total"], "populacao_contida": row["pop_contida"],
-            "populacao_rateada": row["pop_de_rateio"], "setores_parciais": row["parciais"],
+            "area_km2": row["area_km2"],
+            "setores": row["setores"],
+            "populacao": row["pop_total"],
+            "populacao_contida": row["pop_contida"],
+            "populacao_rateada": row["pop_de_rateio"],
+            "setores_parciais": row["parciais"],
             "domicilios_ocupados": row["domicilios_ocupados"],
-            "densidade_hab_km2": row["densidade_hab_km2"], "municipio": referencia,
-            "fonte": "Censo Demográfico 2022 — IBGE", "periodo": "2022",
+            "densidade_hab_km2": row["densidade_hab_km2"],
+            "municipio": referencia,
+            "fonte": "Censo Demográfico 2022 — IBGE",
+            "periodo": "2022",
             "metodo": "interseção exata com rateio areal na borda",
-            "cobertura": "setores censitários do IBGE", "avisos": [],
+            "cobertura": "setores censitários do IBGE",
+            "avisos": [],
         }
         contraste = {
-            "metrica": "renda_media", "rotulo": "Renda média mensal do responsável (R$)",
-            "minimo": row["minimo"], "maximo": row["maximo"], "faixas": row["faixas"],
-            "setores": row["setores_lista"], "truncada": truncada,
+            "metrica": "renda_media",
+            "rotulo": "Renda média mensal do responsável (R$)",
+            "minimo": row["minimo"],
+            "maximo": row["maximo"],
+            "faixas": row["faixas"],
+            "setores": row["setores_lista"],
+            "truncada": truncada,
             "aviso": (
                 f"a lista foi omitida porque a área toca mais de {TETO_SETORES_RAIO_X} setores"
-                if truncada else None
-            ), "fonte": "Censo Demográfico 2022 — IBGE", "periodo": "2022",
-            "metodo": "valor por setor, ordenado por renda média", "cobertura": "setores tocados",
+                if truncada
+                else None
+            ),
+            "fonte": "Censo Demográfico 2022 — IBGE",
+            "periodo": "2022",
+            "metodo": "valor por setor, ordenado por renda média",
+            "cobertura": "setores tocados",
             "avisos": [],
         }
         perfil = {
-            "renda_media": row["renda_media"], "media_moradores": row["media_moradores"],
-            "pop_masculino": row["pop_masculino"], "pop_feminino": row["pop_feminino"],
-            "municipio": referencia, "fonte": "Censo Demográfico 2022 — IBGE", "periodo": "2022",
-            "metodo": "médias ponderadas por domicílios ocupados", "cobertura": "setores tocados",
+            "renda_media": row["renda_media"],
+            "media_moradores": row["media_moradores"],
+            "pop_masculino": row["pop_masculino"],
+            "pop_feminino": row["pop_feminino"],
+            "municipio": referencia,
+            "fonte": "Censo Demográfico 2022 — IBGE",
+            "periodo": "2022",
+            "metodo": "médias ponderadas por domicílios ocupados",
+            "cobertura": "setores tocados",
             "avisos": [],
         }
         classe_social = {
-            "pct_a": row["pct_classe_a"], "pct_b": row["pct_classe_b"],
-            "pct_c": row["pct_classe_c"], "pct_de": row["pct_classe_de"],
-            "municipio": referencia, "situacao": row["classe_social_situacao"],
-            "fonte": "Estimativa própria a partir do Censo 2022", "periodo": "2022",
-            "metodo": "composição ponderada por domicílios ocupados", "cobertura": "setores tocados",
+            "pct_a": row["pct_classe_a"],
+            "pct_b": row["pct_classe_b"],
+            "pct_c": row["pct_classe_c"],
+            "pct_de": row["pct_classe_de"],
+            "municipio": referencia,
+            "situacao": row["classe_social_situacao"],
+            "fonte": "Estimativa própria a partir do Censo 2022",
+            "periodo": "2022",
+            "metodo": "composição ponderada por domicílios ocupados",
+            "cobertura": "setores tocados",
             "avisos": [],
         }
         qualidade = {
-            "fracao_menor": row["fracao_menor"], "setores_parciais": row["parciais"],
-            "populacao_rateada": row["pop_de_rateio"], "fonte": "Censo Demográfico 2022 — IBGE",
-            "periodo": "2022", "metodo": "rateio areal para setores cortados",
-            "cobertura": "setores tocados", "avisos": [],
-        }
-        zonas = self.zoneamento_por_geometria(wkb)
-        regulacao = {
-            "disponivel": row["cd_mun"] == "3550308" and bool(zonas), "zonas": zonas,
-            "aviso": None if row["cd_mun"] == "3550308" and zonas else (
-                f"regulação de uso do solo não carregada para {row['nm_mun']}"
-            # Sem cobertura a fonte NAO e nula: e a mesma camada, que existe e nao
-            # alcanca este municipio. Nomea-la e o que separa "nao ha dado aqui" de
-            # "nao ha dado nenhum" — e um None aqui derrubava a rota inteira, porque
-            # o contrato exige que todo bloco declare de onde veio.
-            ), "fonte": zonas[0]["lei"] if zonas else "GeoSampa — zoneamento municipal",
-            "periodo": "vigente",
-            "metodo": "interseção exata da área com as zonas", "cobertura": "Município de São Paulo",
+            "fracao_menor": row["fracao_menor"],
+            "setores_parciais": row["parciais"],
+            "populacao_rateada": row["pop_de_rateio"],
+            "fonte": "Censo Demográfico 2022 — IBGE",
+            "periodo": "2022",
+            "metodo": "rateio areal para setores cortados",
+            "cobertura": "setores tocados",
             "avisos": [],
         }
-        qualidade["avisos"] = [
-            f"{row['parciais']} setores entram parcialmente por rateio areal"
-        ] if row["parciais"] else []
+        equipamentos = self.equipamentos_por_geometria(wkb)
+        zonas = self.zoneamento_por_geometria(wkb)
+        regulacao = {
+            "disponivel": row["cd_mun"] == "3550308" and bool(zonas),
+            "zonas": zonas,
+            "aviso": None
+            if row["cd_mun"] == "3550308" and zonas
+            else (
+                f"regulação de uso do solo não carregada para {row['nm_mun']}"
+                # Sem cobertura a fonte NAO e nula: e a mesma camada, que existe e nao
+                # alcanca este municipio. Nomea-la e o que separa "nao ha dado aqui" de
+                # "nao ha dado nenhum" — e um None aqui derrubava a rota inteira, porque
+                # o contrato exige que todo bloco declare de onde veio.
+            ),
+            "fonte": zonas[0]["lei"] if zonas else "GeoSampa — zoneamento municipal",
+            "periodo": "vigente",
+            "metodo": "interseção exata da área com as zonas",
+            "cobertura": "Município de São Paulo",
+            "avisos": [],
+        }
+        qualidade["avisos"] = (
+            [f"{row['parciais']} setores entram parcialmente por rateio areal"]
+            if row["parciais"]
+            else []
+        )
         saneamento = _alerta_saneamento(
             {
                 "pct_agua_rede": row["pct_agua_rede"],
@@ -1277,10 +1407,16 @@ class GeoQuery:
             }
         )
         resultado = {
-            "versao_calculo": "2", "gerado_em": datetime.now(UTC).isoformat(),
-            "escala": escala, "contraste": contraste, "perfil": perfil,
-            "classe_social": classe_social, "qualidade": qualidade, "regulacao": regulacao,
+            "versao_calculo": "3",
+            "gerado_em": datetime.now(UTC).isoformat(),
+            "escala": escala,
+            "contraste": contraste,
+            "perfil": perfil,
+            "classe_social": classe_social,
+            "qualidade": qualidade,
+            "regulacao": regulacao,
             "saneamento": saneamento,
+            "equipamentos": equipamentos,
         }
         resultado["sintese"] = montar_sintese(escala, contraste)
         return resultado

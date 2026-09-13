@@ -12,6 +12,7 @@ from geo_query.queries import (
     TETO_AREA_RAIO_X_M2,
     TETO_SETORES_RAIO_X,
     _alerta_saneamento,
+    _bloco_equipamentos,
     validar_area_do_raio_x,
 )
 from geo_query.sintese import montar_sintese
@@ -51,9 +52,57 @@ def test_alerta_de_saneamento_so_expoe_a_carencia_relevante() -> None:
 
 
 def test_alerta_de_saneamento_some_no_corte_ou_sem_dado() -> None:
-    assert _alerta_saneamento(
-        {"pct_agua_rede": 90, "pct_esgoto_rede": 99.9, "pct_lixo_coletado": None}
-    ) is None
+    assert (
+        _alerta_saneamento(
+            {"pct_agua_rede": 90, "pct_esgoto_rede": 99.9, "pct_lixo_coletado": None}
+        )
+        is None
+    )
+
+
+def test_equipamentos_preserva_zero_quando_a_area_tem_cobertura() -> None:
+    bloco = _bloco_equipamentos(
+        {
+            "cobertura_pct": 100,
+            "ensino": 0,
+            "saude": 0,
+            "ensino_imprecisas": 0,
+            "saude_imprecisas": 0,
+        }
+    )
+    assert bloco["disponivel"] is True
+    assert bloco["ensino"]["enderecos"] == 0
+    assert bloco["saude"]["enderecos"] == 0
+    assert bloco["avisos"] == []
+
+
+def test_equipamentos_nao_chama_fora_da_cobertura_de_zero_medido() -> None:
+    bloco = _bloco_equipamentos(
+        {
+            "cobertura_pct": 0,
+            "ensino": 0,
+            "saude": 0,
+            "ensino_imprecisas": 0,
+            "saude_imprecisas": 0,
+        }
+    )
+    assert bloco["disponivel"] is False
+    assert "não significa zero" in bloco["avisos"][0]
+
+
+def test_equipamentos_avisa_cobertura_parcial_e_coordenadas_imprecisas() -> None:
+    bloco = _bloco_equipamentos(
+        {
+            "cobertura_pct": 72.5,
+            "ensino": 3,
+            "saude": 2,
+            "ensino_imprecisas": 1,
+            "saude_imprecisas": 2,
+        }
+    )
+    assert bloco["disponivel"] is True
+    assert "72,50%" in bloco["avisos"][0]
+    assert "3 endereços" in bloco["avisos"][1]
 
 
 def test_guarda_de_area_aceita_o_teto_e_explica_a_recusa() -> None:
@@ -110,24 +159,46 @@ def test_raio_x_devolve_bloco_e_rateio_no_mesmo_retrato(gq: GeoQuery) -> None:
     assert resultado["contraste"]["minimo"] <= resultado["contraste"]["maximo"]
     assert resultado["contraste"]["setores"]
     assert resultado["escala"]["municipio"]["nm_mun"] == "São Paulo"
+    assert resultado["equipamentos"]["disponivel"] is True
+    assert resultado["equipamentos"]["ensino"]["enderecos"] >= 0
+
+
+@_PRECISA_GEODATA
+def test_equipamentos_distingue_area_coberta_de_fora_do_recorte(gq: GeoQuery) -> None:
+    coberta = gq.equipamentos_por_geometria(_buffer(gq, 500))
+    fora = gq.equipamentos_por_geometria(
+        gq._rows(
+            """
+            select ST_AsBinary(
+                ST_Buffer(ST_SetSRID(ST_MakePoint(-47.8825, -15.7942), 4674)::geography, 500)
+                    ::geometry
+            ) as w
+            """,
+            [],
+        )[0]["w"]
+    )
+    assert coberta["disponivel"] is True
+    assert coberta["cobertura_pct"] == 100
+    assert fora["disponivel"] is False
+    assert fora["cobertura_pct"] == 0
 
 
 @_PRECISA_GEODATA
 def test_raio_x_mostra_apenas_a_carencia_de_saneamento(gq: GeoQuery) -> None:
     alerta = gq.raio_x_por_geometria(_buffer_no_pior_esgoto(gq))["saneamento"]
     assert alerta is not None
-    assert all(indicador["cobertura_pct"] < LIMIAR_COBERTURA_SANEAMENTO_PCT
-               for indicador in alerta["indicadores"])
+    assert all(
+        indicador["cobertura_pct"] < LIMIAR_COBERTURA_SANEAMENTO_PCT
+        for indicador in alerta["indicadores"]
+    )
     assert "pct_esgoto_rede" in {indicador["metrica"] for indicador in alerta["indicadores"]}
 
 
 @_PRECISA_GEODATA
 def test_raio_x_degrada_a_lista_sem_descartar_o_agregado(gq: GeoQuery) -> None:
-    wkb = gq._rows(
-        "select ST_AsBinary(geom) as w from ibge.municipio where cod_municipio = %s",
-        ["3550308"],
-    )[0]["w"]
-    resultado = gq.raio_x_por_geometria(wkb)
+    # O município inteiro deixou de ser entrada válida quando a A-001 mediu o teto
+    # de 50 km². Um buffer denso sob o teto ainda prova a degradação da lista.
+    resultado = gq.raio_x_por_geometria(_buffer(gq, 3_000))
     assert resultado["escala"]["setores"] > TETO_SETORES_RAIO_X
     assert resultado["contraste"]["truncada"] is True
     assert resultado["contraste"]["setores"] == []

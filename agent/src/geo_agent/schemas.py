@@ -237,6 +237,18 @@ class AlertaSaneamento(ComProveniencia):
     indicadores: list[IndicadorDeSaneamento]
 
 
+class IndicadorDeEquipamento(BaseModel):
+    enderecos: int
+    coordenadas_imprecisas: int
+
+
+class BlocoEquipamentos(ComProveniencia):
+    disponivel: bool
+    cobertura_pct: float
+    ensino: IndicadorDeEquipamento
+    saude: IndicadorDeEquipamento
+
+
 class RaioX(BaseModel):
     """Contrato estável do diagnóstico de uma área, produzido sem LLM."""
 
@@ -250,6 +262,7 @@ class RaioX(BaseModel):
     qualidade: Qualidade
     regulacao: BlocoRegulacao
     saneamento: AlertaSaneamento | None = None
+    equipamentos: BlocoEquipamentos
 
 
 class GeocodeHit(BaseModel):

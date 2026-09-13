@@ -122,6 +122,18 @@ export interface AlertaSaneamento extends ComProveniencia {
   indicadores: IndicadorDeSaneamento[];
 }
 
+export interface IndicadorDeEquipamento {
+  enderecos: number;
+  coordenadas_imprecisas: number;
+}
+
+export interface BlocoEquipamentos extends ComProveniencia {
+  disponivel: boolean;
+  cobertura_pct: number;
+  ensino: IndicadorDeEquipamento;
+  saude: IndicadorDeEquipamento;
+}
+
 export interface RaioX {
   versao_calculo: string;
   gerado_em: string;
@@ -133,6 +145,7 @@ export interface RaioX {
   qualidade: Qualidade;
   regulacao: BlocoRegulacao;
   saneamento: AlertaSaneamento | null;
+  equipamentos: BlocoEquipamentos;
 }
 
 /**

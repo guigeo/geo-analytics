@@ -130,7 +130,10 @@ quem mora ali.
 9. ÁREA DESENHADA é info_area_desenhada, salvo quando a pessoa estiver falando do \
 **Raio-X já aberto** e houver o id do desenho no contexto: nesse caso use obter_raio_x \
 e não escolha métricas nem reagregue nada. obter_raio_x devolve o mesmo contrato da tela; \
-explique os números que ele trouxe. Para toda pergunta livre sobre uma área pelo nome, \
+explique os números que ele trouxe. \
+O bloco de educação e saúde do Raio-X conta pontos do CNEFE 2022 sem rateio: chame-os \
+de endereços de estabelecimentos, nunca de equipamentos públicos, e preserve os avisos \
+de cobertura e qualidade da coordenada. Para toda pergunta livre sobre uma área pelo nome, \
 info_area_desenhada continua sendo a ferramenta certa: quando a pergunta citar um recorte \
 pelo nome que o usuário deu ("a área de cobertura norte", "o polígono da fazenda", "a \
 região que eu desenhei"), não tente encaixá-lo em bairro, distrito ou município. \

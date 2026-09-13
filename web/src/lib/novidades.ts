@@ -28,6 +28,19 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "equipamentos-raio-x-2026-09",
+    data: "2026-09-13",
+    titulo: "Ensino e saúde entram no Raio-X",
+    texto:
+      "O diagnóstico da sua área agora conta os endereços de estabelecimentos de ensino " +
+      "e de saúde que ficam dentro do desenho. É uma medição por pontos do CNEFE 2022, " +
+      "sem rateio: o relatório separa zero real de falta de cobertura e avisa quando a " +
+      "coordenada da fonte é menos precisa. A cobertura atual reúne 37 municípios da " +
+      "concentração urbana de São Paulo.",
+    // O resultado depende de uma área do acervo; sem desenho, uma pergunta automática
+    // demonstraria a ausência em vez da capacidade.
+  },
+  {
     id: "raio-x-da-area-2026-09",
     data: "2026-09-12",
     titulo: "Raio-X da área, em uma página",

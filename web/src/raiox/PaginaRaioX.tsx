@@ -20,6 +20,7 @@ import {
   BlocoDeClasseSocial,
   BlocoDeContraste,
   BlocoDeEscala,
+  BlocoDeEquipamentos,
   BlocoDePerfil,
   BlocoDeQualidade,
   BlocoDeRegulacao,
@@ -134,6 +135,7 @@ export function PaginaRaioX({
           <div className="space-y-4">
             <BlocoDeEscala dados={dados.escala} />
             {dados.saneamento ? <AlertaDeSaneamento dados={dados.saneamento} /> : null}
+            <BlocoDeEquipamentos dados={dados.equipamentos} />
             <BlocoDeContraste
               dados={dados.contraste}
               escala={escala}

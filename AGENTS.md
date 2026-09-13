@@ -384,7 +384,9 @@ systemd só pega o código novo depois do `restart`.
 **Atenção ao redeploy do agente:** o `.env` (chave OpenAI, DSNs) às vezes é editado direto
 na VPS e fica mais novo que o local — antes de `deploy.sh agent`/`ship-ia`, comparar mtimes
 pra não sobrescrever a chave certa com uma desatualizada. Já derrubou o portão de um
-cliente uma vez.
+cliente uma vez. Se o remoto for o mais novo, use `PRESERVAR_ENV_REMOTO=1 make ship-ia`
+para sincronizar só código e dependências; o deploy recusa essa opção se o arquivo remoto
+não existir.
 
 **E o `agent/.env` serve a DOIS donos.** Ele é a configuração desta máquina *e* a base da
 de produção, porque o deploy o copia inteiro para a VPS. Ajuste de desenvolvimento posto

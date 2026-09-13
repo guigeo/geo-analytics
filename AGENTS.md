@@ -312,8 +312,16 @@ Versão curta das "Convenções de trabalho" do [`../webgis/AGENTS.md`](../webgi
 em caso de dúvida, vale o texto de lá, que é a sede.
 
 - **A aprovação acontece na conversa, não no GitHub.** O plano é aprovado antes; daí em
-  diante o agente vai até o fim sozinho — commit, push e entrega na `main`. **Não abrir PR
-  e ficar esperando.**
+  diante o agente vai até o fim sozinho até a validação local — commit, push e entrega na
+  `main`. **A aprovação do plano não autoriza produção.**
+- **Toda implementação nova passa pela aplicação local e pela validação visual do
+  Guilherme antes de produção.** O agente sobe o ambiente integrado local, abre a aplicação
+  e confere com ele a tela real — conteúdo, cores, layout, interação, chat e erros de
+  console/rede pertinentes. Teste automatizado, build, ensaio de deploy, commit ou push não
+  substituem esse aceite. Antes dele, é proibido executar qualquer passo que altere produção:
+  publicar dado, tile, frontend ou agente; aplicar migração; fazer `rsync`; ou reiniciar
+  serviço. Só depois do "pode subir" explícito o agente publica.
+- **Não abrir PR e ficar esperando.** PR não substitui nem antecipa a validação local.
 - **PR só quando ele fizer trabalho:** mudança que precisa de revisão linha a linha, ou que
   o Guilherme pediu para ver antes. Nesse caso o agente abre **e mescla**, sem devolver a
   aprovação para quem já aprovou o plano.

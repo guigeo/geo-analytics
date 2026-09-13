@@ -262,14 +262,19 @@ class ZoneamentoNoPontoArgs(BaseModel):
 
 
 class H3NoPontoArgs(BaseModel):
-    """Contagens de domicílios na célula H3 r9 que contém um ponto.
+    """Diagnóstico da célula H3 r9 que contém um ponto, por tema.
 
-    Use para apartamento, casa ou verticalização em endereço/coordenada. Cobre só os
-    37 municípios da concentração urbana de São Paulo; fora dela, explique a cobertura.
+    Use para moradia, população, renda ou saneamento em endereço/coordenada. `moradia`
+    vem do CNEFE e é contagem exata; os demais temas vêm do Censo 2022 re-agregado por
+    rateio areal. Cobre só os 37 municípios da concentração urbana de São Paulo.
     """
 
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
+    temas: list[Literal["moradia", "populacao", "renda", "saneamento"]] = Field(
+        default_factory=lambda: ["moradia"],
+        description="Temas pedidos; use só os que respondem à pergunta",
+    )
 
 
 class LocalizarEnderecoArgs(BaseModel):
@@ -562,6 +567,129 @@ def _localizar_endereco(ctx: Contexto, a: LocalizarEnderecoArgs) -> ToolResult:
     )
 
 
+_FONTE_CNEFE_H3 = "CNEFE 2022 — IBGE"
+_FONTE_CENSO_H3 = "Censo Demográfico 2022 — IBGE"
+_METODO_CENSO_H3 = "re-agregação por rateio areal na célula H3 r9"
+
+
+def _qualidade_cnefe_h3(row: dict[str, Any]) -> dict[str, int]:
+    return {
+        chave: int(row.get(chave, 0))
+        for chave in (
+            "coord_original",
+            "coord_modificada",
+            "coord_estimada",
+            "coord_face_quadra",
+            "coord_localidade",
+            "coord_setor",
+        )
+    }
+
+
+def _fracao_ausente_h3(row: dict[str, Any], campos: list[str]) -> dict[str, float]:
+    return {
+        campo: float(row[f"{campo}_fracao_ausente"])
+        for campo in campos
+        if row.get(f"{campo}_fracao_ausente") is not None
+    }
+
+
+def _aviso_ausencia_h3(fracoes: dict[str, float]) -> str | None:
+    maior = max(fracoes.values(), default=0)
+    if maior <= 0:
+        return None
+    return (
+        f"até {maior:.1%} do peso da célula não tem valor publicado em pelo menos uma "
+        "métrica solicitada; ausência não é zero"
+    )
+
+
+def _dados_h3(row: dict[str, Any], temas: list[str]) -> tuple[dict[str, Any], list[str]]:
+    """Separa procedência e avisos antes de devolver a tool ao modelo.
+
+    CNEFE e Censo compartilham a célula, mas não o método. Manter essa fronteira aqui
+    protege a resposta mesmo quando a instrução do prompt estiver longe no contexto.
+    """
+    temas_unicos = list(dict.fromkeys(temas))
+    dados: dict[str, Any] = {"h3_r9": str(row["h3_r9"]), "temas": {}}
+    avisos: list[str] = []
+
+    if "moradia" in temas_unicos:
+        dados["temas"]["moradia"] = {
+            "domicilios_em_apartamento": int(row.get("dom_apartamento", 0)),
+            "domicilios_em_casa": int(row.get("dom_casa", 0)),
+            "domicilios_particulares": int(row.get("domicilios_particulares", 0)),
+            "qualidade_coordenada": _qualidade_cnefe_h3(row),
+            "fonte": _FONTE_CNEFE_H3,
+            "periodo": "2022",
+            "metodo": "contagem exata dos endereços por coordenada",
+        }
+
+    campos_censo: list[str] = []
+    if "populacao" in temas_unicos:
+        campos = ["pop_total", "domicilios_ocupados"]
+        campos_censo.extend(campos)
+        dados["temas"]["populacao"] = {
+            "populacao_total": row.get("pop_total"),
+            "domicilios_ocupados": row.get("domicilios_ocupados"),
+            "fonte": _FONTE_CENSO_H3,
+            "periodo": "2022",
+            "metodo": _METODO_CENSO_H3,
+            "fracao_ausente": _fracao_ausente_h3(row, campos),
+        }
+    if "renda" in temas_unicos:
+        campos = ["renda_media"]
+        campos_censo.extend(campos)
+        dados["temas"]["renda"] = {
+            "renda_media_mensal_responsavel": row.get("renda_media"),
+            "fonte": _FONTE_CENSO_H3,
+            "periodo": "2022",
+            "metodo": "média reconstruída, ponderada por responsáveis e " + _METODO_CENSO_H3,
+            "fracao_ausente": _fracao_ausente_h3(row, campos),
+        }
+        avisos.append(
+            "a renda média é reconstruída e ponderada por responsáveis; o Censo não "
+            "publica o denominador de responsáveis com rendimento nesta malha"
+        )
+    if "saneamento" in temas_unicos:
+        campos = ["domicilios_ocupados", "dom_agua_rede", "dom_esgoto_rede", "dom_lixo_coletado"]
+        campos_censo.extend(campos)
+        denominador = row.get("domicilios_ocupados")
+
+        def percentual(campo: str) -> float | None:
+            valor = row.get(campo)
+            if valor is None or denominador in (None, 0):
+                return None
+            return 100 * float(valor) / float(denominador)
+
+        dados["temas"]["saneamento"] = {
+            "pct_agua_rede": percentual("dom_agua_rede"),
+            "pct_esgoto_rede": percentual("dom_esgoto_rede"),
+            "pct_lixo_coletado": percentual("dom_lixo_coletado"),
+            "denominador": "domicílios ocupados",
+            "fonte": _FONTE_CENSO_H3,
+            "periodo": "2022",
+            "metodo": _METODO_CENSO_H3,
+            "fracao_ausente": _fracao_ausente_h3(row, campos),
+        }
+
+    if campos_censo:
+        avisos.insert(
+            0,
+            "os valores do Censo nesta célula H3 são estimativas por rateio areal; não são "
+            "contagens medidas no hexágono",
+        )
+        if all(row.get(campo) is None for campo in dict.fromkeys(campos_censo)):
+            avisos.append(
+                "esta célula de borda não recebeu valores do Censo re-agregado; os campos "
+                "nulos não representam zero"
+            )
+        if aviso := _aviso_ausencia_h3(_fracao_ausente_h3(row, campos_censo)):
+            avisos.append(aviso)
+    dados["avisos"] = avisos
+    return dados, avisos
+
+
 def _h3_no_ponto(ctx: Contexto, a: H3NoPontoArgs) -> ToolResult:
     row = ctx.geodata.h3_no_ponto(a.lon, a.lat)
     if row is None:
@@ -572,11 +700,12 @@ def _h3_no_ponto(ctx: Contexto, a: H3NoPontoArgs) -> ToolResult:
             },
             error=True,
         )
+    dados, _ = _dados_h3(row, a.temas)
     return ToolResult(
-        payload=row,
+        payload=dados,
         camada="h3_domicilios",
         codigos=[str(row["h3_r9"])],
-        rows=[row],
+        rows=[dados],
     )
 
 

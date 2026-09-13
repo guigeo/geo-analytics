@@ -70,7 +70,30 @@ class GeoQueryDeZoneamentoFalso:
 class GeoQueryH3Falso:
     def h3_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
         if lon == -46.6540 and lat == -23.5614:
-            return {"h3_r9": "89a8100d2cfffff", "dom_apartamento": 42, "dom_casa": 8}
+            return {
+                "h3_r9": "89a8100d2cfffff",
+                "dom_apartamento": 42,
+                "dom_casa": 8,
+                "domicilios_particulares": 50,
+                "coord_original": 35,
+                "coord_estimada": 2,
+                "coord_modificada": 5,
+                "coord_face_quadra": 4,
+                "coord_localidade": 3,
+                "coord_setor": 1,
+                "pop_total": 120.5,
+                "pop_total_fracao_ausente": 0,
+                "domicilios_ocupados": 40.0,
+                "domicilios_ocupados_fracao_ausente": 0,
+                "renda_media": 2_300.0,
+                "renda_media_fracao_ausente": 0.2,
+                "dom_agua_rede": 38.0,
+                "dom_agua_rede_fracao_ausente": 0,
+                "dom_esgoto_rede": 36.0,
+                "dom_esgoto_rede_fracao_ausente": 0,
+                "dom_lixo_coletado": 40.0,
+                "dom_lixo_coletado_fracao_ausente": 0,
+            }
         return None
 
 
@@ -103,13 +126,48 @@ def test_h3_no_ponto_offline_pinta_a_celula() -> None:
     assert not r.error
     assert r.camada == "h3_domicilios"
     assert r.codigos == ["89a8100d2cfffff"]
+    assert set(r.payload["temas"]) == {"moradia"}
+    assert r.payload["temas"]["moradia"]["domicilios_em_apartamento"] == 42
+    assert r.payload["avisos"] == []
+
+
+def test_h3_no_ponto_filtra_os_temas_e_declara_estimativa() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryH3Falso()))
+    r = execute_tool(
+        ctx_falso,
+        "h3_no_ponto",
+        json.dumps(
+            {"lon": -46.6540, "lat": -23.5614, "temas": ["populacao", "renda", "saneamento"]}
+        ),
+    )
+    assert not r.error
+    assert set(r.payload["temas"]) == {"populacao", "renda", "saneamento"}
+    assert r.payload["temas"]["populacao"]["populacao_total"] == 120.5
+    assert r.payload["temas"]["saneamento"]["pct_agua_rede"] == 95.0
+    assert r.payload["temas"]["saneamento"]["denominador"] == "domicílios ocupados"
+    assert any("rateio areal" in aviso for aviso in r.payload["avisos"])
+    assert any("renda média é reconstruída" in aviso for aviso in r.payload["avisos"])
+    assert any("20.0%" in aviso for aviso in r.payload["avisos"])
+
+
+def test_h3_no_ponto_rejeita_tema_inexistente() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryH3Falso()))
+    r = execute_tool(
+        ctx_falso,
+        "h3_no_ponto",
+        json.dumps({"lon": -46.6540, "lat": -23.5614, "temas": ["idade"]}),
+    )
+    assert r.error
+    assert r.payload["erro"] == "argumentos inválidos"
 
 
 def test_h3_fora_da_cobertura_offline_explica_o_motivo() -> None:
     ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryH3Falso()))
     r = execute_tool(ctx_falso, "h3_no_ponto", json.dumps({"lon": -38.5014, "lat": -12.9714}))
     assert r.error
-    assert r.payload["cobertura"] == "37 municípios da concentração urbana de São Paulo · CNEFE 2022"
+    assert (
+        r.payload["cobertura"] == "37 municípios da concentração urbana de São Paulo · CNEFE 2022"
+    )
 
 
 def test_listar_metricas(ctx: Contexto) -> None:

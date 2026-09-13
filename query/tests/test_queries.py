@@ -151,6 +151,21 @@ def test_h3_no_ponto_na_concentracao(gq: GeoQuery) -> None:
     assert celula is not None
     assert celula["h3_r9"].startswith("89")
     assert celula["dom_apartamento"] >= 0
+    assert celula["pop_total"] is not None
+    assert celula["domicilios_ocupados"] is not None
+    assert celula["renda_media"] is not None
+    assert all(
+        0 <= celula[campo] <= 1
+        for campo in (
+            "pop_total_fracao_ausente",
+            "domicilios_ocupados_fracao_ausente",
+            "renda_media_fracao_ausente",
+            "dom_agua_rede_fracao_ausente",
+            "dom_esgoto_rede_fracao_ausente",
+            "dom_lixo_coletado_fracao_ausente",
+        )
+        if celula[campo] is not None
+    )
 
 
 def test_h3_no_ponto_fora_da_cobertura(gq: GeoQuery) -> None:

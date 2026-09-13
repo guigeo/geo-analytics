@@ -735,11 +735,12 @@ class GeoQuery:
         return rows[0] if rows else None
 
     def h3_no_ponto(self, lon: float, lat: float) -> dict[str, Any] | None:
-        """Contagens CNEFE da célula H3 r9 que contém o ponto.
+        """Valores CNEFE e Censo da célula H3 r9 que contém o ponto.
 
         A célula não guarda polígono no banco: H3 é função pura de latitude/longitude.
         A união preserva as seis células CNEFE que a fonte coloca logo fora do contorno
-        de setores; descartá-las apagaria 18 endereços medidos na borda.
+        de setores; descartá-las apagaria 18 endereços medidos na borda. CNEFE é
+        contagem exata por coordenada; Censo é estimativa re-agregada por rateio areal.
         """
         indice = h3.latlng_to_cell(float(lat), float(lon), 9)
         rows = self._rows(
@@ -756,6 +757,23 @@ class GeoQuery:
                     from indicadores.cnefe_h3_r9
                    where h3_r9 = %s
                    group by h3_r9
+                ), censo as (
+                  select h3_r9,
+                         max(valor) filter (where cod_variavel = 'V0001') as pop_total,
+                         max(fracao_ausente) filter (where cod_variavel = 'V0001') as pop_total_fracao_ausente,
+                         max(valor) filter (where cod_variavel = 'V0007') as domicilios_ocupados,
+                         max(fracao_ausente) filter (where cod_variavel = 'V0007') as domicilios_ocupados_fracao_ausente,
+                         max(valor) filter (where cod_variavel = 'V06004') as renda_media,
+                         max(fracao_ausente) filter (where cod_variavel = 'V06004') as renda_media_fracao_ausente,
+                         max(valor) filter (where cod_variavel = 'V00111') as dom_agua_rede,
+                         max(fracao_ausente) filter (where cod_variavel = 'V00111') as dom_agua_rede_fracao_ausente,
+                         max(valor) filter (where cod_variavel = 'V00309') as dom_esgoto_rede,
+                         max(fracao_ausente) filter (where cod_variavel = 'V00309') as dom_esgoto_rede_fracao_ausente,
+                         max(valor) filter (where cod_variavel = 'V00397') as dom_lixo_coletado,
+                         max(fracao_ausente) filter (where cod_variavel = 'V00397') as dom_lixo_coletado_fracao_ausente
+                    from indicadores.censo_h3_r9
+                   where h3_r9 = %s
+                   group by h3_r9
                 )
                 select m.h3_r9,
                        coalesce(v.dom_apartamento, 0)::integer as dom_apartamento,
@@ -766,13 +784,26 @@ class GeoQuery:
                        coalesce(c.coord_estimada, 0)::integer as coord_estimada,
                        coalesce(c.coord_face_quadra, 0)::integer as coord_face_quadra,
                        coalesce(c.coord_localidade, 0)::integer as coord_localidade,
-                       coalesce(c.coord_setor, 0)::integer as coord_setor
+                       coalesce(c.coord_setor, 0)::integer as coord_setor,
+                       ce.pop_total::double precision as pop_total,
+                       ce.pop_total_fracao_ausente::double precision as pop_total_fracao_ausente,
+                       ce.domicilios_ocupados::double precision as domicilios_ocupados,
+                       ce.domicilios_ocupados_fracao_ausente::double precision as domicilios_ocupados_fracao_ausente,
+                       ce.renda_media::double precision as renda_media,
+                       ce.renda_media_fracao_ausente::double precision as renda_media_fracao_ausente,
+                       ce.dom_agua_rede::double precision as dom_agua_rede,
+                       ce.dom_agua_rede_fracao_ausente::double precision as dom_agua_rede_fracao_ausente,
+                       ce.dom_esgoto_rede::double precision as dom_esgoto_rede,
+                       ce.dom_esgoto_rede_fracao_ausente::double precision as dom_esgoto_rede_fracao_ausente,
+                       ce.dom_lixo_coletado::double precision as dom_lixo_coletado,
+                       ce.dom_lixo_coletado_fracao_ausente::double precision as dom_lixo_coletado_fracao_ausente
                   from malha m
                   left join indicadores.cnefe_h3_r9_celula c using (h3_r9)
                   left join valores v using (h3_r9)
+                  left join censo ce using (h3_r9)
                  where m.h3_r9 = %s
             """),
-            [indice, indice],
+            [indice, indice, indice],
         )
         return rows[0] if rows else None
 

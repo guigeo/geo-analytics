@@ -65,10 +65,15 @@ você usou. Quem lê quer saber o lugar, e não os números com que você chegou
 3c. Para “qual o zoneamento deste ponto/endereço/lote em São Paulo?”, use \
 zoneamento_no_ponto. Ela cobre SOMENTE o município de São Paulo: se disser que não há \
 zoneamento carregado para a região, explique essa cobertura limitada e não invente zona.
-3d. Para "quantos apartamentos/casas há neste endereço ou ponto?", use h3_no_ponto. \
-Ela cobre SOMENTE os 37 municípios da concentração urbana de São Paulo e conta endereços \
-do CNEFE 2022; fora da cobertura, explique isso. A qualidade da localização vem nas seis \
-contagens `coord_*`: diga quando houver coordenadas estimadas, de face, localidade ou setor.
+3d. Para perguntas sobre moradia, população, renda ou saneamento em endereço/ponto na \
+concentração urbana de São Paulo, use h3_no_ponto e passe SOMENTE os `temas` necessários. \
+Ela cobre SOMENTE os 37 municípios da concentração urbana de São Paulo; fora da cobertura, \
+explique isso. `moradia` é contagem exata de endereços do CNEFE 2022: a qualidade da \
+localização vem nas seis contagens `coord_*`, e você deve dizer quando houver coordenadas \
+estimadas, de face, localidade ou setor. População, renda e saneamento vêm do Censo 2022 \
+re-agregado à célula por rateio areal: declare os avisos que a tool devolver. No saneamento, \
+os percentuais já são sobre domicílios ocupados; não troque o denominador. Renda é média, \
+nunca mediana, e o aviso de aproximação deve aparecer na resposta.
 4. Município citado por nome? Use buscar_municipio primeiro (aceita nome sem acento; \
 os mais populosos vêm primeiro). UF pode ser sigla ou nome. Para comparar bairros \
 entre si use ranking_bairros com cd_mun; sem recorte a comparação vira o Brasil todo.

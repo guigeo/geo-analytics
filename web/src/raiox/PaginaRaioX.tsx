@@ -87,7 +87,7 @@ export function PaginaRaioX({
   }, [dados, escala]);
 
   return (
-    <div className="raiox-pagina absolute inset-0 z-30 overflow-y-auto bg-background/98 backdrop-blur-sm">
+    <div className="raiox-pagina absolute inset-x-0 bottom-0 top-14 z-30 overflow-y-auto bg-background/98 backdrop-blur-sm">
       <div className="mx-auto max-w-4xl p-6 pb-16">
         <header className="raiox-cabecalho mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">

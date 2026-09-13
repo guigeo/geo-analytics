@@ -1,5 +1,7 @@
 # DESIGN: Equipamentos no Raio-X
 
+> ✅ Publicada e arquivada em 2026-09-13.
+
 ## Arquitetura
 
 ```text
@@ -51,4 +53,3 @@ e acrescenta aviso; cobertura integral aceita zero como valor medido.
 - Testes de integração PostGIS para cobertura, zero e interseção.
 - Ruff/pytest de query e agente; portão completo do frontend.
 - Medição quente na VPS no desenho de 49,949 km² antes do deploy.
-

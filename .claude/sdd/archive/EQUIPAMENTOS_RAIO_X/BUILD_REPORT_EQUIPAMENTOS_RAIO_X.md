@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `EQUIPAMENTOS_RAIO_X` |
 | Data | 2026-09-13 |
-| Status | Pronto para publicação |
+| Status | ✅ Publicada e arquivada |
 
 ## Entregas
 
@@ -38,6 +38,5 @@
 
 ## Estado
 
-Código e dado estão prontos. Falta medir o contrato completo na VPS, publicar agentes e
-frontends e então arquivar a feature.
-
+Dados, agentes e frontends foram publicados nos dois clientes; o contrato foi medido na VPS
+e a feature foi arquivada em 2026-09-13.

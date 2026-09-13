@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `EQUIPAMENTOS_RAIO_X` |
 | Data | 2026-09-13 |
-| Status | Pronto para build |
+| Status | ✅ Publicada e arquivada |
 | Clareza | 15/15 |
 
 ## Problema e objetivo
@@ -44,6 +44,8 @@ sem rateio e sem LLM, declarando fonte, período, cobertura e qualidade da coord
 - Mapa ou tile de pontos; classificação público/privado; distância ao equipamento mais
   próximo; limpeza dos nomes; comércio; obras; agregação H3; comparação entre áreas.
 
+> Arquivada em 2026-09-13 após publicação e verificação nos dois clientes.
+
 ## Contexto técnico
 
 O dado universal e as cargas reexecutáveis ficam em `../servidor-dados-gis`; consulta,
@@ -57,4 +59,3 @@ estar publicada.
 - O recorte tem 35.702 linhas e cerca de 9 MB sem índices.
 - Há 38 endereços presentes nos dois tipos; por isso não existe cartão de “total”.
 - Ensino tem 236 coordenadas imprecisas; saúde, 249 (cerca de 1,36% em cada tipo).
-

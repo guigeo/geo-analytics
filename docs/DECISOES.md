@@ -181,8 +181,8 @@ z15 apenas nas manchas urbanas — o IBGE agrupa 660 municípios em 185 concentr
 duas vezes (nacional até z13, detalhado de z14 em diante), que é o custo de código que o
 arquivo único não tem.
 
-**Melhorias do Raio-X aprovadas em 2026-09-12.** O alerta de saneamento foi publicado em
-2026-09-13 nos dois clientes. As demais seguem na fila. Discutidas com o
+**Melhorias do Raio-X aprovadas em 2026-09-12.** O alerta de saneamento e os equipamentos
+foram publicados em 2026-09-13 nos dois clientes; comparar áreas segue na fila. Discutidas com o
 Guilherme sobre o Raio-X já construído (seis blocos: escala, contraste, perfil, classe
 social, qualidade e regulação), e aprovadas nesta ordem:
 
@@ -196,7 +196,7 @@ social, qualidade e regulação), e aprovadas nesta ordem:
    lá o alerta nunca deve aparecer, e esse é o comportamento correto. Atenção ao
    denominador — com `V0003` (domicílios particulares, que inclui vago e de uso ocasional)
    a mesma conta dava mediana de 86% e inventava um problema que não existe.
-2. **Escola e saúde do CNEFE na área.** Contagem de endereços de ensino e de saúde dentro
+2. ~~**Escola e saúde do CNEFE na área.**~~ Publicada em 2026-09-13: contagem de endereços de ensino e de saúde dentro
    do desenho, que é dado **medido** (endereço com coordenada), não rateado. Comércio ficou
    **de fora** por decisão do Guilherme, e `end_em_obra` fica de fora por um motivo mais
    forte: é a única variável cuja defasagem inverte o sentido — obra de 2022 hoje é prédio
@@ -254,7 +254,7 @@ esforço crescente, e a primeira linha de cada item é o que de fato custa.
 | ~~2~~ | ~~**Seletor de variável na tela H3**~~ — publicado nos dois clientes em 2026-09-13 (`SELETOR_H3`) | frontend; a casca já pintava por valor e tinha legenda | não |
 | ~~3~~ | ~~**Mais variáveis no agente** (`h3_no_ponto`)~~ — publicado nos dois clientes em 2026-09-13 (`H3_NO_AGENTE`) | backend pequeno + prompt | não |
 | ~~4~~ | ~~**Saneamento como alerta no Raio-X**~~ — publicado nos dois clientes em 2026-09-13 | 3 variáveis e um corte em 90% | não |
-| 5 | **Escola e saúde no Raio-X** | carga nova de ~35,7 mil pontos, do lab | sim, leve |
+| ~~5~~ | ~~**Escola e saúde no Raio-X**~~ — publicada nos dois clientes em 2026-09-13 | carga nova de ~35,7 mil pontos, do lab | sim, leve |
 | 6 | **Comparar duas áreas** | só tela; a conta já roda por área | não |
 | 7 | **Basemap z15 no Brasil** | 5,5 GB na VPS — barrado por disco | não |
 | 8 | **Empresas (Receita × CNEFE)** | semanas: baixar, padronizar, casar, agregar, publicar | sim, pesado |
@@ -318,3 +318,9 @@ sobre o que já viaja, e a lista maior virou **etapa 2**: decidir as variáveis 
 regerar tile é caro de repetir — e medir o peso antes de publicar. O item 3 da fila
 (`h3_no_ponto`) é a mesma lacuna vista do outro lado: o agente consulta o banco direto, e
 por isso alcança o que a tela não alcança.
+
+**Etapa 2 publicada em 2026-09-13: equipamentos por célula H3.** O tile
+`h3_equipamentos` reaproveita a malha de 68.454 células e projeta as contagens exatas de
+endereços do CNEFE para ensino e saúde. São dois temas próprios, com rampas distintas da
+moradia; a cobertura única dos 37 municípios fica no grupo “Indicadores territoriais”, e não
+repetida em cada camada. Agente, tile e mapa foram publicados juntos nos dois clientes.

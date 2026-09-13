@@ -30,6 +30,7 @@
 #   VPS_HOST  (opcional)  atalho ssh ou usuario@IP; padrão hetzner-gramos
 #   ENSAIO    (opcional)  1 = não toca a VPS
 #   VITE_TILES_BASE_URL   de onde o site publicado lê os tiles (default: produção)
+#   PRESERVAR_ENV_REMOTO  1 = mantém o agent/.env já presente na VPS
 set -euo pipefail
 
 VPS_HOST="${VPS_HOST:-hetzner-gramos}"
@@ -233,7 +234,10 @@ push_agent() {
   # O do cliente vem por ultimo de proposito: em shell, a ultima atribuicao vence,
   # entao ele tambem serve para sobrescrever um valor comum.
   ENV_CLIENTE="agent/.env.$CLIENTE"
-  if [[ -f agent/.env ]]; then
+  if [[ -n "${PRESERVAR_ENV_REMOTO:-}" ]]; then
+    no_servidor "test -s $CAMINHO_AGENTE/agent/.env || { echo 'agent/.env remoto ausente'; exit 1; }"
+    echo "▶ Preservando agent/.env já existente na VPS…"
+  elif [[ -f agent/.env ]]; then
     # O agente nao sobe sem GEODATA_DSN desde que a fachada passou a ler PostGIS.
     # Melhor parar aqui do que descobrir pelo systemd em restart loop na VPS.
     grep -qh '^GEODATA_DSN=' agent/.env "$ENV_CLIENTE" 2>/dev/null \

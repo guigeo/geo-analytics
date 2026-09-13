@@ -7,7 +7,12 @@ import os
 import pytest
 
 from geo_query import GeoQuery
-from geo_query.queries import TETO_AREA_RAIO_X_KM2, TETO_SETORES_RAIO_X
+from geo_query.queries import (
+    LIMIAR_COBERTURA_SANEAMENTO_PCT,
+    TETO_AREA_RAIO_X_KM2,
+    TETO_SETORES_RAIO_X,
+    _alerta_saneamento,
+)
 from geo_query.sintese import montar_sintese
 
 
@@ -26,6 +31,28 @@ def test_sintese_e_pura_e_declara_o_rateio() -> None:
     assert "50,0 ha" in texto
     assert "25,0%" in texto
     assert "R$ 1.000,00" in texto
+
+
+def test_alerta_de_saneamento_so_expoe_a_carencia_relevante() -> None:
+    alerta = _alerta_saneamento(
+        {"pct_agua_rede": 100, "pct_esgoto_rede": 89.9, "pct_lixo_coletado": None}
+    )
+    assert alerta is not None
+    assert alerta["limiar_cobertura_pct"] == LIMIAR_COBERTURA_SANEAMENTO_PCT
+    assert alerta["indicadores"] == [
+        {
+            "metrica": "pct_esgoto_rede",
+            "rotulo": "Esgoto pela rede",
+            "cobertura_pct": 89.9,
+            "ausencia_pct": 10.1,
+        }
+    ]
+
+
+def test_alerta_de_saneamento_some_no_corte_ou_sem_dado() -> None:
+    assert _alerta_saneamento(
+        {"pct_agua_rede": 90, "pct_esgoto_rede": 99.9, "pct_lixo_coletado": None}
+    ) is None
 
 
 _PRECISA_GEODATA = pytest.mark.skipif(
@@ -52,6 +79,20 @@ def _buffer(gq: GeoQuery, metros: int) -> bytes:
     )[0]["w"]
 
 
+def _buffer_no_pior_esgoto(gq: GeoQuery) -> bytes:
+    return gq._rows(
+        """
+        select ST_AsBinary(ST_Buffer(ST_PointOnSurface(s.geom)::geography, 50)::geometry) as w
+        from ibge.setor_censitario s
+        join ibge_tabular.setor_resumo r using (cod_setor)
+        where r.pct_esgoto_rede is not null
+        order by r.pct_esgoto_rede, r.cod_setor
+        limit 1
+        """,
+        [],
+    )[0]["w"]
+
+
 @_PRECISA_GEODATA
 def test_raio_x_devolve_bloco_e_rateio_no_mesmo_retrato(gq: GeoQuery) -> None:
     resultado = gq.raio_x_por_geometria(_buffer(gq, 500))
@@ -62,6 +103,15 @@ def test_raio_x_devolve_bloco_e_rateio_no_mesmo_retrato(gq: GeoQuery) -> None:
     assert resultado["contraste"]["minimo"] <= resultado["contraste"]["maximo"]
     assert resultado["contraste"]["setores"]
     assert resultado["escala"]["municipio"]["nm_mun"] == "São Paulo"
+
+
+@_PRECISA_GEODATA
+def test_raio_x_mostra_apenas_a_carencia_de_saneamento(gq: GeoQuery) -> None:
+    alerta = gq.raio_x_por_geometria(_buffer_no_pior_esgoto(gq))["saneamento"]
+    assert alerta is not None
+    assert all(indicador["cobertura_pct"] < LIMIAR_COBERTURA_SANEAMENTO_PCT
+               for indicador in alerta["indicadores"])
+    assert "pct_esgoto_rede" in {indicador["metrica"] for indicador in alerta["indicadores"]}
 
 
 @_PRECISA_GEODATA

@@ -225,6 +225,18 @@ class BlocoRegulacao(ComProveniencia):
     aviso: str | None = None
 
 
+class IndicadorDeSaneamento(BaseModel):
+    metrica: str
+    rotulo: str
+    cobertura_pct: float
+    ausencia_pct: float
+
+
+class AlertaSaneamento(ComProveniencia):
+    limiar_cobertura_pct: float
+    indicadores: list[IndicadorDeSaneamento]
+
+
 class RaioX(BaseModel):
     """Contrato estável do diagnóstico de uma área, produzido sem LLM."""
 
@@ -237,6 +249,7 @@ class RaioX(BaseModel):
     classe_social: BlocoClasseSocial
     qualidade: Qualidade
     regulacao: BlocoRegulacao
+    saneamento: AlertaSaneamento | None = None
 
 
 class GeocodeHit(BaseModel):

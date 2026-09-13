@@ -104,6 +104,42 @@ _SEM_AGREGACAO: dict[str, str] = {
 # poligono encosta na borda, e chamar isso de parcial inflaria o aviso.
 _LIMIAR_INTEIRO = "0.999"
 
+# O Raio-X não repete cobertura normal: saneamento só merece ocupar espaço quando há
+# uma falta material. O corte veio da medição registrada em docs/DECISOES.md: 90% dos
+# domicílios ocupados evita chamar a cobertura usual de problema e ainda expõe a cauda.
+LIMIAR_COBERTURA_SANEAMENTO_PCT = 90.0
+
+
+def _alerta_saneamento(coberturas: dict[str, float | None]) -> dict[str, Any] | None:
+    """Devolve somente as carências de saneamento; dado ausente nunca vira carência."""
+    indicadores = [
+        ("pct_agua_rede", "Água pela rede"),
+        ("pct_esgoto_rede", "Esgoto pela rede"),
+        ("pct_lixo_coletado", "Coleta de lixo"),
+    ]
+    faltas = [
+        {
+            "metrica": metrica,
+            "rotulo": rotulo,
+            "cobertura_pct": cobertura,
+            "ausencia_pct": round(max(0, 100 - cobertura), 2),
+        }
+        for metrica, rotulo in indicadores
+        if (cobertura := coberturas.get(metrica)) is not None
+        and cobertura < LIMIAR_COBERTURA_SANEAMENTO_PCT
+    ]
+    if not faltas:
+        return None
+    return {
+        "limiar_cobertura_pct": LIMIAR_COBERTURA_SANEAMENTO_PCT,
+        "indicadores": faltas,
+        "fonte": "Censo Demográfico 2022 — IBGE",
+        "periodo": "2022",
+        "metodo": "proporção ponderada por domicílios ocupados, com rateio areal na borda",
+        "cobertura": "setores tocados",
+        "avisos": [],
+    }
+
 # A regra do rateio mora aqui e em nenhum outro lugar. O cruzamento livre do chat e
 # o Raio-X têm contratos diferentes, mas "setor cortado" não pode significar uma coisa
 # em cada um. ST_Within vem antes para o caminho comum não pagar a interseção cara.
@@ -1035,6 +1071,7 @@ class GeoQuery:
                 select f.cod_setor, f.f, r.cod_municipio, r.pop_total,
                        r.domicilios_ocupados, r.renda_media, r.media_moradores,
                        r.pop_masculino, r.pop_feminino,
+                       r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
                        r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de
                 from frac f join ibge_tabular.setor_resumo r using (cod_setor)
             ),
@@ -1053,6 +1090,18 @@ class GeoQuery:
                               nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as renda_media,
                        round((sum(media_moradores * domicilios_ocupados * f) /
                               nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as media_moradores,
+                       round((sum(pct_agua_rede * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f)
+                                     filter (where pct_agua_rede is not null), 0))::numeric, 2)
+                           as pct_agua_rede,
+                       round((sum(pct_esgoto_rede * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f)
+                                     filter (where pct_esgoto_rede is not null), 0))::numeric, 2)
+                           as pct_esgoto_rede,
+                       round((sum(pct_lixo_coletado * domicilios_ocupados * f) /
+                              nullif(sum(domicilios_ocupados * f)
+                                     filter (where pct_lixo_coletado is not null), 0))::numeric, 2)
+                           as pct_lixo_coletado,
                        round(sum(pop_masculino * f)) as pop_masculino,
                        round(sum(pop_feminino * f)) as pop_feminino,
                        round((sum(pct_classe_a * domicilios_ocupados * f) /
@@ -1206,10 +1255,18 @@ class GeoQuery:
         qualidade["avisos"] = [
             f"{row['parciais']} setores entram parcialmente por rateio areal"
         ] if row["parciais"] else []
+        saneamento = _alerta_saneamento(
+            {
+                "pct_agua_rede": row["pct_agua_rede"],
+                "pct_esgoto_rede": row["pct_esgoto_rede"],
+                "pct_lixo_coletado": row["pct_lixo_coletado"],
+            }
+        )
         resultado = {
-            "versao_calculo": "1", "gerado_em": datetime.now(UTC).isoformat(),
+            "versao_calculo": "2", "gerado_em": datetime.now(UTC).isoformat(),
             "escala": escala, "contraste": contraste, "perfil": perfil,
             "classe_social": classe_social, "qualidade": qualidade, "regulacao": regulacao,
+            "saneamento": saneamento,
         }
         resultado["sintese"] = montar_sintese(escala, contraste)
         return resultado

@@ -102,4 +102,5 @@ def test_rota_entrega_contrato_e_aviso_de_classe(cliente: TestClient) -> None:
     assert resposta.status_code == 200, resposta.text
     corpo = resposta.json()
     assert corpo["sintese"] == "teste"
+    assert corpo["saneamento"] is None
     assert "ESTIMATIVA NOSSA" in corpo["classe_social"]["avisos"][0]

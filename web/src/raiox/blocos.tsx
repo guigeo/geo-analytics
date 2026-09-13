@@ -8,6 +8,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type {
+  AlertaSaneamento,
   BlocoClasseSocial,
   BlocoContraste,
   BlocoEscala,
@@ -400,5 +401,37 @@ export function BlocoDeRegulacao({ dados }: { dados: BlocoRegulacao }) {
         <p className="text-sm text-muted-foreground">{dados.aviso}</p>
       )}
     </Bloco>
+  );
+}
+
+/** Só existe quando a cobertura cai abaixo do corte; não há bloco de parabéns. */
+export function AlertaDeSaneamento({ dados }: { dados: AlertaSaneamento }) {
+  return (
+    <aside className="rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
+      <header className="mb-4">
+        <h2 className="text-base font-semibold">Atenção ao saneamento</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          A cobertura abaixo de {percentual(dados.limiar_cobertura_pct)} aparece porque indica falta
+          relevante na área.
+        </p>
+      </header>
+      <dl className="space-y-3">
+        {dados.indicadores.map((indicador) => (
+          <div
+            key={indicador.metrica}
+            className="flex items-baseline justify-between gap-4 text-sm"
+          >
+            <dt className="font-medium">{indicador.rotulo}</dt>
+            <dd className="text-right tabular-nums">
+              {percentual(indicador.ausencia_pct)} sem cobertura
+              <span className="ml-1 text-muted-foreground">
+                (cobertura de {percentual(indicador.cobertura_pct)})
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <Proveniencia dados={dados} />
+    </aside>
   );
 }

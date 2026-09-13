@@ -16,6 +16,7 @@ import { buscarRaioX, ErroDoRaioX, type RaioX } from "./api";
 import { escalaDe } from "./escala";
 import type { PinturaRaioX } from "@/map/pinturaRaioX";
 import {
+  AlertaDeSaneamento,
   BlocoDeClasseSocial,
   BlocoDeContraste,
   BlocoDeEscala,
@@ -132,6 +133,7 @@ export function PaginaRaioX({
         {dados ? (
           <div className="space-y-4">
             <BlocoDeEscala dados={dados.escala} />
+            {dados.saneamento ? <AlertaDeSaneamento dados={dados.saneamento} /> : null}
             <BlocoDeContraste
               dados={dados.contraste}
               escala={escala}

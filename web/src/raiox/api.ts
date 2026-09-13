@@ -109,6 +109,19 @@ export interface BlocoRegulacao extends ComProveniencia {
   aviso: string | null;
 }
 
+export interface IndicadorDeSaneamento {
+  metrica: string;
+  rotulo: string;
+  cobertura_pct: number;
+  ausencia_pct: number;
+}
+
+/** Ausente quando não há carência relevante: cobertura normal não vira um bloco. */
+export interface AlertaSaneamento extends ComProveniencia {
+  limiar_cobertura_pct: number;
+  indicadores: IndicadorDeSaneamento[];
+}
+
 export interface RaioX {
   versao_calculo: string;
   gerado_em: string;
@@ -119,6 +132,7 @@ export interface RaioX {
   classe_social: BlocoClasseSocial;
   qualidade: Qualidade;
   regulacao: BlocoRegulacao;
+  saneamento: AlertaSaneamento | null;
 }
 
 /**

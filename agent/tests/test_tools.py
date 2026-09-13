@@ -75,6 +75,8 @@ class GeoQueryH3Falso:
                 "dom_apartamento": 42,
                 "dom_casa": 8,
                 "domicilios_particulares": 50,
+                "end_ensino": 3,
+                "end_saude": 6,
                 "coord_original": 35,
                 "coord_estimada": 2,
                 "coord_modificada": 5,
@@ -148,6 +150,19 @@ def test_h3_no_ponto_filtra_os_temas_e_declara_estimativa() -> None:
     assert any("rateio areal" in aviso for aviso in r.payload["avisos"])
     assert any("renda média é reconstruída" in aviso for aviso in r.payload["avisos"])
     assert any("20.0%" in aviso for aviso in r.payload["avisos"])
+
+
+def test_h3_no_ponto_equipamentos_pinta_a_camada_certa() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryH3Falso()))
+    r = execute_tool(
+        ctx_falso,
+        "h3_no_ponto",
+        json.dumps({"lon": -46.6540, "lat": -23.5614, "temas": ["equipamentos"]}),
+    )
+    assert not r.error
+    assert r.camada == "h3_equipamentos"
+    assert r.payload["temas"]["equipamentos"]["enderecos_de_ensino"] == 3
+    assert r.payload["temas"]["equipamentos"]["enderecos_de_saude"] == 6
 
 
 def test_h3_no_ponto_rejeita_tema_inexistente() -> None:

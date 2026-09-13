@@ -175,6 +175,15 @@ describe("LayerPanel", () => {
     expect(screen.getByText("820+")).toBeInTheDocument();
   });
 
+  it("declara a cobertura H3 uma vez no grupo de indicadores, não em cada camada", () => {
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    expect(screen.queryByText("37 municípios da concentração urbana de São Paulo")).toBeNull();
+    abrir("Indicadores territoriais");
+    expect(screen.getAllByText("37 municípios da concentração urbana de São Paulo")).toHaveLength(
+      1,
+    );
+  });
+
   it("o cabeçalho oferece recolher a coluna", () => {
     const onRecolher = vi.fn();
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} onRecolher={onRecolher} />);

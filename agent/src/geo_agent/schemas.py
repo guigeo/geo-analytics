@@ -27,7 +27,9 @@ class ChatRequest(BaseModel):
 class Destaques(BaseModel):
     """O que o mapa deve pintar: codigos IBGE por camada (filtro nos PMTiles)."""
 
-    camada: Literal["municipio", "setor", "bairro", "distrito", "zoneamento_sp", "h3_domicilios"]
+    camada: Literal[
+        "municipio", "setor", "bairro", "distrito", "zoneamento_sp", "h3_domicilios", "h3_equipamentos"
+    ]
     codigos: list[str]
 
 

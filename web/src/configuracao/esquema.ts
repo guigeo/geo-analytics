@@ -121,7 +121,12 @@ export const ANCORAS_ICONE = ["centro", "base"] as const;
  */
 export const GRUPOS_DE_CAMADA = {
   ibge: { rotulo: "Informações IBGE" },
-  indicadores: { rotulo: "Indicadores territoriais" },
+  indicadores: {
+    rotulo: "Indicadores territoriais",
+    // Todo indicador territorial publicado hoje usa a mesma malha H3. A cobertura
+    // pertence ao grupo, não a cada variável, para não repetir a mesma frase.
+    cobertura: "37 municípios da concentração urbana de São Paulo",
+  },
   infraestrutura: { rotulo: "Infraestrutura" },
   regulacao: { rotulo: "Regulação urbana" },
 } as const;

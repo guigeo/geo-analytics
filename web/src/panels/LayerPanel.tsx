@@ -157,6 +157,7 @@ export function LayerPanel({
               ligadas={grupo.camadas.filter((c) => visible[c.id]).length}
               aberto={abertos.includes(grupo.id)}
               onAlternar={() => alternar(grupo.id)}
+              cobertura={grupo.cobertura}
             >
               {grupo.camadas.map((c) => (
                 <div key={c.id}>
@@ -267,6 +268,7 @@ function Combo({
   ligadas,
   aberto,
   onAlternar,
+  cobertura,
   children,
 }: {
   rotulo: string;
@@ -274,6 +276,7 @@ function Combo({
   ligadas: number;
   aberto: boolean;
   onAlternar: () => void;
+  cobertura?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -313,6 +316,7 @@ function Combo({
         {/* O filete à esquerda amarra as camadas ao selo do combo: sem ele, a lista
             de dentro flutuava à mesma distância da margem que o próprio cabeçalho. */}
         <div className="ml-[0.9375rem] flex flex-col gap-0.5 border-l border-border py-0.5 pl-2.5">
+          {cobertura && <p className="pb-1 text-xs text-muted-foreground">{cobertura}</p>}
           {children}
         </div>
       </CollapsibleContent>

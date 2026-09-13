@@ -850,7 +850,9 @@ class GeoQuery:
                   select h3_r9,
                          max(valor) filter (where cod_variavel = 'dom_apartamento') as dom_apartamento,
                          max(valor) filter (where cod_variavel = 'dom_casa') as dom_casa,
-                         max(valor) filter (where cod_variavel = 'end_dom_particular') as domicilios_particulares
+                         max(valor) filter (where cod_variavel = 'end_dom_particular') as domicilios_particulares,
+                         max(valor) filter (where cod_variavel = 'end_ensino') as end_ensino,
+                         max(valor) filter (where cod_variavel = 'end_saude') as end_saude
                     from indicadores.cnefe_h3_r9
                    where h3_r9 = %s
                    group by h3_r9
@@ -876,6 +878,8 @@ class GeoQuery:
                        coalesce(v.dom_apartamento, 0)::integer as dom_apartamento,
                        coalesce(v.dom_casa, 0)::integer as dom_casa,
                        coalesce(v.domicilios_particulares, 0)::integer as domicilios_particulares,
+                       coalesce(v.end_ensino, 0)::integer as end_ensino,
+                       coalesce(v.end_saude, 0)::integer as end_saude,
                        coalesce(c.coord_original, 0)::integer as coord_original,
                        coalesce(c.coord_modificada, 0)::integer as coord_modificada,
                        coalesce(c.coord_estimada, 0)::integer as coord_estimada,

@@ -231,7 +231,6 @@ export const CATALOGO = {
         rotulo: "Domicílios particulares",
       },
     ],
-    cobertura: "37 municípios da concentração urbana de São Paulo",
     opacidadePreenchimento: 0.72,
     contorno: { cor: "#1e40af", largura: 0.25 },
     atributos: [
@@ -245,6 +244,45 @@ export const CATALOGO = {
       { chave: "COORD_FACE_QUADRA", rotulo: "Coordenadas na face de quadra" },
       { chave: "COORD_LOCALIDADE", rotulo: "Coordenadas na localidade" },
       { chave: "COORD_SETOR", rotulo: "Coordenadas no setor" },
+    ],
+  },
+  h3_equipamentos: {
+    id: "h3_equipamentos",
+    rotulo: "Ensino e saúde por célula (H3)",
+    fonte: "CNEFE 2022 · endereços por célula H3 r9",
+    grupo: "indicadores",
+    camadaFonte: "h3_equipamentos",
+    geometria: "poligono",
+    cor: "#6d28d9",
+    campoDestaque: "H3_R9",
+    // p99 entre células com valor, medido no geodata local em 2026-09-13. Zero fica
+    // branco; usar o p99 de todas as células faria o ensino saturar já no primeiro ponto.
+    temasNumericos: [
+      {
+        id: "ensino",
+        campo: "END_ENSINO",
+        minimo: 0,
+        maximo: 7,
+        corInicial: "#fff7ed",
+        corFinal: "#c2410c",
+        rotulo: "Endereços de ensino",
+      },
+      {
+        id: "saude",
+        campo: "END_SAUDE",
+        minimo: 0,
+        maximo: 25,
+        corInicial: "#fff1f2",
+        corFinal: "#e11d48",
+        rotulo: "Endereços de saúde",
+      },
+    ],
+    opacidadePreenchimento: 0.72,
+    contorno: { cor: "#5b21b6", largura: 0.25 },
+    atributos: [
+      { chave: "H3_R9", rotulo: "Célula H3 (resolução 9)" },
+      { chave: "END_ENSINO", rotulo: "Endereços de ensino" },
+      { chave: "END_SAUDE", rotulo: "Endereços de saúde" },
     ],
   },
 } satisfies Record<string, DefinicaoCamada>;

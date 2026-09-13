@@ -264,14 +264,15 @@ class ZoneamentoNoPontoArgs(BaseModel):
 class H3NoPontoArgs(BaseModel):
     """Diagnóstico da célula H3 r9 que contém um ponto, por tema.
 
-    Use para moradia, população, renda ou saneamento em endereço/coordenada. `moradia`
-    vem do CNEFE e é contagem exata; os demais temas vêm do Censo 2022 re-agregado por
-    rateio areal. Cobre só os 37 municípios da concentração urbana de São Paulo.
+    Use para moradia, ensino, saúde, população, renda ou saneamento em endereço/coordenada.
+    Moradia, ensino e saúde vêm do CNEFE e são contagens exatas de endereços; os demais
+    temas vêm do Censo 2022 re-agregado por rateio areal. Cobre só os 37 municípios da
+    concentração urbana de São Paulo.
     """
 
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
-    temas: list[Literal["moradia", "populacao", "renda", "saneamento"]] = Field(
+    temas: list[Literal["moradia", "equipamentos", "populacao", "renda", "saneamento"]] = Field(
         default_factory=lambda: ["moradia"],
         description="Temas pedidos; use só os que respondem à pergunta",
     )
@@ -625,6 +626,16 @@ def _dados_h3(row: dict[str, Any], temas: list[str]) -> tuple[dict[str, Any], li
             "metodo": "contagem exata dos endereços por coordenada",
         }
 
+    if "equipamentos" in temas_unicos:
+        dados["temas"]["equipamentos"] = {
+            "enderecos_de_ensino": int(row.get("end_ensino", 0)),
+            "enderecos_de_saude": int(row.get("end_saude", 0)),
+            "fonte": _FONTE_CNEFE_H3,
+            "periodo": "2022",
+            "metodo": "contagem exata dos endereços por coordenada",
+            "aviso": "são endereços de estabelecimentos no CNEFE; não identifica oferta, capacidade ou natureza pública",
+        }
+
     campos_censo: list[str] = []
     if "populacao" in temas_unicos:
         campos = ["pop_total", "domicilios_ocupados"]
@@ -703,7 +714,7 @@ def _h3_no_ponto(ctx: Contexto, a: H3NoPontoArgs) -> ToolResult:
     dados, _ = _dados_h3(row, a.temas)
     return ToolResult(
         payload=dados,
-        camada="h3_domicilios",
+        camada="h3_equipamentos" if "equipamentos" in a.temas else "h3_domicilios",
         codigos=[str(row["h3_r9"])],
         rows=[dados],
     )

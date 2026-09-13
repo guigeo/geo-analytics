@@ -102,6 +102,17 @@ def test_h3_declara_geometria_pura_e_atributos_do_popup():
     assert "indicadores.cnefe_h3_r9_celula" in h3.source.sql
 
 
+def test_h3_equipamentos_reaproveita_a_malha_e_declara_os_dois_temas():
+    equipamentos = load_config().dataset("h3_equipamentos")
+    assert isinstance(equipamentos.source, H3GeodataSource)
+    assert equipamentos.source.campo_indice == "H3_R9"
+    assert equipamentos.attributes == ["H3_R9", "END_ENSINO", "END_SAUDE"]
+    assert "end_ensino" in equipamentos.source.sql
+    assert "end_saude" in equipamentos.source.sql
+    assert "indicadores.censo_h3_r9_celula" in equipamentos.source.sql
+    assert "indicadores.cnefe_h3_r9_celula" in equipamentos.source.sql
+
+
 def test_fonte_de_arquivo_continua_valendo():
     """Nenhum dataset usa fonte-arquivo desde que saude e educacao sairam.
 

@@ -182,6 +182,32 @@ datasets:
     attributes: [H3_R9, DOM_APARTAMENTO, DOM_CASA, DOMICILIOS_PARTICULARES, COORD_ORIGINAL, COORD_MODIFICADA, COORD_ESTIMADA, COORD_FACE_QUADRA, COORD_LOCALIDADE, COORD_SETOR]
     tile: { minzoom: 8, maxzoom: 14 }
 
+  - name: h3_equipamentos
+    source:
+      kind: h3_geodata
+      # A mesma união da camada de domicílios: zero é contagem medida nos 37
+      # municípios cobertos, e as seis células CNEFE de borda continuam visíveis.
+      sql: >-
+        with malha as (
+          select h3_r9 from indicadores.censo_h3_r9_celula
+          union
+          select h3_r9 from indicadores.cnefe_h3_r9_celula
+        ), valores as (
+          select h3_r9,
+                 max(valor) filter (where cod_variavel = 'end_ensino') as end_ensino,
+                 max(valor) filter (where cod_variavel = 'end_saude') as end_saude
+          from indicadores.cnefe_h3_r9
+          group by h3_r9
+        )
+        select m.h3_r9 as "H3_R9",
+               coalesce(v.end_ensino, 0)::integer as "END_ENSINO",
+               coalesce(v.end_saude, 0)::integer as "END_SAUDE"
+        from malha m
+        left join valores v using (h3_r9)
+    geometry: polygon
+    attributes: [H3_R9, END_ENSINO, END_SAUDE]
+    tile: { minzoom: 8, maxzoom: 14 }
+
 basemap:
   provider: protomaps
   bbox: [-74.0, -34.0, -34.0, 6.0]   # lon_min, lat_min, lon_max, lat_max (Brasil)

@@ -65,5 +65,6 @@ export const cliente: ConfiguracaoCliente = {
     CATALOGO.ferrovias,
     CATALOGO.zoneamento_sp,
     CATALOGO.h3_domicilios,
+    CATALOGO.h3_equipamentos,
   ],
 };

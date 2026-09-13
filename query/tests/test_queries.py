@@ -151,6 +151,8 @@ def test_h3_no_ponto_na_concentracao(gq: GeoQuery) -> None:
     assert celula is not None
     assert celula["h3_r9"].startswith("89")
     assert celula["dom_apartamento"] >= 0
+    assert celula["end_ensino"] >= 0
+    assert celula["end_saude"] >= 0
     assert celula["pop_total"] is not None
     assert celula["domicilios_ocupados"] is not None
     assert celula["renda_media"] is not None

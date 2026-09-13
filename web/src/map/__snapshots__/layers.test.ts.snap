@@ -399,6 +399,49 @@ exports[`saída congelada > mantém as camadas 1`] = `
     "type": "line",
   },
   {
+    "id": "h3_equipamentos",
+    "layout": {
+      "visibility": "none",
+    },
+    "paint": {
+      "fill-color": [
+        "interpolate",
+        [
+          "linear",
+        ],
+        [
+          "to-number",
+          [
+            "get",
+            "END_ENSINO",
+          ],
+          0,
+        ],
+        0,
+        "#fff7ed",
+        7,
+        "#c2410c",
+      ],
+      "fill-opacity": 0.72,
+    },
+    "source": "h3_equipamentos",
+    "source-layer": "h3_equipamentos",
+    "type": "fill",
+  },
+  {
+    "id": "h3_equipamentos__outline",
+    "layout": {
+      "visibility": "none",
+    },
+    "paint": {
+      "line-color": "#5b21b6",
+      "line-width": 0.25,
+    },
+    "source": "h3_equipamentos",
+    "source-layer": "h3_equipamentos",
+    "type": "line",
+  },
+  {
     "id": "uf__label",
     "layout": {
       "text-field": [
@@ -472,6 +515,10 @@ exports[`saída congelada > mantém as fontes 1`] = `
   "h3_domicilios": {
     "type": "vector",
     "url": "pmtiles://http://localhost:8081/tiles/h3_domicilios.pmtiles",
+  },
+  "h3_equipamentos": {
+    "type": "vector",
+    "url": "pmtiles://http://localhost:8081/tiles/h3_equipamentos.pmtiles",
   },
   "municipio": {
     "type": "vector",

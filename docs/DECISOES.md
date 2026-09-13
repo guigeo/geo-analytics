@@ -181,8 +181,9 @@ z15 apenas nas manchas urbanas — o IBGE agrupa 660 municípios em 185 concentr
 duas vezes (nacional até z13, detalhado de z14 em diante), que é o custo de código que o
 arquivo único não tem.
 
-**Melhorias do Raio-X aprovadas em 2026-09-12.** O alerta de saneamento e os equipamentos
-foram publicados em 2026-09-13 nos dois clientes; comparar áreas segue na fila. Discutidas com o
+**Melhorias do Raio-X aprovadas em 2026-09-12.** O alerta de saneamento, os equipamentos e a
+comparação entre áreas foram publicados em 2026-09-13 nos dois clientes. A leitura de coleta
+de lixo ficou com correção primordial pendente. Discutidas com o
 Guilherme sobre o Raio-X já construído (seis blocos: escala, contraste, perfil, classe
 social, qualidade e regulação), e aprovadas nesta ordem:
 
@@ -192,8 +193,8 @@ social, qualidade e regulação), e aprovadas nesta ordem:
    `domicilios_ocupados` no denominador): na concentração urbana de SP a mediana é 100%
    para água e 99,6% para esgoto, então um bloco fixo diria "normal" em quase toda área —
    mas a cauda é grossa, com **5.483 setores abaixo de 70% em esgoto de rede** e o
-   percentil 5 em 18,6%. Em São Caetano do Sul é 100% nos 421 setores, nas três variáveis:
-   lá o alerta nunca deve aparecer, e esse é o comportamento correto. Atenção ao
+   percentil 5 em 18,6%. Em São Caetano do Sul água e esgoto são 100%; a coleta de lixo está
+   pendente de correção porque a leitura atual considera só a coleta direta. Atenção ao
    denominador — com `V0003` (domicílios particulares, que inclui vago e de uso ocasional)
    a mesma conta dava mediana de 86% e inventava um problema que não existe.
 2. ~~**Escola e saúde do CNEFE na área.**~~ Publicada em 2026-09-13: contagem de endereços de ensino e de saúde dentro
@@ -201,7 +202,7 @@ social, qualidade e regulação), e aprovadas nesta ordem:
    **de fora** por decisão do Guilherme, e `end_em_obra` fica de fora por um motivo mais
    forte: é a única variável cuja defasagem inverte o sentido — obra de 2022 hoje é prédio
    pronto. Escola e posto de saúde mudam pouco em quatro anos e envelhecem bem.
-3. **Comparar duas áreas desenhadas.** A de maior valor e a mais barata em dado: zero dado
+3. ~~**Comparar duas áreas desenhadas.**~~ Publicada em 2026-09-13: a de maior valor e a mais barata em dado: zero dado
    novo, a conta do Raio-X já roda por área. O custo é de tela. Muda o uso do produto —
    hoje ele descreve um lugar, com isso ajuda a escolher entre dois.
 
@@ -253,9 +254,9 @@ esforço crescente, e a primeira linha de cada item é o que de fato custa.
 | ~~1~~ | ~~**Publicar o Raio-X**~~ — no ar desde 2026-09-12 no cliente 1 e 2026-09-13 no cliente 2 | só deploy | não |
 | ~~2~~ | ~~**Seletor de variável na tela H3**~~ — publicado nos dois clientes em 2026-09-13 (`SELETOR_H3`) | frontend; a casca já pintava por valor e tinha legenda | não |
 | ~~3~~ | ~~**Mais variáveis no agente** (`h3_no_ponto`)~~ — publicado nos dois clientes em 2026-09-13 (`H3_NO_AGENTE`) | backend pequeno + prompt | não |
-| ~~4~~ | ~~**Saneamento como alerta no Raio-X**~~ — publicado nos dois clientes em 2026-09-13 | 3 variáveis e um corte em 90% | não |
+| ~~4~~ | ~~**Saneamento como alerta no Raio-X**~~ — publicado nos dois clientes em 2026-09-13; coleta de lixo com correção pendente | 3 variáveis e um corte em 90% | não |
 | ~~5~~ | ~~**Escola e saúde no Raio-X**~~ — publicada nos dois clientes em 2026-09-13 | carga nova de ~35,7 mil pontos, do lab | sim, leve |
-| 6 | **Comparar duas áreas** | só tela; a conta já roda por área | não |
+| ~~6~~ | ~~**Comparar duas áreas**~~ — publicada nos dois clientes em 2026-09-13 | só tela; a conta já roda por área | não |
 | 7 | **Basemap z15 no Brasil** | 5,5 GB na VPS — barrado por disco | não |
 | 8 | **Empresas (Receita × CNEFE)** | semanas: baixar, padronizar, casar, agregar, publicar | sim, pesado |
 

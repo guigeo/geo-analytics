@@ -7,7 +7,7 @@
 | **Feature** | `H3_NO_AGENTE` |
 | **Data** | 2026-09-13 |
 | **DEFINE** | [DEFINE_H3_NO_AGENTE.md](DEFINE_H3_NO_AGENTE.md) |
-| **Status** | Pronta para build |
+| **Status** | Entregue em produção nos dois clientes em 2026-09-13 |
 
 ## Fluxo
 

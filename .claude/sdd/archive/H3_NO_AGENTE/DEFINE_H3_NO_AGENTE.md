@@ -9,7 +9,7 @@
 | **Feature** | `H3_NO_AGENTE` |
 | **Data** | 2026-09-13 |
 | **Autor** | Codex |
-| **Status** | Pronta para build |
+| **Status** | Entregue em produção nos dois clientes em 2026-09-13 |
 | **Clareza** | 15/15 |
 
 ## Problema

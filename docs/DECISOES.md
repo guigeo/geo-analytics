@@ -205,6 +205,18 @@ social, qualidade e regulação), e aprovadas nesta ordem:
    novo, a conta do Raio-X já roda por área. O custo é de tela. Muda o uso do produto —
    hoje ele descreve um lugar, com isso ajuda a escolher entre dois.
 
+**A-001 medida na VPS em 2026-09-13 — e a premissa estava errada no pior caso.** Seis
+requisições reais de buffers de 0,2823 km² ficaram entre 188 e 892 ms, com mediana de
+361 ms: o uso observado atende ao alvo de 1 s. Já o município de São Paulo inteiro
+(1.522,683 km² e 27.719 setores) não terminou em 90 s e foi cancelado sem derrubar os
+serviços. Separadas as duas partes, o Censo levou 3,606 s e o zoneamento sozinho excedeu
+15 s. Portanto A-005 também era falsa: a interseção das 61.784 feições regulatórias é o
+gargalo. O processo cliente atingiu 47,5 MiB de RSS e a VPS terminou com 2,0 GiB de memória
+disponível; o defeito medido é latência, não pressão de memória. O teto de 2.000 km² não
+protege esse caminho. A correção seguinte deve limitar o bloco regulatório separadamente ou
+otimizar a consulta; baixar às cegas o teto do Raio-X inteiro apagaria uma capacidade que a
+parte censitária ainda entrega em 3,6 s.
+
 **A variável de empresas (Receita/CNPJ), e por que o CNEFE é o caminho.** Quer-se contagem de
 empresas por célula H3. O cadastro da Receita não tem coordenada, e o geocodificador já está
 no acervo: o CNEFE traz logradouro, número e CEP ao lado da coordenada medida — a carga do

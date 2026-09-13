@@ -228,8 +228,8 @@ publicado.
 
 | # | Item | O que custa | Dado novo? |
 |---|---|---|---|
-| ~~1~~ | ~~**Publicar o Raio-X**~~ — **no ar desde 2026-09-12**, só no cliente 1 | só deploy | não |
-| ~~2~~ | ~~**Seletor de variável na tela H3**~~ — **feito em 2026-09-13** (`SELETOR_H3`), não publicado | frontend; a casca já pintava por valor e tinha legenda | não |
+| ~~1~~ | ~~**Publicar o Raio-X**~~ — no ar desde 2026-09-12 no cliente 1 e 2026-09-13 no cliente 2 | só deploy | não |
+| ~~2~~ | ~~**Seletor de variável na tela H3**~~ — publicado nos dois clientes em 2026-09-13 (`SELETOR_H3`) | frontend; a casca já pintava por valor e tinha legenda | não |
 | 3 | **Mais variáveis no agente** (`h3_no_ponto`) | backend pequeno + prompt | não |
 | 4 | **Saneamento como alerta no Raio-X** | 3 variáveis e um corte em 90% | não |
 | 5 | **Escola e saúde no Raio-X** | carga nova de ~35,7 mil pontos, do lab | sim, leve |

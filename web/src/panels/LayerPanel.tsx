@@ -558,15 +558,7 @@ function AmostraDeLinha({ camada }: { camada: DefinicaoCamada }) {
         <>
           <line x1="0.5" y1="6" x2="17.5" y2="6" stroke={camada.cor} strokeWidth="1.6" />
           {[2.5, 6, 9.5, 13, 16.5].map((x) => (
-            <line
-              key={x}
-              x1={x}
-              y1="2.5"
-              x2={x}
-              y2="9.5"
-              stroke={camada.cor}
-              strokeWidth="1.3"
-            />
+            <line key={x} x1={x} y1="2.5" x2={x} y2="9.5" stroke={camada.cor} strokeWidth="1.3" />
           ))}
         </>
       ) : (

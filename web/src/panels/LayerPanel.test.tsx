@@ -378,9 +378,7 @@ describe("LayerPanel", () => {
       />,
     );
     abrir("Indicadores territoriais");
-    expect(
-      screen.getByRole("group", { name: `Legenda: ${segundo.rotulo}` }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: `Legenda: ${segundo.rotulo}` })).toBeInTheDocument();
     expect(screen.getByText(`${segundo.maximo}+`)).toBeInTheDocument();
   });
 

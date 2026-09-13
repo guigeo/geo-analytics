@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { registerPMTiles } from "../lib/pmtiles";
 import type { BasemapTheme } from "./basemap";
-import {
-  expressaoDeCorNumerica,
-  IDS_CLICAVEIS,
-  SUFIXOS_SUBCAMADA,
-  temaDaCamada,
-} from "./layers";
+import { expressaoDeCorNumerica, IDS_CLICAVEIS, SUFIXOS_SUBCAMADA, temaDaCamada } from "./layers";
 import { montarEstilo } from "./estilo";
 import { camadas, configuracaoMapa } from "@/configuracao";
 import { EMPTY_SELECTION, SELECTION_SOURCE_ID } from "./selection";

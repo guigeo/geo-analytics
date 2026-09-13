@@ -424,9 +424,10 @@ endereços caem dentro de um setor da malha e **nenhum** com o mesmo código. Cr
 setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** funciona. Ver
 `../servidor-dados-gis/docs/cnefe.md`.
 
-### O Raio-X da Área, e por que ele está em UM cliente só
+### O Raio-X da Área
 
-Publicado em **2026-09-12, apenas no cliente 1** (`geo-intelligence.averisen.com`). Qualquer
+Publicado em **2026-09-12 no cliente 1** (`geo-intelligence.averisen.com`) e em
+**2026-09-13 no cliente 2** (`app.ebprime.com.br`). Qualquer
 área do acervo gera um diagnóstico de seis blocos — escala, **contraste interno**, perfil,
 classe social, qualidade da leitura e regulação —, **sem LLM no caminho**: o contrato
 `RaioX` (`agent/src/geo_agent/schemas.py`) e a síntese (`query/src/geo_query/sintese.py`) são
@@ -434,12 +435,10 @@ determinísticos, então a mesma área responde sempre o mesmo, e cada bloco car
 período, método, cobertura e avisos. A página imprime (`window.print()`), e o mapa pinta o
 contraste.
 
-**O cliente 2 está intocado de propósito** — frontend de 2026-09-07 —, porque o Guilherme
-quer anunciar o Raio-X a ele como novidade. A consequência arquitetural importa: **publicar é
-publicar o `HEAD` da `main`** (§10 do ADR-0001, tronco único), então não existe deploy que
-leve as novidades sem levar o Raio-X. Para separar os dois é preciso uma chave por cliente em
-`web/src/clientes/<cliente>.ts`, como já acontece com tema e cidade de exemplo. Enquanto essa
-chave não existir, qualquer deploy do `eb-prime` entrega o Raio-X junto.
+O cliente 2 ficou no frontend de 2026-09-07 até a publicação de 2026-09-13, quando o
+Guilherme decidiu liberar o Raio-X junto das demais novidades da `main`. Continua valendo a
+consequência arquitetural: **publicar é publicar o `HEAD` da `main`** (§10 do ADR-0001,
+tronco único).
 
 **A tool `localizar_endereco` nasceu disso** (2026-09-12): o geocoding existia preso dentro de
 `info_local`, e como `zoneamento_no_ponto` e `h3_no_ponto` só aceitam `lon`/`lat`, o agente
@@ -452,11 +451,9 @@ cai em ZEU.
 **Arquivada em 2026-09-13**, em `.claude/sdd/archive/RAIO_X_DA_AREA/` — a feature foi
 publicada antes do `/ship`, e o `SHIPPED` de lá registra que ela está em um cliente só.
 
-### Três coisas prontas na `main` e fora do ar (2026-09-13)
+### Publicação de 2026-09-13
 
-Decisão do Guilherme: **segurar o deploy** até alguém de fora olhar. Não é esquecimento, e
-não é o caso do `ZONEAMENTO_SP` — mas o relógio corre igual, e quem retomar deve tratar
-"não publicado" como estado declarado.
+Depois da validação externa, o Guilherme liberou a publicação para os dois clientes.
 
 | Commit | O quê |
 |---|---|
@@ -464,8 +461,8 @@ não é o caso do `ZONEAMENTO_SP` — mas o relógio corre igual, e quem retomar
 | `91f7fc8` | `SELETOR_H3`: a malha H3 pinta a variável escolhida (apartamento / casa / particulares), uma camada e vários temas |
 | `6561268` | O basemap é sempre claro; o tema escuro ficou só na moldura |
 
-Como publicar é publicar o `HEAD` da `main`, a próxima subida do cliente 2 leva as três
-**mais** o Raio-X, que hoje está só no cliente 1.
+As três mudanças estão em produção nos dois clientes; a mesma subida levou o Raio-X ao
+cliente 2.
 
 ### Em aberto
 

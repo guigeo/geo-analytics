@@ -181,7 +181,8 @@ z15 apenas nas manchas urbanas — o IBGE agrupa 660 municípios em 185 concentr
 duas vezes (nacional até z13, detalhado de z14 em diante), que é o custo de código que o
 arquivo único não tem.
 
-**Melhorias do Raio-X aprovadas em 2026-09-12, nenhuma publicada.** Discutidas com o
+**Melhorias do Raio-X aprovadas em 2026-09-12.** O alerta de saneamento foi publicado em
+2026-09-13 nos dois clientes. As demais seguem na fila. Discutidas com o
 Guilherme sobre o Raio-X já construído (seis blocos: escala, contraste, perfil, classe
 social, qualidade e regulação), e aprovadas nesta ordem:
 
@@ -223,15 +224,14 @@ do Sul, onde os 82.528 endereços do CNEFE já serviram de piloto antes.
 Brasil exigiriam baixar o resto por UF — cabe nos 865 GB do lab, não no Mac nem na VPS.
 
 **Ordem de execução acordada em 2026-09-12, do mais barato ao mais caro.** O critério é
-esforço crescente, e a primeira linha de cada item é o que de fato custa. Nada aqui está
-publicado.
+esforço crescente, e a primeira linha de cada item é o que de fato custa.
 
 | # | Item | O que custa | Dado novo? |
 |---|---|---|---|
 | ~~1~~ | ~~**Publicar o Raio-X**~~ — no ar desde 2026-09-12 no cliente 1 e 2026-09-13 no cliente 2 | só deploy | não |
 | ~~2~~ | ~~**Seletor de variável na tela H3**~~ — publicado nos dois clientes em 2026-09-13 (`SELETOR_H3`) | frontend; a casca já pintava por valor e tinha legenda | não |
-| 3 | **Mais variáveis no agente** (`h3_no_ponto`) | backend pequeno + prompt | não |
-| 4 | **Saneamento como alerta no Raio-X** | 3 variáveis e um corte em 90% | não |
+| ~~3~~ | ~~**Mais variáveis no agente** (`h3_no_ponto`)~~ — publicado nos dois clientes em 2026-09-13 (`H3_NO_AGENTE`) | backend pequeno + prompt | não |
+| ~~4~~ | ~~**Saneamento como alerta no Raio-X**~~ — publicado nos dois clientes em 2026-09-13 | 3 variáveis e um corte em 90% | não |
 | 5 | **Escola e saúde no Raio-X** | carga nova de ~35,7 mil pontos, do lab | sim, leve |
 | 6 | **Comparar duas áreas** | só tela; a conta já roda por área | não |
 | 7 | **Basemap z15 no Brasil** | 5,5 GB na VPS — barrado por disco | não |

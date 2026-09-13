@@ -10,9 +10,10 @@
  * fora do ar, o diagnóstico continua de pé — só as perguntas guiadas degradam.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Printer, X } from "lucide-react";
+import { ArrowLeftRight, Loader2, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buscarRaioX, ErroDoRaioX, type RaioX } from "./api";
+import { Comparador } from "./Comparador";
 import { escalaDe } from "./escala";
 import type { PinturaRaioX } from "@/map/pinturaRaioX";
 import {
@@ -44,6 +45,7 @@ export function PaginaRaioX({
   aoPintarMapa,
   aoFocalizarSetor,
   aoPerguntar,
+  areasParaComparar,
 }: {
   desenhoId: string;
   /** O nome vem do acervo, que a aplicação já tem — poupa um campo no contrato. */
@@ -52,9 +54,15 @@ export function PaginaRaioX({
   aoPintarMapa: (pintura: PinturaRaioX | null) => void;
   aoFocalizarSetor: (codSetor: string) => void;
   aoPerguntar: (pergunta: string) => void;
+  /** Áreas elegíveis já vêm filtradas no App: um ponto ou um desenho acima do teto não entra. */
+  areasParaComparar: { id: string; nome: string }[];
 }) {
   const [dados, setDados] = useState<RaioX | null>(null);
   const [erro, setErro] = useState<ErroDoRaioX | null>(null);
+  const [comparando, setComparando] = useState(false);
+  const [comparadaId, setComparadaId] = useState("");
+  const [dadosComparados, setDadosComparados] = useState<RaioX | null>(null);
+  const [erroDaComparacao, setErroDaComparacao] = useState<ErroDoRaioX | null>(null);
   const aoPintarRef = useRef(aoPintarMapa);
   aoPintarRef.current = aoPintarMapa;
 
@@ -72,6 +80,28 @@ export function PaginaRaioX({
       });
     return () => controle.abort();
   }, [desenhoId]);
+
+  useEffect(() => {
+    if (!comparadaId) {
+      setDadosComparados(null);
+      setErroDaComparacao(null);
+      return;
+    }
+    const controle = new AbortController();
+    setDadosComparados(null);
+    setErroDaComparacao(null);
+    buscarRaioX(comparadaId, controle.signal)
+      .then(setDadosComparados)
+      .catch((e: unknown) => {
+        if (controle.signal.aborted) return;
+        setErroDaComparacao(
+          e instanceof ErroDoRaioX
+            ? e
+            : new ErroDoRaioX("Não foi possível comparar esta área.", 500),
+        );
+      });
+    return () => controle.abort();
+  }, [comparadaId]);
 
   const escala = useMemo(
     () => escalaDe((dados?.contraste.setores ?? []).map((s) => s.valor)),
@@ -94,8 +124,14 @@ export function PaginaRaioX({
         <header className="raiox-cabecalho mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Raio-X da área</p>
-            <h1 className="truncate text-2xl font-semibold">{nome}</h1>
-            {dados ? (
+            <h1 className="truncate text-2xl font-semibold">
+              {comparando ? "Comparar áreas" : nome}
+            </h1>
+            {comparando ? (
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                {nome} é a área de referência deste comparativo.
+              </p>
+            ) : dados ? (
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 {dados.sintese}
               </p>
@@ -111,6 +147,17 @@ export function PaginaRaioX({
             >
               <Printer /> Imprimir
             </Button>
+            {areasParaComparar.length > 0 ? (
+              <Button
+                type="button"
+                variant={comparando ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setComparando((aberto) => !aberto)}
+                disabled={!dados}
+              >
+                <ArrowLeftRight /> {comparando ? "Voltar ao Raio-X" : "Comparar áreas"}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="ghost"
@@ -131,7 +178,19 @@ export function PaginaRaioX({
           </p>
         ) : null}
 
-        {dados ? (
+        {dados && comparando ? (
+          <VisaoDaComparacao
+            nome={nome}
+            areasParaComparar={areasParaComparar}
+            comparadaId={comparadaId}
+            aoEscolher={(id) => setComparadaId(id)}
+            dados={dados}
+            dadosComparados={dadosComparados}
+            erro={erroDaComparacao}
+          />
+        ) : null}
+
+        {dados && !comparando ? (
           <div className="space-y-4">
             <BlocoDeEscala dados={dados.escala} />
             {dados.saneamento ? <AlertaDeSaneamento dados={dados.saneamento} /> : null}
@@ -181,6 +240,73 @@ export function PaginaRaioX({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/** Uma visão própria evita misturar uma decisão entre áreas aos detalhes de uma área só. */
+function VisaoDaComparacao({
+  nome,
+  areasParaComparar,
+  comparadaId,
+  aoEscolher,
+  dados,
+  dadosComparados,
+  erro,
+}: {
+  nome: string;
+  areasParaComparar: { id: string; nome: string }[];
+  comparadaId: string;
+  aoEscolher: (id: string) => void;
+  dados: RaioX;
+  dadosComparados: RaioX | null;
+  erro: ErroDoRaioX | null;
+}) {
+  const nomeComparado = areasParaComparar.find((area) => area.id === comparadaId)?.nome;
+
+  return (
+    <div className="space-y-4">
+      <section className="raiox-sem-impressao rounded-lg border bg-card p-5">
+        <h2 className="text-base font-semibold">Escolha a segunda área</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Área de referência: <span className="font-medium text-foreground">{nome}</span>
+        </p>
+        <label htmlFor="area-para-comparar" className="mt-4 block text-sm font-medium">
+          Segunda área
+        </label>
+        <select
+          id="area-para-comparar"
+          value={comparadaId}
+          onChange={(evento) => aoEscolher(evento.target.value)}
+          className="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <option value="">Escolha outra área desenhada</option>
+          {areasParaComparar.map((area) => (
+            <option key={area.id} value={area.id}>
+              {area.nome}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      {comparadaId && !dadosComparados && !erro ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="animate-spin" /> Gerando a comparação…
+        </p>
+      ) : null}
+      {comparadaId && erro ? (
+        <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {erro.message}
+        </p>
+      ) : null}
+      {dadosComparados && nomeComparado ? (
+        <Comparador
+          primeiroNome={nome}
+          primeiro={dados}
+          segundoNome={nomeComparado}
+          segundo={dadosComparados}
+        />
+      ) : null}
     </div>
   );
 }

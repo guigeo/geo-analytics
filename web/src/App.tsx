@@ -16,7 +16,7 @@ import { criarEstadoMedicao, type Coordenada, type ModoMedicao } from "@/map/med
 import { BarraDoDesenho } from "@/desenho/BarraFerramentas";
 import { FormularioDesenho, type DadosDoFormulario } from "@/desenho/FormularioDesenho";
 import { useAcervo } from "@/desenho/useAcervo";
-import { itensDoAcervo, type ItemDoAcervo } from "@/desenho/camadas";
+import { impedimentoDoRaioX, itensDoAcervo, type ItemDoAcervo } from "@/desenho/camadas";
 import { Redimensionador } from "@/components/Redimensionador";
 import { areaFormatada, bboxDe, type ModoDesenho } from "@/desenho/geometria";
 import {
@@ -556,6 +556,9 @@ export function App() {
               setPergunta({ texto, key: Date.now() });
               encerrarRaioX();
             }}
+            areasParaComparar={itens
+              .filter((item) => item.id !== raioXAberto && impedimentoDoRaioX(item) === null)
+              .map(({ id, nome }) => ({ id, nome }))}
           />
         )}
       </div>

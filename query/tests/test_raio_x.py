@@ -9,9 +9,10 @@ import pytest
 from geo_query import GeoQuery
 from geo_query.queries import (
     LIMIAR_COBERTURA_SANEAMENTO_PCT,
-    TETO_AREA_RAIO_X_KM2,
+    TETO_AREA_RAIO_X_M2,
     TETO_SETORES_RAIO_X,
     _alerta_saneamento,
+    validar_area_do_raio_x,
 )
 from geo_query.sintese import montar_sintese
 
@@ -53,6 +54,12 @@ def test_alerta_de_saneamento_some_no_corte_ou_sem_dado() -> None:
     assert _alerta_saneamento(
         {"pct_agua_rede": 90, "pct_esgoto_rede": 99.9, "pct_lixo_coletado": None}
     ) is None
+
+
+def test_guarda_de_area_aceita_o_teto_e_explica_a_recusa() -> None:
+    validar_area_do_raio_x(TETO_AREA_RAIO_X_M2)
+    with pytest.raises(ValueError, match=r"51,0 km².*50 km² \(50\.000\.000 m²\).*"):
+        validar_area_do_raio_x(TETO_AREA_RAIO_X_M2 + 1_000_000)
 
 
 _PRECISA_GEODATA = pytest.mark.skipif(
@@ -129,9 +136,9 @@ def test_raio_x_degrada_a_lista_sem_descartar_o_agregado(gq: GeoQuery) -> None:
 
 @_PRECISA_GEODATA
 def test_raio_x_recusa_area_acima_do_teto(gq: GeoQuery) -> None:
-    lado = int((TETO_AREA_RAIO_X_KM2**0.5 + 1) * 1_000)
+    lado = int(TETO_AREA_RAIO_X_M2**0.5 + 1_000)
     wkb = _buffer(gq, lado)
-    with pytest.raises(ValueError, match="2,000"):
+    with pytest.raises(ValueError, match=r"50 km² \(50\.000\.000 m²\)"):
         gq.raio_x_por_geometria(wkb)
 
 

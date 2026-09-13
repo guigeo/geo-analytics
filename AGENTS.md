@@ -466,13 +466,14 @@ cliente 2.
 
 ### Em aberto
 
-- **Corrigir o pior caso do Raio-X.** A A-001 foi medida na VPS em 2026-09-13 e deu duas
-  respostas diferentes: os seis acessos reais observados a buffers de 0,2823 km² levaram
-  **188–892 ms** (mediana 361 ms), mas o município de São Paulo inteiro não terminou em
-  90 s. Isolada, a parte censitária levou 3,606 s; o zoneamento sozinho excedeu 15 s. A
-  premissa A-005 também caiu: o gargalo é a interseção das 61.784 feições de zoneamento,
-  não o Censo. O teto atual de 2.000 km² protege o payload, mas não a latência; a próxima
-  correção deve dar limite próprio ao bloco regulatório ou otimizar essa consulta.
+- **Publicar o limite seguro do Raio-X.** A A-001 foi medida na VPS em 2026-09-13: seis
+  acessos reais a buffers de 0,2823 km² levaram **188–892 ms** (mediana 361 ms), mas o
+  município de São Paulo inteiro não terminou em 90 s. A curva posterior encontrou o corte:
+  49,949 km² responderam em 787 ms; 78,045 km², em 979 ms, já sem folga. A `main` recusa
+  acima de **50 km² (50.000.000 m²)** antes do banco e antecipa o limite no painel; falta
+  publicar agente e frontend nos dois clientes. A parte censitária isolada ainda leva 3,606 s
+  no município inteiro, e o zoneamento excede 15 s — otimizar esse bloco deixou de ser risco
+  operacional, mas continua sendo melhoria possível.
 - **Achado de segurança:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a `PUBLIC`, então
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma

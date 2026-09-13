@@ -28,7 +28,7 @@ import {
 } from "@/configuracao";
 import { temaDaCamada } from "@/map/layers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { ItemDoAcervo } from "@/desenho/camadas";
+import { impedimentoDoRaioX, type ItemDoAcervo } from "@/desenho/camadas";
 import type { ErroDoAcervo } from "@/desenho/api";
 import { Button } from "@/components/ui/button";
 import { ANTENNA_ICON } from "@/map/icons";
@@ -397,6 +397,7 @@ function LinhaDoAcervo({
   // Um booleano por linha, e não um id no pai: a confirmação é estado da linha, e
   // guardá-la em cima faria abrir numa linha abrir em todas.
   const [confirmando, setConfirmando] = useState(false);
+  const impedimentoRaioX = impedimentoDoRaioX(item);
 
   return (
     <div className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent">
@@ -438,19 +439,38 @@ function LinhaDoAcervo({
             Ponto não ganha o botão. Sem área não há o que agregar, e oferecer a ação
             para depois recusar com 422 seria ensinar o produto pelo erro.
           */}
-          {item.tipo !== "ponto" && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={`Gerar Raio-X de ${item.nome}`}
-              title="Gerar Raio-X"
-              className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-              onClick={onRaioX}
-            >
-              <Radar aria-hidden="true" />
-            </Button>
-          )}
+          {item.tipo !== "ponto" &&
+            (impedimentoRaioX ? (
+              <span
+                tabIndex={0}
+                title={impedimentoRaioX}
+                aria-label={`Raio-X indisponível para ${item.nome}: ${impedimentoRaioX}`}
+                className="shrink-0"
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled
+                  aria-label={`Raio-X indisponível para ${item.nome}`}
+                  className="opacity-50"
+                >
+                  <Radar aria-hidden="true" />
+                </Button>
+              </span>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Gerar Raio-X de ${item.nome}`}
+                title="Gerar Raio-X"
+                className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                onClick={onRaioX}
+              >
+                <Radar aria-hidden="true" />
+              </Button>
+            ))}
           <Button
             type="button"
             variant="ghost"

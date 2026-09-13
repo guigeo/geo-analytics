@@ -156,10 +156,28 @@ _CTE_FRACAO = """
     )
 """
 
-# Os dois números vêm da medição do desenho do município de São Paulo. A área é uma
-# recusa barata antes de varrer o geodata; a lista degrada sem jogar fora o diagnóstico.
-TETO_AREA_RAIO_X_KM2 = 2_000
+# O teto de área vem da curva medida na VPS em 2026-09-13, incluindo o bloco de
+# zoneamento: 49,949 km² responderam em 787 ms; 78,045 km², em 979 ms, já sem folga
+# para concorrência. A unidade canônica é m² porque é assim que o acervo mede o
+# desenho e é assim que a rota consegue recusar ANTES de consultar o geodata.
+TETO_AREA_RAIO_X_M2 = 50_000_000
+TETO_AREA_RAIO_X_KM2 = TETO_AREA_RAIO_X_M2 / 1_000_000
 TETO_SETORES_RAIO_X = 500
+
+
+def validar_area_do_raio_x(area_m2: float | int | None) -> None:
+    """Recusa cedo o que a VPS medida não consegue entregar com folga."""
+    area = float(area_m2 or 0)
+    if area <= TETO_AREA_RAIO_X_M2:
+        return
+
+    area_km2 = f"{area / 1_000_000:,.1f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    limite_m2 = f"{TETO_AREA_RAIO_X_M2:,.0f}".replace(",", ".")
+    raise ValueError(
+        f"Esta área tem {area_km2} km². O Raio-X aceita até "
+        f"{TETO_AREA_RAIO_X_KM2:g} km² ({limite_m2} m²). "
+        "Reduza o desenho para gerar o relatório."
+    )
 
 _METRICAS_RAIO_X = (
     "pop_total",
@@ -1055,15 +1073,11 @@ class GeoQuery:
         A lista e o agregado nascem da mesma varredura de ``frac``. A área é medida
         antes da varredura para barrar cedo um pedido que o produto decidiu não servir.
         """
-        area = self._rows(
-            "select ST_Area(ST_GeomFromWKB(%s, 4674)::geography) / 1000000 as area_km2",
+        area_m2 = self._rows(
+            "select ST_Area(ST_GeomFromWKB(%s, 4674)::geography) as area_m2",
             [wkb],
-        )[0]["area_km2"]
-        if float(area or 0) > TETO_AREA_RAIO_X_KM2:
-            raise ValueError(
-                f"a área pedida tem {float(area):.1f} km²; o Raio-X aceita até "
-                f"{TETO_AREA_RAIO_X_KM2:,} km²"
-            )
+        )[0]["area_m2"]
+        validar_area_do_raio_x(area_m2)
 
         limiar = sql.SQL(_LIMIAR_INTEIRO)
         consulta = sql.SQL(_CTE_FRACAO + """

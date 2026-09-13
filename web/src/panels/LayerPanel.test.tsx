@@ -33,6 +33,7 @@ function desenho(id: string, nome: string, tipo = "poligono"): ItemDoAcervo {
     tipo,
     cor: "#16a34a",
     geometria: { type: "Point", coordinates: [0, 0] },
+    area_m2: 1,
   };
 }
 
@@ -241,6 +242,26 @@ describe("LayerPanel", () => {
     abrir(configuracaoAcervo.rotulo);
     fireEvent.click(screen.getByText("POTENCIAL INCORP SCS"));
     expect(onFocalizar).toHaveBeenCalledWith(item);
+  });
+
+  it("antecipa o limite do Raio-X sem disparar a consulta", () => {
+    const onRaioX = vi.fn();
+    const item = { ...desenho("a", "Área gigante"), area_m2: 51_000_000 };
+    render(
+      <LayerPanel
+        visible={{}}
+        onToggle={vi.fn()}
+        {...semAcervo}
+        itens={[item]}
+        onRaioX={onRaioX}
+      />,
+    );
+    abrir(configuracaoAcervo.rotulo);
+    const acao = screen.getByRole("button", { name: /raio-x indisponível para área gigante/i });
+    expect(acao).toBeDisabled();
+    fireEvent.click(acao);
+    expect(onRaioX).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/esta área tem 51,00 km².*reduza o desenho/i)).toBeInTheDocument();
   });
 
   it("desenho oculto aparece desligado, e o clique avisa qual", () => {

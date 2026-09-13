@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from geo_query.queries import TETO_AREA_RAIO_X_KM2
+from geo_query.queries import validar_area_do_raio_x
 
 from .acervo import Acervo, AcervoIndisponivel
 from .rotas_desenhos import _protegido
@@ -42,15 +42,10 @@ def raio_x(desenho_id: str) -> Any:
             status_code=422,
             detail="Ponto não tem área; o Raio-X precisa de polígono ou raio.",
         )
-    area_km2 = float(desenho["area_m2"] or 0) / 1_000_000
-    if area_km2 > TETO_AREA_RAIO_X_KM2:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"A área pedida tem {area_km2:.1f} km²; o Raio-X aceita até "
-                f"{TETO_AREA_RAIO_X_KM2:,} km²."
-            ),
-        )
+    try:
+        validar_area_do_raio_x(desenho["area_m2"])
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
     try:
         resultado = estado["geodata"].raio_x_por_geometria(desenho["wkb"])
     except ValueError as exc:

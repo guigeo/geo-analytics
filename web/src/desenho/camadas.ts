@@ -12,6 +12,11 @@
  * e aparece nos Atributos; ela só não é mais um degrau da árvore.
  */
 
+import { formatarMedida } from "@/map/medicao";
+
+/** Curva medida na VPS: 49,949 km² = 787 ms; 78,045 km² = 979 ms, já sem folga. */
+export const TETO_AREA_RAIO_X_M2 = 50_000_000;
+
 /** Um desenho do acervo, do jeito que o painel precisa dele. */
 export interface ItemDoAcervo {
   id: string;
@@ -20,6 +25,20 @@ export interface ItemDoAcervo {
   /** `ponto`, `poligono` ou `buffer` — decide a forma da amostra e o zoom ao focalizar. */
   tipo: string;
   geometria: GeoJSON.Geometry;
+  /** Medida exata do PostGIS; decide se o relatório cabe antes de a consulta sair. */
+  area_m2: number | null;
+}
+
+/**
+ * Explica por que a ação não pode sair, em vez de ensinar o teto depois de um erro.
+ * `null` mantém compatibilidade com desenho antigo sem a propriedade; o backend
+ * continua sendo a guarda de verdade.
+ */
+export function impedimentoDoRaioX(item: ItemDoAcervo): string | null {
+  if (item.tipo === "ponto") return "Ponto não tem área para gerar um Raio-X.";
+  if (item.area_m2 === null || item.area_m2 <= TETO_AREA_RAIO_X_M2) return null;
+
+  return `Esta área tem ${formatarMedida("area", item.area_m2)}. O Raio-X aceita até ${formatarMedida("area", TETO_AREA_RAIO_X_M2)}. Reduza o desenho para gerar o relatório.`;
 }
 
 const COR_PADRAO = "#2563eb";
@@ -43,6 +62,7 @@ export function itensDoAcervo(colecao: GeoJSON.FeatureCollection): ItemDoAcervo[
       cor: typeof p.cor === "string" && p.cor !== "" ? p.cor : COR_PADRAO,
       tipo: typeof p.tipo === "string" ? p.tipo : "poligono",
       geometria: feicao.geometry,
+      area_m2: typeof p.area_m2 === "number" && Number.isFinite(p.area_m2) ? p.area_m2 : null,
     });
   }
   return itens;

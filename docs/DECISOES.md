@@ -217,6 +217,16 @@ protege esse caminho. A correção seguinte deve limitar o bloco regulatório se
 otimizar a consulta; baixar às cegas o teto do Raio-X inteiro apagaria uma capacidade que a
 parte censitária ainda entrega em 3,6 s.
 
+**O corretivo escolhido foi um teto de 50.000.000 m² para o relatório inteiro.** Uma segunda
+curva na mesma VPS, com buffers no centro de São Paulo e o contrato completo, mediu 0,281;
+0,780; 3,122; 7,024; 12,487; 28,096; 49,949; 78,045; 175,601 e 312,180 km². Os tempos
+respectivos foram 231, 333, 206, 276, 501, 541, 787, 979, 1.894 e 3.182 ms. O corte fica em
+50 km² porque é o último ponto abaixo de 1 s com margem; 78 km² bate a meta sem deixar folga
+para concorrência. A rota e a fachada de consulta recusam antes da varredura, e o painel usa
+a área exata já devolvida pelo PostGIS para desabilitar a ação e explicar como corrigir. Não
+se limitou o desenho salvo: ele continua útil no mapa e no chat; o limite é só do relatório
+que demonstrou o custo.
+
 **A variável de empresas (Receita/CNPJ), e por que o CNEFE é o caminho.** Quer-se contagem de
 empresas por célula H3. O cadastro da Receita não tem coordenada, e o geocodificador já está
 no acervo: o CNEFE traz logradouro, número e CEP ao lado da coordenada medida — a carga do

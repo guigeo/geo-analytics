@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from geo_query.queries import TETO_AREA_RAIO_X_M2
 
 from geo_agent import rotas_raio_x
 
@@ -91,6 +92,23 @@ def test_ponto_e_recusado_antes_de_consultar_geodata(cliente: TestClient) -> Non
     resposta = cliente.get("/api/raio-x/ponto")
     assert resposta.status_code == 422
     assert "Ponto não tem área" in resposta.json()["detail"]
+    assert geodata.chamadas == 0
+
+
+def test_area_grande_e_recusada_antes_de_consultar_geodata(cliente: TestClient) -> None:
+    geodata = _GeoFalso()
+    rotas_raio_x.estado.update(
+        {
+            "acervo": _AcervoFalso(
+                {"tipo": "poligono", "area_m2": TETO_AREA_RAIO_X_M2 + 1, "wkb": b"x"}
+            ),
+            "geodata": geodata,
+        }
+    )
+    resposta = cliente.get("/api/raio-x/grande")
+    assert resposta.status_code == 422
+    assert "50 km² (50.000.000 m²)" in resposta.json()["detail"]
+    assert "Reduza o desenho" in resposta.json()["detail"]
     assert geodata.chamadas == 0
 
 

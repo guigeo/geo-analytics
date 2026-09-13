@@ -100,7 +100,7 @@ export function ChatPanel({ onDestaques, getContexto, pergunta, onRecolher }: Pr
   return (
     <Secao className="border-t border-border">
       <SecaoCabecalho
-        titulo="Chat IA — Censo 2022"
+        titulo="Assistente territorial"
         icone={Bot}
         acao={
           <Button
@@ -120,7 +120,8 @@ export function ChatPanel({ onDestaques, getContexto, pergunta, onRecolher }: Pr
         {messages.length === 0 ? (
           <div className="flex flex-col gap-2 pb-3">
             <p className="text-xs text-muted-foreground">
-              Pergunte sobre os dados do Censo 2022 — a resposta pinta o mapa.
+              Pergunte sobre o território — o agente consulta as fontes disponíveis e pode pintar o
+              mapa.
             </p>
             {CHIPS.map((c) => (
               <button

@@ -114,6 +114,64 @@ LIMIAR_COBERTURA_SANEAMENTO_PCT = 90.0
 LIMIAR_COBERTURA_COMPLETA_EQUIPAMENTOS_PCT = 99.99
 
 
+# Quatro grupos, e nao as onze faixas publicadas: o Raio-X e relatorio de seis blocos
+# que cabe numa folha, e onze linhas de idade afogariam os outros quatro campos do
+# perfil. Os grupos nao se sobrepoem e cobrem a populacao inteira -- quem quiser a
+# faixa crua consulta o agente, que le o banco direto e nao passa por aqui.
+_FAIXAS_ETARIAS: tuple[tuple[str, str], ...] = (
+    ("pop_0_14", "0 a 14 anos"),
+    ("pop_15_29", "15 a 29 anos"),
+    ("pop_30_59", "30 a 59 anos"),
+    ("pop_60_mais", "60 anos ou mais"),
+)
+
+# O sigilo do IBGE suprime faixa etaria com poucas pessoas, e a soma dos grupos fica
+# abaixo da populacao total da area. Abaixo deste corte a diferenca deixa de ser
+# arredondamento e vira informacao que falta -- e o bloco declara, em vez de deixar
+# a conta nao fechar em silencio na tela de quem soma as linhas.
+LIMIAR_COBERTURA_FAIXAS_ETARIAS_PCT = 98.0
+
+
+def _faixas_etarias(row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
+    """Distribui a populacao da area em quatro grupos de idade, com o que o sigilo comeu.
+
+    O percentual e sobre a populacao EM FAIXAS, nao sobre `pop_total`: dividir pelo
+    total faria as quatro linhas somarem menos de 100% sem explicacao, e a explicacao
+    (o sigilo) e justamente o que o aviso carrega.
+    """
+    valores = {campo: row.get(campo) for campo, _ in _FAIXAS_ETARIAS}
+    if all(valor is None for valor in valores.values()):
+        return [], None
+
+    em_faixas = sum(float(valor) for valor in valores.values() if valor is not None)
+    faixas = [
+        {
+            "faixa": campo,
+            "rotulo": rotulo,
+            "pessoas": int(valores[campo]) if valores[campo] is not None else None,
+            "pct": (
+                round(100 * float(valores[campo]) / em_faixas, 2)
+                if valores[campo] is not None and em_faixas > 0
+                else None
+            ),
+        }
+        for campo, rotulo in _FAIXAS_ETARIAS
+    ]
+
+    pop_total = row.get("pop_total")
+    aviso = None
+    if pop_total and em_faixas > 0:
+        cobertura = 100 * em_faixas / float(pop_total)
+        if cobertura < LIMIAR_COBERTURA_FAIXAS_ETARIAS_PCT:
+            aviso = (
+                f"as faixas etárias somam {em_faixas:.0f} pessoas, "
+                f"{cobertura:.1f}% da população da área: o IBGE suprime por sigilo a "
+                "faixa com poucas pessoas no setor, e o que falta está espalhado entre "
+                "as quatro"
+            )
+    return faixas, aviso
+
+
 def _alerta_saneamento(coberturas: dict[str, float | None]) -> dict[str, Any] | None:
     """Devolve somente as carências de saneamento; dado ausente nunca vira carência."""
     indicadores = [
@@ -1180,13 +1238,42 @@ class GeoQuery:
         consulta = sql.SQL(
             _CTE_FRACAO
             + """
+            , idade as (
+                -- A tabela LONGA com a PK (cod_setor, cod_variavel), e nao a view larga
+                -- ibge_tabular.setor_demografia: a view agrega os 19,3 milhoes de linhas
+                -- com GROUP BY antes de qualquer join, e o filtro dos poucos setores da
+                -- area NAO atravessa esse GROUP BY. Medido em 2026-09-15: com a view, o
+                -- Raio-X de 0,12 km2 levava 14 s; por aqui, milissegundos. E a mesma
+                -- razao que fez o setor_resumo virar materializada -- ver o comentario
+                -- em servidor-dados-gis/cargas/_resumo.sh.
+                --
+                -- sum() FILTER devolve NULL quando toda faixa do grupo foi suprimida e
+                -- ignora a suprimida quando alguma irma existe: a regra da casa, sem
+                -- precisar escreve-la.
+                select t.cod_setor,
+                       sum(t.valor) filter (
+                           where t.cod_variavel in ('V01031', 'V01032', 'V01033')) as pop_0_14,
+                       sum(t.valor) filter (
+                           where t.cod_variavel in ('V01034', 'V01035', 'V01036')) as pop_15_29,
+                       sum(t.valor) filter (
+                           where t.cod_variavel in ('V01037', 'V01038', 'V01039')) as pop_30_59,
+                       sum(t.valor) filter (
+                           where t.cod_variavel in ('V01040', 'V01041')) as pop_60_mais
+                from ibge_tabular.setor t
+                join frac f using (cod_setor)
+                where t.cod_variavel between 'V01031' and 'V01041'
+                group by t.cod_setor
+            )
             , base as (
                 select f.cod_setor, f.f, r.cod_municipio, r.pop_total,
                        r.domicilios_ocupados, r.renda_media, r.media_moradores,
                        r.pop_masculino, r.pop_feminino,
                        r.pct_agua_rede, r.pct_esgoto_rede, r.pct_lixo_coletado,
-                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de
-                from frac f join ibge_tabular.setor_resumo r using (cod_setor)
+                       r.pct_classe_a, r.pct_classe_b, r.pct_classe_c, r.pct_classe_de,
+                       i.pop_0_14, i.pop_15_29, i.pop_30_59, i.pop_60_mais
+                from frac f
+                join ibge_tabular.setor_resumo r using (cod_setor)
+                left join idade i using (cod_setor)
             ),
             res as (
                 select count(*) as setores,
@@ -1217,6 +1304,10 @@ class GeoQuery:
                            as pct_lixo_coletado,
                        round(sum(pop_masculino * f)) as pop_masculino,
                        round(sum(pop_feminino * f)) as pop_feminino,
+                       round(sum(pop_0_14 * f))    as pop_0_14,
+                       round(sum(pop_15_29 * f))   as pop_15_29,
+                       round(sum(pop_30_59 * f))   as pop_30_59,
+                       round(sum(pop_60_mais * f)) as pop_60_mais,
                        round((sum(pct_classe_a * domicilios_ocupados * f) /
                               nullif(sum(domicilios_ocupados * f), 0))::numeric, 2) as pct_classe_a,
                        round((sum(pct_classe_b * domicilios_ocupados * f) /
@@ -1351,17 +1442,22 @@ class GeoQuery:
             "cobertura": "setores tocados",
             "avisos": [],
         }
+        faixas_etarias, aviso_idade = _faixas_etarias(row)
         perfil = {
             "renda_media": row["renda_media"],
             "media_moradores": row["media_moradores"],
             "pop_masculino": row["pop_masculino"],
             "pop_feminino": row["pop_feminino"],
+            "faixas_etarias": faixas_etarias,
             "municipio": referencia,
             "fonte": "Censo Demográfico 2022 — IBGE",
             "periodo": "2022",
-            "metodo": "médias ponderadas por domicílios ocupados",
+            "metodo": (
+                "médias ponderadas por domicílios ocupados; as faixas etárias são "
+                "contagens somadas com rateio areal na borda"
+            ),
             "cobertura": "setores tocados",
-            "avisos": [],
+            "avisos": [aviso_idade] if aviso_idade else [],
         }
         classe_social = {
             "pct_a": row["pct_classe_a"],
@@ -1419,7 +1515,7 @@ class GeoQuery:
             }
         )
         resultado = {
-            "versao_calculo": "4",
+            "versao_calculo": "5",
             "gerado_em": datetime.now(UTC).isoformat(),
             "escala": escala,
             "contraste": contraste,

@@ -312,6 +312,30 @@ export function BlocoDePerfil({ dados }: { dados: BlocoPerfil }) {
           nota="mulheres / homens"
         />
       </dl>
+      {dados.faixas_etarias.length > 0 ? (
+        <div className="mt-6">
+          <h3 className="text-sm font-medium">Idade</h3>
+          <dl className="mt-3 space-y-3">
+            {dados.faixas_etarias.map((faixa) => (
+              <div key={faixa.faixa}>
+                <div className="flex items-baseline justify-between text-sm">
+                  <dt className="font-medium">{faixa.rotulo}</dt>
+                  <dd className="tabular-nums">
+                    {inteiro(faixa.pessoas)}
+                    <span className="ml-2 text-muted-foreground">{percentual(faixa.pct)}</span>
+                  </dd>
+                </div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${Math.min(100, Math.max(0, faixa.pct ?? 0))}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
     </Bloco>
   );
 }

@@ -70,11 +70,19 @@ export interface BlocoContraste extends ComProveniencia {
   aviso: string | null;
 }
 
+export interface FaixaEtaria {
+  faixa: string;
+  rotulo: string;
+  pessoas: number | null;
+  pct: number | null;
+}
+
 export interface BlocoPerfil extends ComProveniencia {
   renda_media: number | null;
   media_moradores: number | null;
   pop_masculino: number | null;
   pop_feminino: number | null;
+  faixas_etarias: FaixaEtaria[];
   municipio: ReferenciaMunicipal;
 }
 

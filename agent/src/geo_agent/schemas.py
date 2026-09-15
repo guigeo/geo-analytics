@@ -185,11 +185,21 @@ class BlocoContraste(ComProveniencia):
     aviso: str | None = None
 
 
+class FaixaEtaria(BaseModel):
+    faixa: str
+    rotulo: str
+    pessoas: int | None = None
+    pct: float | None = None
+
+
 class BlocoPerfil(ComProveniencia):
     renda_media: float | None = None
     media_moradores: float | None = None
     pop_masculino: float | None = None
     pop_feminino: float | None = None
+    # Lista vazia quando o sigilo apagou as onze faixas nos setores da área: o bloco
+    # existe sem idade, e a tela omite a seção em vez de mostrar quatro travessões.
+    faixas_etarias: list[FaixaEtaria] = Field(default_factory=list)
     municipio: ReferenciaMunicipal
 
 

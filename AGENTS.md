@@ -92,6 +92,12 @@ make ship-ia    # agente pra VPS (1ª vez: setup sudo — deploy/setup-agente-vp
 make help       # lista todos os alvos
 ```
 
+**O `--reload` do agente de dev observa só `agent/`.** Editar `query/` — a fachada de
+consulta, que é de onde vem todo número do Raio-X e das tools — **não** reinicia o
+processo: o Vite recarrega a tela na hora e o backend segue com o código velho na memória.
+Custou uma sessão em 2026-09-15, com a correção aplicada e a tela insistindo no defeito.
+Depois de mexer em `query/`, derrube e suba o `make agente`.
+
 `dev` é rápido mas difere da produção; **antes de `ship`, valide com `preview`** (mesmo
 Caddy, mesma config de Range/compressão dos tiles). **O preview pede credencial** — usuário
 `previa`, senha `previa-local`, no `deploy/Caddyfile.local` — e entrega `/api` ao agente

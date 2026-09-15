@@ -8,11 +8,13 @@ import pytest
 
 from geo_query import GeoQuery
 from geo_query.queries import (
+    LIMIAR_COBERTURA_FAIXAS_ETARIAS_PCT,
     LIMIAR_COBERTURA_SANEAMENTO_PCT,
     TETO_AREA_RAIO_X_M2,
     TETO_SETORES_RAIO_X,
     _alerta_saneamento,
     _bloco_equipamentos,
+    _faixas_etarias,
     validar_area_do_raio_x,
 )
 from geo_query.sintese import montar_sintese
@@ -58,6 +60,62 @@ def test_alerta_de_saneamento_some_no_corte_ou_sem_dado() -> None:
         )
         is None
     )
+
+
+def test_faixas_etarias_percentuam_sobre_o_que_existe_e_nao_sobre_a_populacao() -> None:
+    """O denominador e a populacao EM FAIXAS. Dividir por pop_total faria as quatro
+    linhas somarem menos de 100% na tela, sem dizer por que."""
+    faixas, aviso = _faixas_etarias(
+        {
+            "pop_0_14": 100,
+            "pop_15_29": 100,
+            "pop_30_59": 100,
+            "pop_60_mais": 100,
+            "pop_total": 1_000,
+        }
+    )
+    assert [f["pct"] for f in faixas] == [25.0, 25.0, 25.0, 25.0]
+    assert aviso is not None and "40.0%" in aviso
+
+
+def test_faixas_etarias_calam_o_aviso_quando_o_sigilo_e_irrelevante() -> None:
+    _, aviso = _faixas_etarias(
+        {
+            "pop_0_14": 250,
+            "pop_15_29": 250,
+            "pop_30_59": 250,
+            "pop_60_mais": 249,
+            "pop_total": 1_000,
+        }
+    )
+    assert aviso is None
+
+
+def test_faixas_etarias_somem_inteiras_quando_nao_ha_idade_publicada() -> None:
+    """Lista vazia, e nao quatro linhas de travessao: a secao inteira sai da tela."""
+    faixas, aviso = _faixas_etarias(
+        {
+            "pop_0_14": None,
+            "pop_15_29": None,
+            "pop_30_59": None,
+            "pop_60_mais": None,
+            "pop_total": 500,
+        }
+    )
+    assert faixas == []
+    assert aviso is None
+
+
+def test_grupo_suprimido_nao_apaga_os_outros_tres() -> None:
+    """Grupo ausente vira None na propria linha; os presentes seguem com percentual."""
+    faixas, _ = _faixas_etarias(
+        {"pop_0_14": None, "pop_15_29": 100, "pop_30_59": 200, "pop_60_mais": 100, "pop_total": 400}
+    )
+    por_faixa = {f["faixa"]: f for f in faixas}
+    assert por_faixa["pop_0_14"]["pessoas"] is None
+    assert por_faixa["pop_0_14"]["pct"] is None
+    assert por_faixa["pop_30_59"]["pct"] == 50.0
+    assert LIMIAR_COBERTURA_FAIXAS_ETARIAS_PCT == 98.0
 
 
 def test_equipamentos_preserva_zero_quando_a_area_tem_cobertura() -> None:

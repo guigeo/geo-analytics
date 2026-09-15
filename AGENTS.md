@@ -556,10 +556,12 @@ desde antes. **Antes de juntar qualquer `<nivel>_<pacote>` numa consulta, lembre
 
 ### Em aberto
 
-- **Achado de segurança:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a `PUBLIC`, então
-  qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
-  de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma
-  feature.
+- ~~**Achado de segurança:** o `geodata` concedia `CONNECT`/`TEMPORARY` a `PUBLIC`.~~
+  **Fechado em 2026-09-15**, na VPS e no local, com o `002-roles.sh` do
+  `servidor-dados-gis` passando a revogar para que não volte num volume recriado. O alcance
+  era pequeno e foi medido antes: os schemas de dado só dão `USAGE` a `geo_reader`, então os
+  papéis `app_<cliente>` não enxergavam tabela nenhuma — sobrava o catálogo legível e o
+  `TEMPORARY`, que num servidor apertado de disco é uma via para enchê-lo.
 - **Espaço na VPS:** 4,2 GB livres de 38 GB (89% usado), medido em 2026-09-12 — eram 6,8 GB
   em 2026-09-07, e o número cai mais rápido do que a memória de quem o cita. Já com a
   réplica H3 e o tile de 12,8 MB publicados. É o que

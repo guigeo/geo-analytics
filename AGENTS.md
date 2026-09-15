@@ -445,7 +445,8 @@ setor perderia 4,3% dos domicílios sem dar erro. Cruzar por **coordenada** func
 Publicado em **2026-09-12 no cliente 1** (`geo-intelligence.averisen.com`) e em
 **2026-09-13 no cliente 2** (`app.ebprime.com.br`). Qualquer
 área do acervo gera um diagnóstico de seis blocos — escala, **contraste interno**, perfil,
-classe social, qualidade da leitura e regulação —, **sem LLM no caminho**: o contrato
+classe social, qualidade da leitura e regulação (mais o alerta de saneamento e os
+equipamentos, que só aparecem quando há o que dizer) —, **sem LLM no caminho**: o contrato
 `RaioX` (`agent/src/geo_agent/schemas.py`) e a síntese (`query/src/geo_query/sintese.py`) são
 determinísticos, então a mesma área responde sempre o mesmo, e cada bloco carrega fonte,
 período, método, cobertura e avisos. A página imprime (`window.print()`), e o mapa pinta o
@@ -528,6 +529,30 @@ do commit `a65d377` nos dois clientes, agente e frontend recusam acima de **50 k
 (50.000.000 m²)** antes do banco e antecipam o limite no painel. A parte censitária isolada
 ainda leva 3,606 s no município inteiro, e o zoneamento excede 15 s — otimizar esse bloco
 deixou de ser risco operacional, mas continua sendo melhoria possível.
+
+### A idade entrou no bloco Perfil (2026-09-15)
+
+Publicado nos dois clientes. O Perfil dizia renda, moradores por domicílio e divisão por
+sexo, e nada sobre idade — a pergunta que decide creche, escola, clínica geriátrica ou
+farmácia. Entraram quatro grupos que cobrem a população sem se sobrepor: 0-14, 15-29, 30-59
+e 60 ou mais. `versao_calculo` do contrato `RaioX` está em **`5`**.
+
+Quatro, e não as onze faixas que o IBGE publica: o relatório cabe numa folha, e onze linhas
+afogariam os outros campos do bloco. As cruas seguem no banco, alcançáveis pelo agente.
+
+**O percentual é sobre a população EM FAIXAS, não sobre `pop_total`.** O IBGE suprime por
+sigilo a faixa com poucas pessoas, e dividir pelo total faria as quatro linhas somarem 87%
+na tela sem dizer por quê. Assim elas somam 100%, e um aviso declara o buraco quando passa
+de 2%.
+
+**A armadilha que custou a tarde, e que já estava escrita:** a primeira versão lia a idade
+da view larga `ibge_tabular.setor_demografia`. Ela agrega os 19,3 milhões de linhas com
+`GROUP BY` antes de qualquer join, e o filtro dos poucos setores da área **não atravessa**
+isso — o Raio-X de 0,12 km² passou de milissegundos para **13.703 ms**. Lendo a tabela longa
+`ibge_tabular.setor` pela PK `(cod_setor, cod_variavel)`, são **63 ms**. É a mesma razão que
+fez o `setor_resumo` virar materializada, e está no `_resumo.sh` do `servidor-dados-gis`
+desde antes. **Antes de juntar qualquer `<nivel>_<pacote>` numa consulta, lembre que ela não
+é materializada.**
 
 ### Em aberto
 

@@ -252,6 +252,13 @@ do Sul, onde os 82.528 endereços do CNEFE já serviram de piloto antes.
 **Só os 37 municípios do CNEFE estão em casa**, ~10,2 M endereços, e só no lab. Os ~111 M do
 Brasil exigiriam baixar o resto por UF — cabe nos 865 GB do lab, não no Mac nem na VPS.
 
+**A idade entrou no Raio-X antes de entrar no mapa, de propósito (2026-09-15).** O bloco
+Perfil passou a mostrar quatro grupos etários — 0-14, 15-29, 30-59 e 60+ — porque ali a conta
+roda por área e não custa tile nenhum. A camada equivalente no mapa ficou para depois de uma
+semana de uso: quais faixas as pessoas de fato olham é o que decide quais valem o tile, e
+regerar tile é caro de repetir. É a mesma escolha que fez a `TELA_H3` estrear com um tema só
+em 2026-09-07. O gatilho para retomar é a observação de uso, não uma data.
+
 **Ordem de execução acordada em 2026-09-12, do mais barato ao mais caro.** O critério é
 esforço crescente, e a primeira linha de cada item é o que de fato custa.
 
@@ -264,6 +271,7 @@ esforço crescente, e a primeira linha de cada item é o que de fato custa.
 | ~~5~~ | ~~**Escola e saúde no Raio-X**~~ — publicada nos dois clientes em 2026-09-13 | carga nova de ~35,7 mil pontos, do lab | sim, leve |
 | ~~6~~ | ~~**Comparar duas áreas**~~ — publicada nos dois clientes em 2026-09-13 | só tela; a conta já roda por área | não |
 | 7 | **Basemap z15 no Brasil** | 5,5 GB na VPS — barrado por disco | não |
+| 7b | **Camada H3 de população por idade** — o Raio-X ganhou as faixas em 2026-09-15 e o mapa não tem a leitura equivalente | tile novo (`h3_populacao`), os 4 passos de camada nova, e escolher grupos e rampa de uma vez | não |
 | 8 | **Empresas (Receita × CNEFE)** | semanas: baixar, padronizar, casar, agregar, publicar | sim, pesado |
 
 Os itens 1 a 4 e o 6 **não exigem dado novo nenhum**: o que falta neles é leitura e tela

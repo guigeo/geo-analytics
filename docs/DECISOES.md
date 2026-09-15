@@ -182,8 +182,8 @@ duas vezes (nacional até z13, detalhado de z14 em diante), que é o custo de c�
 arquivo único não tem.
 
 **Melhorias do Raio-X aprovadas em 2026-09-12.** O alerta de saneamento, os equipamentos e a
-comparação entre áreas foram publicados em 2026-09-13 nos dois clientes. A leitura de coleta
-de lixo ficou com correção primordial pendente. Discutidas com o
+comparação entre áreas foram publicados em 2026-09-13 nos dois clientes, e a leitura de
+coleta de lixo foi corrigida em 2026-09-15. Discutidas com o
 Guilherme sobre o Raio-X já construído (seis blocos: escala, contraste, perfil, classe
 social, qualidade e regulação), e aprovadas nesta ordem:
 
@@ -193,8 +193,14 @@ social, qualidade e regulação), e aprovadas nesta ordem:
    `domicilios_ocupados` no denominador): na concentração urbana de SP a mediana é 100%
    para água e 99,6% para esgoto, então um bloco fixo diria "normal" em quase toda área —
    mas a cauda é grossa, com **5.483 setores abaixo de 70% em esgoto de rede** e o
-   percentil 5 em 18,6%. Em São Caetano do Sul água e esgoto são 100%; a coleta de lixo está
-   pendente de correção porque a leitura atual considera só a coleta direta. Atenção ao
+   percentil 5 em 18,6%. Em São Caetano do Sul as três são 100%, e o alerta nunca deve
+   aparecer lá — mas apareceu até 2026-09-15, porque a leitura somava só `V00397`, o lixo
+   recolhido no domicílio, e ignorava `V00398`, a caçamba do mesmo serviço de limpeza. As
+   duas são coleta; o destino inadequado começa em `V00399`. Corrigido: a cobertura da
+   concentração urbana passa de 91,37% para 99,47%, os setores abaixo do corte caem de 8.542
+   para 842, e em São Caetano de 28 para zero. Um setor de lá acusava 4% de coleta, tendo
+   100%. Detalhe que decidiu a fórmula: suprimida conta zero só quando a irmã está presente,
+   porque 69.315 setores têm uma e não têm a outra. Atenção também ao
    denominador — com `V0003` (domicílios particulares, que inclui vago e de uso ocasional)
    a mesma conta dava mediana de 86% e inventava um problema que não existe.
 2. ~~**Escola e saúde do CNEFE na área.**~~ Publicada em 2026-09-13: contagem de endereços de ensino e de saúde dentro
@@ -254,7 +260,7 @@ esforço crescente, e a primeira linha de cada item é o que de fato custa.
 | ~~1~~ | ~~**Publicar o Raio-X**~~ — no ar desde 2026-09-12 no cliente 1 e 2026-09-13 no cliente 2 | só deploy | não |
 | ~~2~~ | ~~**Seletor de variável na tela H3**~~ — publicado nos dois clientes em 2026-09-13 (`SELETOR_H3`) | frontend; a casca já pintava por valor e tinha legenda | não |
 | ~~3~~ | ~~**Mais variáveis no agente** (`h3_no_ponto`)~~ — publicado nos dois clientes em 2026-09-13 (`H3_NO_AGENTE`) | backend pequeno + prompt | não |
-| ~~4~~ | ~~**Saneamento como alerta no Raio-X**~~ — publicado nos dois clientes em 2026-09-13; coleta de lixo com correção pendente | 3 variáveis e um corte em 90% | não |
+| ~~4~~ | ~~**Saneamento como alerta no Raio-X**~~ — publicado nos dois clientes em 2026-09-13; a coleta de lixo passou a somar a caçamba em 2026-09-15 | 3 variáveis e um corte em 90% | não |
 | ~~5~~ | ~~**Escola e saúde no Raio-X**~~ — publicada nos dois clientes em 2026-09-13 | carga nova de ~35,7 mil pontos, do lab | sim, leve |
 | ~~6~~ | ~~**Comparar duas áreas**~~ — publicada nos dois clientes em 2026-09-13 | só tela; a conta já roda por área | não |
 | 7 | **Basemap z15 no Brasil** | 5,5 GB na VPS — barrado por disco | não |

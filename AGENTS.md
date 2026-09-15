@@ -474,6 +474,34 @@ Depois da validação externa, o Guilherme liberou a publicação para os dois c
 As três mudanças estão em produção nos dois clientes; a mesma subida levou o Raio-X ao
 cliente 2.
 
+### A caçamba entrou na coleta de lixo (2026-09-15)
+
+O alerta de saneamento do Raio-X lia só `V00397` — lixo recolhido no domicílio pelo serviço
+de limpeza — e ignorava `V00398`, a caçamba **do mesmo serviço**. As duas são coleta; o
+destino inadequado só começa em `V00399`. Quem leva o lixo à caçamba era contado como sem
+coleta, e um setor de São Caetano do Sul aparecia com 4% de coleta tendo 100%.
+
+Medido na concentração urbana de São Paulo: a cobertura vai de 91,37% para 99,47%, e os
+setores abaixo do corte de 90% caem de 8.542 para 842 — em São Caetano, de 28 para zero. O
+`versao_calculo` do contrato `RaioX` foi para `4`, e o `h3_no_ponto` soma as duas com
+`sum()` filtrado, que devolve NULL só quando as duas faltam. **Suprimida conta zero apenas
+quando a irmã está presente:** 69.315 setores têm uma e não têm a outra, e propagar o NULL
+apagaria o indicador em 15% do país.
+
+**Publicar variável nova do Censo na VPS não é recarregar lá.** A VPS é réplica de leitura
+e `ibge_tabular.sh setor` pede 25 GB. O caminho é
+`servidor-dados-gis/scripts/vps-publicar-variavel-censo.sh <cod>`: só a variável viaja, e as
+views largas e de resumo são recriadas lá. Duas coisas medidas em 2026-09-15, na primeira
+vez que ele rodou:
+
+1. **O `CREATE MATERIALIZED VIEW setor_resumo` consome 4,5 GB de arquivos temporários.** Com
+   4,0 GB livres ele falha com `No space left on device` — e o `--single-transaction`
+   preserva a materializada antiga, então produção continua servindo o número velho em vez
+   de ficar sem view. Conferir `df -h` na VPS antes de publicar.
+2. O escore de classe social **ainda usa `V00397` sozinho** no indicador `lixo_coletado`
+   (`servidor-dados-gis/cargas/classe_social_parametros.tsv`). Ficou de fora de propósito:
+   corrigir lá muda o escore de todo setor e pede recalibração junto.
+
 ### Limite seguro do Raio-X publicado em 2026-09-13
 
 A A-001 foi medida na VPS em 2026-09-13: seis acessos reais a buffers de 0,2823 km² levaram
@@ -487,6 +515,10 @@ deixou de ser risco operacional, mas continua sendo melhoria possível.
 
 ### Em aberto
 
+- **Classe social e a caçamba:** o indicador `lixo_coletado` do escore ainda soma só
+  `V00397`, enquanto o resto do produto já soma `V00397+V00398` desde 2026-09-15. Corrigir
+  muda o escore de todo setor nos dois clientes e pede recalibração — decisão adiada, não
+  esquecimento.
 - **Achado de segurança:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a `PUBLIC`, então
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma

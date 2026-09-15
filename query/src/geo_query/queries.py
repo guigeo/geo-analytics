@@ -868,8 +868,16 @@ class GeoQuery:
                          max(fracao_ausente) filter (where cod_variavel = 'V00111') as dom_agua_rede_fracao_ausente,
                          max(valor) filter (where cod_variavel = 'V00309') as dom_esgoto_rede,
                          max(fracao_ausente) filter (where cod_variavel = 'V00309') as dom_esgoto_rede_fracao_ausente,
-                         max(valor) filter (where cod_variavel = 'V00397') as dom_lixo_coletado,
-                         max(fracao_ausente) filter (where cod_variavel = 'V00397') as dom_lixo_coletado_fracao_ausente
+                         -- Coleta de lixo sao DUAS variaveis na fonte: V00397 (recolhido
+                         -- no domicilio pelo servico de limpeza) e V00398 (deixado na
+                         -- cacamba do mesmo servico). sum() em vez de max() filtrado por
+                         -- uma so: ele ignora a ausente e devolve NULL apenas quando as
+                         -- duas faltam, que e a regra ja usada em <nivel>_resumo. A
+                         -- fracao ausente declarada e a PIOR das duas.
+                         sum(valor) filter (where cod_variavel in ('V00397', 'V00398'))
+                             as dom_lixo_coletado,
+                         max(fracao_ausente) filter (where cod_variavel in ('V00397', 'V00398'))
+                             as dom_lixo_coletado_fracao_ausente
                     from indicadores.censo_h3_r9
                    where h3_r9 = %s
                    group by h3_r9
@@ -1411,7 +1419,7 @@ class GeoQuery:
             }
         )
         resultado = {
-            "versao_calculo": "3",
+            "versao_calculo": "4",
             "gerado_em": datetime.now(UTC).isoformat(),
             "escala": escala,
             "contraste": contraste,

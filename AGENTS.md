@@ -498,9 +498,19 @@ vez que ele rodou:
    4,0 GB livres ele falha com `No space left on device` — e o `--single-transaction`
    preserva a materializada antiga, então produção continua servindo o número velho em vez
    de ficar sem view. Conferir `df -h` na VPS antes de publicar.
-2. O escore de classe social **ainda usa `V00397` sozinho** no indicador `lixo_coletado`
-   (`servidor-dados-gis/cargas/classe_social_parametros.tsv`). Ficou de fora de propósito:
-   corrigir lá muda o escore de todo setor e pede recalibração junto.
+2. O escore de classe social foi corrigido junto, no mesmo dia, e publicado como
+   **`versao_config = v2-pnad2022-abep`**. Só o `score_final` mudou: `pct_classe_*` e
+   `situacao` saem do eixo de renda e ficaram idênticos, e **nenhum setor mudou de classe
+   dominante**. Como o escore é percentil, o efeito é de soma zero — os 138.597 setores com
+   caçamba sobem 1,13 em média e os demais descem 0,51. Complexo do Alemão foi de 20,5 a
+   26,8 e a Rocinha de 26,6 a 29,1; Leblon e Lagoa não se moveram.
+
+   **A correção não melhorou o poder preditivo, e isso está medido:** a correlação do eixo
+   de bens com `ln(renda mediana)` é +0,678 antes e depois no setor, e CAI no bairro
+   (+0,693 → +0,663) e no subdistrito (+0,679 → +0,630), que trocou de método. `V00397`
+   sozinho não media coleta, media urbanização formal — e isso correlaciona com renda por
+   acidente. A troca foi fidelidade por correlação, de propósito. Ver
+   `../servidor-dados-gis/docs/classe-social.md`.
 
 ### Limite seguro do Raio-X publicado em 2026-09-13
 
@@ -515,10 +525,6 @@ deixou de ser risco operacional, mas continua sendo melhoria possível.
 
 ### Em aberto
 
-- **Classe social e a caçamba:** o indicador `lixo_coletado` do escore ainda soma só
-  `V00397`, enquanto o resto do produto já soma `V00397+V00398` desde 2026-09-15. Corrigir
-  muda o escore de todo setor nos dois clientes e pede recalibração — decisão adiada, não
-  esquecimento.
 - **Achado de segurança:** o `geodata` ainda concede `CONNECT`/`TEMPORARY` a `PUBLIC`, então
   qualquer papel do cluster abre conexão nele. Fechado no `app_clientes` e deixado no central
   de propósito — endurecer banco em produção não é coisa de fazer de passagem dentro de uma

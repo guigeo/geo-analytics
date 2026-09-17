@@ -30,3 +30,7 @@ web/src/search/municipios.json
 # (TILES_DIR no .env; ver ../webgis/docs/LOCAL.md). Um .pmtiles aparecendo aqui
 # significa que alguem recriou a copia por aplicacao.
 *.pmtiles
+
+# Marca de tempo do vigia (ultima janela de log ja conferida). E estado local
+# de cada maquina que vigia, nao configuracao.
+.vigia-erros.marca

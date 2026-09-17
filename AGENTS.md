@@ -145,6 +145,14 @@ Uma linha JSON por requisição, com `cliente`, `rota`, `status` e `duracao_ms` 
 `grep` e `jq`. É ela que distingue "deu erro" de "ninguém entrou": em 2026-09-16, duas
 semanas depois da publicação, o cliente 2 só tinha requisições do próprio vigia.
 
+**Desde 2026-09-16 o vigia lê esse log sozinho** (checagem 5 do `deploy/vigia-app.sh`): a
+cada 10 minutos ele varre a janela desde a passada anterior e avisa por `ntfy` toda resposta
+5xx, com rota, horário e o código que o usuário vê na tela. Antes disso, erro de quem estava
+usando só se descobria perguntando a ele. A janela lida fica em `.vigia-erros.marca`, e a
+checagem exige o grupo `adm` — sem ele o `journalctl` devolveria vazio, e "nenhum erro"
+seria indistinguível de "não consigo ver", por isso a falta da permissão é uma falha como as
+outras.
+
 **Documentar não basta, e isso é medido:** o `DESENHO_NO_MAPA` estava escrito como "ainda
 NÃO publicada" neste arquivo, e o `ship-app` de rotina o publicou assim mesmo. A guarda de
 verdade é a máquina — ver a pendência na seção "Estado atual".

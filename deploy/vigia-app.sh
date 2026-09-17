@@ -15,6 +15,11 @@
 # NAO faz pergunta ao chat: cada pergunta custa chave da OpenAI, e um monitor que
 # gasta dinheiro a cada 5 minutos vira o proximo problema. O /api/health ja toca o
 # banco, que e o que precisa ser sabido.
+#
+# Sao DOIS olhares, e o segundo nasceu em 2026-09-16. As checagens 1 a 4 olham de
+# fora e respondem "esta no ar?". A 5 le o log do agente e responde "alguem tomou
+# erro?" -- pergunta que nenhuma das outras faz, e cuja resposta ficava so na linha
+# do journal, esperando alguem procurar.
 set -uo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -89,6 +94,59 @@ avisar() {
     curl -s -H "Title: $1" -H "Priority: ${3:-default}" -H "Tags: $4" \
          -d "$2" "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
 }
+
+# 5. O QUE O USUARIO VIU. As quatro checagens acima sao de disponibilidade: se o
+#    site responde, se o agente responde, se o portao esta fechado. Nenhuma delas
+#    ve um 500 devolvido a quem estava usando -- alguem perguntando no chat as 15h
+#    recebia o erro, e o unico registro era uma linha no journal esperando alguem
+#    procurar. Publicado para um cliente que usa pouco, isso significa saber do
+#    problema pelo telefone dele, ou nunca.
+#
+#    O log e a fonte porque ja e estruturado: uma linha JSON por requisicao, com
+#    status. Duas sutilezas que o filtro carrega:
+#
+#    - `"nivel": "INFO"` nao e enfeite. Excecao nao tratada escreve DUAS linhas com
+#      status 500 -- a do traceback (ERROR) e a da requisicao concluida (INFO) --, e
+#      sem isso cada erro seria contado duas vezes.
+#    - a janela vai de onde a passada anterior parou ate AGORA, guardada em disco.
+#      Reler tudo faria o mesmo erro alertar de dez em dez minutos para sempre; ler
+#      "os ultimos 10 minutos" faria um atraso de cron engolir o erro calado.
+#
+#    E preciso estar no grupo `adm` para ler o journal de um servico alheio. Sem
+#    isso o journalctl devolve VAZIO -- "nenhum erro" e "nao consigo ver" viram a
+#    mesma saida, que e exatamente o tipo de portao verde que nao prova nada. Por
+#    isso a permissao e checada, e a falta dela e uma falha como as outras.
+MARCA="$RAIZ/.vigia-erros.marca"
+AGORA="$(date '+%F %T')"
+
+if command -v journalctl > /dev/null 2>&1 && [ -n "${SERVICO:-}" ]; then
+    if [ "$(id -u)" != "0" ] && ! id -nG | tr ' ' '\n' | grep -qx adm; then
+        falhas+=("vigia cego: sem grupo adm, nao da para ler o journal de $SERVICO (sudo usermod -aG adm $USER)")
+    else
+        DESDE="$(cat "$MARCA" 2>/dev/null)"
+        [ -z "$DESDE" ] && DESDE="$(date -d '10 minutes ago' '+%F %T' 2>/dev/null)"
+
+        if [ -n "$DESDE" ]; then
+            cincos="$(journalctl -u "$SERVICO" --since "$DESDE" --until "$AGORA" --no-pager -o cat 2>/dev/null \
+                      | grep '"nivel": "INFO"' | grep -E '"status": 5[0-9][0-9],')"
+            quantos="$(printf '%s' "$cincos" | grep -c . )"
+
+            if [ "$quantos" -gt 0 ]; then
+                # O codigo curto e o mesmo que o usuario le na tela ("informe o
+                # codigo X"): e por ele que se acha a linha do traceback no journal.
+                detalhe="$(printf '%s\n' "$cincos" | sed -n 's/.*"hora": "\([^"]*\)".*"request_id": "\([^"]*\)", "metodo": "\([^"]*\)", "rota": "\([^"]*\)", "status": \([0-9]*\).*/\1 \5 \3 \4 cod=\2/p' | tail -5)"
+                printf '%s %s ERRO NO LOG: %s resposta(s) 5xx desde %s\n%s\n' \
+                       "$AGORA" "$CLIENTE" "$quantos" "$DESDE" "$detalhe"
+                avisar "$CLIENTE: $quantos erro(s) no agente" \
+                       "$(printf 'Desde %s:\n%s' "$DESDE" "$detalhe")" high warning
+            fi
+        fi
+
+        # A marca so avanca depois da leitura: se o journalctl falhar, a proxima
+        # passada recomeca da mesma janela em vez de pular o que nao foi lido.
+        printf '%s\n' "$AGORA" > "$MARCA"
+    fi
+fi
 
 if [ ${#falhas[@]} -eq 0 ]; then
     echo "$(date '+%F %T') $CLIENTE ok"

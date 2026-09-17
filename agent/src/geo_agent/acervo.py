@@ -86,9 +86,27 @@ class Acervo:
         self.con = con or self._conecta()
 
     def _conecta(self) -> psycopg.Connection:
+        # Os mesmos prazos do geodata, e pelo mesmo motivo — `connect_timeout` só
+        # cobre o handshake, e conexão viva que pendura não tem prazo nenhum. Aqui
+        # a consequência é pior: a sessão do portal mora neste banco, então uma
+        # consulta pendurada não trava só o desenho, trava o login. O comentário
+        # longo, com a medição de 2026-09-16, está em `query/src/geo_query/db.py`.
+        #
+        # Diferença que importa: este banco ESCREVE, e `_le` é o único caminho que
+        # repete. Escrita cancelada por prazo sobe como erro para quem chamou, que é
+        # o correto — repetir INSERT não é seguro como repetir SELECT.
         try:
             return psycopg.connect(
-                self._dsn, row_factory=dict_row, connect_timeout=5, autocommit=True
+                self._dsn,
+                row_factory=dict_row,
+                connect_timeout=5,
+                autocommit=True,
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=3,
+                tcp_user_timeout=10000,
+                options="-c statement_timeout=20000",
             )
         except psycopg.Error as exc:
             raise AcervoIndisponivel(str(exc)) from exc

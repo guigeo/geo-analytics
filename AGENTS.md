@@ -121,6 +121,30 @@ coisas, e as duas já aconteceram:
    liga, e não pinta nada. Antes de um `ship-app`, conferir que toda camada do bundle tem
    tile publicado: `ssh hetzner-gramos 'ls /srv/tiles/'`.
 
+**Ler o log do agente é o primeiro passo de qualquer alerta — e ele tem duas armadilhas.**
+O vigia manda a falha por `ntfy` (tópico no `agent/.env`), mas quem diz o que houve é o
+journal, e três coisas precisam ser sabidas antes de concluir qualquer coisa dele:
+
+1. **`HTTP 000` do vigia é timeout de 20 s, não código de erro** — o `curl` desistiu. Não
+   confundir com 5xx: em 2026-09-16 o alerta era o `/api/health` pendurado no banco, com o
+   processo vivo respondendo outra rota em 0,3 ms.
+2. **Requisição pendurada NÃO deixa linha no journal.** O middleware do
+   `observabilidade.py` escreve quando a requisição *termina*; a que nunca termina some.
+   Ausência de linha, com o vigia acusando o minuto, é o sintoma — não é log limpo.
+3. **O log do agente dura menos que o do sistema.** Ele sai de um serviço com `User=`, então
+   mora no `user-1000.journal`, e o vacuum do `SystemMaxUse` come os arquivos dele antes dos
+   do sistema: medido em 2026-09-16, o do sistema ia até 06/09 e o do agente só até 14/09.
+   Log de incidente antigo pode simplesmente não existir mais.
+
+```bash
+# exige estar no grupo `adm` (uma vez: sudo usermod -aG adm gramos)
+ssh hetzner-gramos 'journalctl -u eb-prime-agent --since "2 days ago" --no-pager -o cat'
+```
+
+Uma linha JSON por requisição, com `cliente`, `rota`, `status` e `duracao_ms` — feita para
+`grep` e `jq`. É ela que distingue "deu erro" de "ninguém entrou": em 2026-09-16, duas
+semanas depois da publicação, o cliente 2 só tinha requisições do próprio vigia.
+
 **Documentar não basta, e isso é medido:** o `DESENHO_NO_MAPA` estava escrito como "ainda
 NÃO publicada" neste arquivo, e o `ship-app` de rotina o publicou assim mesmo. A guarda de
 verdade é a máquina — ver a pendência na seção "Estado atual".

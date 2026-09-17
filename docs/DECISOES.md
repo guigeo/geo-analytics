@@ -339,3 +339,28 @@ por isso alcança o que a tela não alcança.
 endereços do CNEFE para ensino e saúde. São dois temas próprios, com rampas distintas da
 moradia; a cobertura única dos 37 municípios fica no grupo “Indicadores territoriais”, e não
 repetida em cada camada. Agente, tile e mapa foram publicados juntos nos dois clientes.
+
+## 2026-09-16 — O alerta que não era erro, e o prazo que faltava no banco
+
+Um alerta do vigia do cliente 2 (`agente respondeu HTTP 000`, 20:10 UTC) levou à primeira
+investigação de produção feita só pelo log. O resultado tem duas partes, e a segunda é a que
+vale para o futuro.
+
+**Não houve erro.** Zero 5xx e zero traceback em toda a janela retida, e — mais importante —
+o agente do cliente 2 só tinha recebido requisições do **próprio vigia**: 306 `/api/health` e
+310 `/api/auth/eu`, nenhum `login`, nenhum `chat`, nenhum Raio-X. Duas semanas depois de
+publicado, o uso real era zero. O que o `HTTP 000` dizia é que o `curl` do vigia desistiu aos
+20 s, e não que alguém tomou erro na tela.
+
+**O que houve foi uma consulta sem prazo.** O `/api/health` pendurou mais de 20 s num
+`select 1` enquanto o processo respondia outra rota em 0,3 ms no mesmo segundo — e a
+requisição pendurada não deixou linha no journal, porque o middleware só escreve quando ela
+termina. O `connect_timeout=5` das duas conexões cobre apenas o handshake. Entraram
+`keepalives`, `tcp_user_timeout=10s` e `statement_timeout=20s` no geodata e no acervo: agora
+o pendura-para-sempre vira exceção, e exceção o `_executa_com_retomada` já reconecta e
+repete. Validado contra o Postgres da VPS antes de subir, não só nos testes.
+
+**A terceira lição é sobre o próprio log.** O do agente mora no `user-1000.journal` e é
+vacuumado antes do log do sistema — quando a investigação começou, o do sistema ia até 06/09
+e o do agente só até 14/09. Alerta antigo pode não ter mais prova nenhuma, e por isso a
+retenção do journald entrou junto da correção.

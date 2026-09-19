@@ -422,11 +422,23 @@ describe("LayerPanel", () => {
     expect(screen.queryByRole("button", { name: /variável de zoneamento/i })).toBeNull();
   });
 
-  it("escolas e saúde não ganham nota de cobertura debaixo do nome", () => {
+  // Estas duas camadas são nacionais, então a cobertura não fala de onde elas
+  // existem — fala do que ficou de fora. Sem esta linha, o painel mostra 236 mil
+  // pontos de saúde e cala sobre os 400 mil que não desenhou, que é exatamente a
+  // mentira por omissão da emenda de 2026-09-03 à regra 8 do ADR-0001.
+  it("escolas e saúde declaram o que ficou de fora, com número", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
     abrir("Infraestrutura");
-    expect(screen.queryByText(/exclui/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/consultório/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Nacional · 166.062 das 214.192 escolas; fora, as inativas e o ponto impreciso",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Nacional · 236.187 dos 636.342 registros; fora, consultório isolado e ponto impreciso",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("as classes de escola e de saúde nascem recolhidas, com a mesma seta do combo", () => {

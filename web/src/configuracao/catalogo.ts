@@ -142,6 +142,10 @@ export const CATALOGO = {
     ancoraIcone: "base",
     iconesPodemSobrepor: true,
     fonte: "Inep · Censo Escolar 2025",
+    // Medido em 2026-09-19 na view analisável. A camada é nacional, mas a
+    // exclusão é grande demais para ficar calada: fora dela estão as escolas
+    // paralisadas/extintas e o geocódigo com desvio acima de 800 m.
+    cobertura: "Nacional · 166.062 das 214.192 escolas; fora, as inativas e o ponto impreciso",
     filtros: {
       campo: "classe",
       rotulo: "Rede",
@@ -170,6 +174,12 @@ export const CATALOGO = {
     ancoraIcone: "base",
     iconesPodemSobrepor: true,
     fonte: "CNES · DATASUS",
+    // Medido em 2026-09-19. Dos 636.342 registros, 236.187 chegam ao mapa: o
+    // consultório isolado sai por decisão de produto (46% do cadastro) e o
+    // ponto sem localização confiável, por qualidade. Omitir isso seria a
+    // mentira por omissão que a emenda de 2026-09-03 proíbe.
+    cobertura:
+      "Nacional · 236.187 dos 636.342 registros; fora, consultório isolado e ponto impreciso",
     filtros: {
       campo: "classe",
       rotulo: "Tipo de estabelecimento",

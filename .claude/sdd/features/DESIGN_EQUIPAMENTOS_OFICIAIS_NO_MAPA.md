@@ -10,7 +10,8 @@
 | **Date** | 2026-09-19 |
 | **Author** | Claude Opus 5 (sessão com o Gui) |
 | **DEFINE** | [`DEFINE_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](DEFINE_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) |
-| **Status** | Ready for Build — **com um portão de aceite antes do SQL** (ver Decisão 1) |
+| **Status** | Ready for Build — **portão da Decisão 1 CUMPRIDO em 2026-09-19** |
+| **Handoff** | [`HANDOFF_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](HANDOFF_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) — quem executa o build lê antes |
 
 ---
 
@@ -103,6 +104,12 @@ inteiro.
 **Consequências:**
 - O build tem um ponto de bloqueio explícito, e isso é intencional.
 - A taxonomia nasce com procedência, não com o palpite de quem estava implementando.
+
+**Resultado (2026-09-19):** portão cumprido antes do build. O de-para saiu da
+`CNES/CNV/TP_ESTAB.CNV` do TabNet (45 códigos oficiais), está em
+`servidor-dados-gis/metodologia/cnes/tipo_unidade.csv` e o Gui aprovou a taxonomia,
+incluindo o item contestado (tipo 36 entra como `especialidade`). O build começa pela
+etapa 1 e **não para mais**.
 
 ---
 
@@ -609,4 +616,4 @@ número bonito não prova nada.
 
 **Ready for:** `/build .claude/sdd/features/DESIGN_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`
 
-O build começa pela etapa 1 e **para no portão da Decisão 1**.
+O build começa pela etapa 1. O portão da Decisão 1 já foi cumprido — ver o HANDOFF.

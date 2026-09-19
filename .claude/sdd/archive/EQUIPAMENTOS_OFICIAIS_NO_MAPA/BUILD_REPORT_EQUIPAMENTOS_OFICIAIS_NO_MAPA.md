@@ -12,7 +12,7 @@
 | **Author** | build (Cursor Grok 4.6) |
 | **DEFINE** | [`DEFINE_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](DEFINE_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) |
 | **DESIGN** | [`DESIGN_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](DESIGN_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) |
-| **Status** | Complete locally — espera aceite visual antes de qualquer `ship-*` |
+| **Status** | ✅ Shipped — no ar nos dois clientes em 2026-09-19 |
 
 ---
 

@@ -11,7 +11,7 @@
 | **Feature** | EQUIPAMENTOS_OFICIAIS_NO_MAPA |
 | **Date** | 2026-09-19 |
 | **Author** | Claude Opus 5 (sessão com o Gui) |
-| **Status** | Aceite visual cumprido — falta publicar |
+| **Status** | ✅ Shipped — no ar nos dois clientes em 2026-09-19 |
 | **Clarity Score** | 14/15 |
 | **Origem** | [`BRAINSTORM_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](BRAINSTORM_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) |
 

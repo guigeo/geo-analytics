@@ -10,7 +10,7 @@
 | **Date** | 2026-09-19 |
 | **Author** | Claude Opus 5 (sessão com o Gui) |
 | **DEFINE** | [`DEFINE_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](DEFINE_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) |
-| **Status** | Aceite visual cumprido — falta publicar tiles e `ship-*` |
+| **Status** | ✅ Shipped — no ar nos dois clientes em 2026-09-19 |
 | **Handoff** | [`HANDOFF_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](HANDOFF_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) — quem executa o build lê antes |
 
 ---

@@ -9,7 +9,7 @@
 | **Feature** | CNES_NO_GEODATA |
 | **Date** | 2026-09-18 |
 | **Author** | Codex + Guilherme Ramos |
-| **Status** | Ready for Define |
+| **Status** | ✅ Shipped |
 
 ## Initial Idea
 
@@ -177,4 +177,4 @@ atual conta endereços e não unidades identificáveis.
 
 ## Next Step
 
-**Ready for:** `/define .claude/sdd/features/BRAINSTORM_CNES_NO_GEODATA.md`
+**✅ SHIPPED** — ver [SHIPPED_2026-09-18.md](SHIPPED_2026-09-18.md)

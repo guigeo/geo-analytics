@@ -11,7 +11,7 @@
 | **Data** | 2026-09-18 |
 | **Autor** | Codex + Guilherme Ramos |
 | **DEFINE** | [`DEFINE_CNES_NO_GEODATA.md`](DEFINE_CNES_NO_GEODATA.md) |
-| **Status** | Ready for Build |
+| **Status** | ✅ Shipped |
 | **Repositório de implementação** | `../servidor-dados-gis` |
 | **Produção** | Proibida nesta rodada; o build termina validado localmente |
 
@@ -331,7 +331,9 @@ com/sem geometria, fora do município e duração. A mesma síntese, sem duraç�
 | Versão | Data | Autor | Mudanças |
 |--------|------|-------|----------|
 | 1.0 | 2026-09-18 | Codex | Desenho inicial, fechado contra o CSV nacional real |
+| 1.1 | 2026-09-18 | Cursor | Status Complete após build local; produção intocada |
+| 1.2 | 2026-09-18 | Cursor | Shipped and archived |
 
 ## Próximo passo
 
-**Pronto para:** `/build .claude/sdd/features/DESIGN_CNES_NO_GEODATA.md`
+**✅ SHIPPED**

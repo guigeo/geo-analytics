@@ -27,6 +27,7 @@ descrevia como pendente uma feature publicada no dia anterior.
 | 2026-08-31 | Cliente 2 (EB Prime) no ar em `app.ebprime.com.br` |
 | 2026-09-02 | `DESENHO_NO_MAPA` arquivada — o app passa a **escrever** no `app_clientes` |
 | 2026-09-03 | V2 (UI nova + desenho) publicada nos **dois** clientes |
+| 2026-09-18 | `CNES_NO_GEODATA` e `INEP_NO_GEODATA` no `geodata` local — cadastros oficiais persistidos; mapa, Raio-X e VPS intocados |
 
 ---
 

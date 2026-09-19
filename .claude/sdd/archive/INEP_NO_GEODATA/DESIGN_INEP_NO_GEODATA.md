@@ -12,7 +12,7 @@
 | **Data** | 2026-09-18 |
 | **Autor** | Codex + Guilherme Ramos |
 | **DEFINE** | [`DEFINE_INEP_NO_GEODATA.md`](DEFINE_INEP_NO_GEODATA.md) |
-| **Status** | Ready for Build |
+| **Status** | ✅ Shipped |
 | **Repositório de implementação** | `../servidor-dados-gis` |
 | **Produção** | Proibida nesta rodada; o build termina validado localmente |
 
@@ -387,7 +387,9 @@ duração. A síntese entra em `meta.fonte.observacao`. Exit codes: `0` sucesso/
 | Versão | Data | Autor | Mudanças |
 |--------|------|-------|----------|
 | 1.0 | 2026-09-18 | Codex | Desenho inicial, fechado contra microdado Inep e GeoParquet geobr reais |
+| 1.1 | 2026-09-18 | Cursor | Status Complete após build local; produção intocada |
+| 1.2 | 2026-09-18 | Cursor | Shipped and archived |
 
 ## Próximo passo
 
-**Pronto para:** `/build .claude/sdd/features/DESIGN_INEP_NO_GEODATA.md`
+**✅ SHIPPED**

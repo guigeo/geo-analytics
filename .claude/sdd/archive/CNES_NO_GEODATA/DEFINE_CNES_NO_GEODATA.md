@@ -11,7 +11,7 @@
 | **Feature** | CNES_NO_GEODATA |
 | **Data** | 2026-09-18 |
 | **Autor** | Codex + Guilherme Ramos |
-| **Status** | Ready for Design |
+| **Status** | ✅ Shipped |
 | **Clarity Score** | 15/15 |
 | **Origem** | [`BRAINSTORM_CNES_NO_GEODATA.md`](BRAINSTORM_CNES_NO_GEODATA.md) |
 | **Repositório principal** | `../servidor-dados-gis` |
@@ -148,7 +148,8 @@ os registros que não formarem ponto.
 |--------|------|-------|----------|
 | 1.0 | 2026-09-18 | Codex | Versão inicial a partir do brainstorm aprovado |
 | 1.1 | 2026-09-18 | Codex | Premissas validadas contra o CSV nacional oficial do CNES |
+| 1.2 | 2026-09-18 | Cursor | Shipped and archived |
 
 ## Próximo passo
 
-**Pronto para:** `/design .claude/sdd/features/DEFINE_CNES_NO_GEODATA.md`
+**✅ SHIPPED**

@@ -11,7 +11,7 @@
 | **Feature** | INEP_NO_GEODATA |
 | **Data** | 2026-09-18 |
 | **Autor** | Codex + Guilherme Ramos |
-| **Status** | Ready for Design |
+| **Status** | ✅ Shipped |
 | **Clarity Score** | 15/15 |
 | **Origem** | [`BRAINSTORM_INEP_NO_GEODATA.md`](BRAINSTORM_INEP_NO_GEODATA.md) |
 | **Repositório principal** | `../servidor-dados-gis` |
@@ -151,7 +151,8 @@ e o Ipea/geobr como complemento espacial, sem esconder a qualidade da coordenada
 |--------|------|-------|----------|
 | 1.0 | 2026-09-18 | Codex | Versão inicial a partir do brainstorm aprovado |
 | 1.1 | 2026-09-18 | Codex | Fonte espacial corrigida após inspeção: microdado Inep + complemento Ipea/geobr com cobertura medida |
+| 1.2 | 2026-09-18 | Cursor | Shipped and archived |
 
 ## Próximo passo
 
-**Pronto para:** `/design .claude/sdd/features/DEFINE_INEP_NO_GEODATA.md`
+**✅ SHIPPED**

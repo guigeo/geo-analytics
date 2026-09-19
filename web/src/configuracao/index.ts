@@ -52,5 +52,6 @@ export type {
   Identidade,
   PinturaPorCategoria,
   TemaNumerico,
+  FiltroPorCategoria,
   Simbolo,
 } from "./esquema";

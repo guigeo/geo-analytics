@@ -130,16 +130,21 @@ export interface AlertaSaneamento extends ComProveniencia {
   indicadores: IndicadorDeSaneamento[];
 }
 
-export interface IndicadorDeEquipamento {
-  enderecos: number;
-  coordenadas_imprecisas: number;
+export interface IndicadorDeEnsino {
+  total: number;
+  recorte: string;
+}
+
+export interface IndicadorDeSaude {
+  total: number;
+  total_no_mapa: number;
+  recorte: string;
 }
 
 export interface BlocoEquipamentos extends ComProveniencia {
   disponivel: boolean;
-  cobertura_pct: number;
-  ensino: IndicadorDeEquipamento;
-  saude: IndicadorDeEquipamento;
+  ensino: IndicadorDeEnsino;
+  saude: IndicadorDeSaude;
 }
 
 export interface RaioX {

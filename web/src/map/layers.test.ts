@@ -14,6 +14,7 @@ import {
   IDS_CLICAVEIS,
   SUFIXOS_SUBCAMADA,
   temaDaCamada,
+  filtroDeClasses,
 } from "./layers";
 import { camadas } from "@/configuracao";
 
@@ -184,6 +185,20 @@ describe("saída congelada", () => {
     expect(temaDaCamada(h3, undefined)).toEqual(h3.temasNumericos![0]);
     const semTema = camadas.find((c) => !c.temasNumericos)!;
     expect(temaDaCamada(semTema, "qualquer")).toBeNull();
+  });
+
+  it("filtro de classe esconde o valor sem recarregar a fonte", () => {
+    const saude = camadas.find((c) => c.id === "saude")!;
+    expect(filtroDeClasses(saude, [])).toBeNull();
+    expect(filtroDeClasses(saude, ["hospital"])).toEqual([
+      "!",
+      ["in", ["get", "classe"], ["literal", ["hospital"]]],
+    ]);
+    const spec = camadasDoMapa().find((s) => s.id === "saude");
+    expect(spec && "filter" in spec ? spec.filter : undefined).toEqual([
+      "!",
+      ["in", ["get", "classe"], ["literal", ["farmacia", "apoio_diagnostico", "promocao"]]],
+    ]);
   });
 
   it("mantém as camadas", () => {

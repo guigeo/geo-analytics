@@ -21,7 +21,7 @@ from geo_query import GeoQuery
 
 from geo_agent.acervo import Acervo, nome_do_schema
 
-from geo_agent.tools import Contexto, TOOL_REGISTRY, execute_tool, normalize_uf, openai_tools
+from geo_agent.tools import Camada, Contexto, TOOL_REGISTRY, execute_tool, normalize_uf, openai_tools
 
 SETOR_FORTALEZA = "230440005130001"
 
@@ -163,6 +163,47 @@ def test_h3_no_ponto_equipamentos_pinta_a_camada_certa() -> None:
     assert r.camada == "h3_equipamentos"
     assert r.payload["temas"]["equipamentos"]["enderecos_de_ensino"] == 3
     assert r.payload["temas"]["equipamentos"]["enderecos_de_saude"] == 6
+
+
+class GeoQueryEquipamentosFalso:
+    def equipamentos_no_ponto(self, lon, lat, raio_m, dominios):
+        return {
+            "raio_m": raio_m,
+            "ensino": {
+                "total": 1,
+                "escolas": [
+                    {
+                        "cod_escola": "35000001",
+                        "nome": "Escola Municipal Exemplo",
+                        "rede": "Municipal",
+                        "municipio": "São Paulo",
+                        "uf": "SP",
+                    }
+                ],
+                "fonte": "Inep · Censo Escolar 2025",
+            },
+        }
+
+
+def test_equipamentos_no_ponto_devolve_nome_e_rede() -> None:
+    ctx_falso = Contexto(geodata=cast(GeoQuery, GeoQueryEquipamentosFalso()))
+    r = execute_tool(
+        ctx_falso,
+        "equipamentos_no_ponto",
+        json.dumps({"lon": -46.6540, "lat": -23.5614, "raio_m": 400, "dominios": ["ensino"]}),
+    )
+    assert not r.error
+    assert r.camada == "escolas"
+    assert r.payload["ensino"]["escolas"][0]["nome"] == "Escola Municipal Exemplo"
+    assert r.payload["ensino"]["escolas"][0]["rede"] == "Municipal"
+    assert "enderecos" not in r.payload["ensino"]
+
+
+def test_equipamentos_no_ponto_esta_no_registry() -> None:
+    assert "equipamentos_no_ponto" in TOOL_REGISTRY
+    assert "h3_equipamentos" in Camada.__args__
+    assert "escolas" in Camada.__args__
+    assert "saude" in Camada.__args__
 
 
 def test_h3_no_ponto_rejeita_tema_inexistente() -> None:

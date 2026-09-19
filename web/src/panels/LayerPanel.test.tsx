@@ -15,6 +15,8 @@ const grupos = agruparCamadas(camadas);
 const semAcervo = {
   temaAtivo: {} as Record<string, string>,
   onEscolherTema: vi.fn(),
+  classesOcultas: {} as Record<string, string[]>,
+  onAlternarClasse: vi.fn(),
   itens: [] as ItemDoAcervo[],
   ocultos: [] as string[],
   onAlternarItem: vi.fn(),
@@ -418,5 +420,28 @@ describe("LayerPanel", () => {
     render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
     abrir("Regulação urbana");
     expect(screen.queryByRole("button", { name: /variável de zoneamento/i })).toBeNull();
+  });
+
+  it("escolas e saúde não ganham nota de cobertura debaixo do nome", () => {
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Infraestrutura");
+    expect(screen.queryByText(/exclui/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/consultório/i)).not.toBeInTheDocument();
+  });
+
+  it("as classes de escola e de saúde nascem recolhidas, com a mesma seta do combo", () => {
+    render(<LayerPanel visible={{}} onToggle={vi.fn()} {...semAcervo} />);
+    abrir("Infraestrutura");
+    expect(screen.getByRole("button", { name: "Rede" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tipo de estabelecimento" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Municipal" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Hospital" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Rede" }));
+    expect(screen.getByRole("checkbox", { name: "Municipal" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Hospital" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tipo de estabelecimento" }));
+    expect(screen.getByRole("checkbox", { name: "Hospital" })).toBeInTheDocument();
   });
 });

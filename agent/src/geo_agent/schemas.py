@@ -28,7 +28,15 @@ class Destaques(BaseModel):
     """O que o mapa deve pintar: codigos IBGE por camada (filtro nos PMTiles)."""
 
     camada: Literal[
-        "municipio", "setor", "bairro", "distrito", "zoneamento_sp", "h3_domicilios", "h3_equipamentos"
+        "municipio",
+        "setor",
+        "bairro",
+        "distrito",
+        "zoneamento_sp",
+        "h3_domicilios",
+        "h3_equipamentos",
+        "escolas",
+        "saude",
     ]
     codigos: list[str]
 
@@ -249,16 +257,21 @@ class AlertaSaneamento(ComProveniencia):
     indicadores: list[IndicadorDeSaneamento]
 
 
-class IndicadorDeEquipamento(BaseModel):
-    enderecos: int
-    coordenadas_imprecisas: int
+class IndicadorDeEnsino(BaseModel):
+    total: int
+    recorte: str
+
+
+class IndicadorDeSaude(BaseModel):
+    total: int
+    total_no_mapa: int
+    recorte: str
 
 
 class BlocoEquipamentos(ComProveniencia):
     disponivel: bool
-    cobertura_pct: float
-    ensino: IndicadorDeEquipamento
-    saude: IndicadorDeEquipamento
+    ensino: IndicadorDeEnsino
+    saude: IndicadorDeSaude
 
 
 class RaioX(BaseModel):

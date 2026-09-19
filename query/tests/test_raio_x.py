@@ -118,49 +118,28 @@ def test_grupo_suprimido_nao_apaga_os_outros_tres() -> None:
     assert LIMIAR_COBERTURA_FAIXAS_ETARIAS_PCT == 98.0
 
 
-def test_equipamentos_preserva_zero_quando_a_area_tem_cobertura() -> None:
-    bloco = _bloco_equipamentos(
-        {
-            "cobertura_pct": 100,
-            "ensino": 0,
-            "saude": 0,
-            "ensino_imprecisas": 0,
-            "saude_imprecisas": 0,
-        }
-    )
+def test_equipamentos_preserva_zero_quando_a_area_nao_tem_ponto() -> None:
+    bloco = _bloco_equipamentos({"total": 0}, {"total": 0, "total_no_mapa": 0})
     assert bloco["disponivel"] is True
-    assert bloco["ensino"]["enderecos"] == 0
-    assert bloco["saude"]["enderecos"] == 0
+    assert bloco["ensino"]["total"] == 0
+    assert bloco["saude"]["total"] == 0
+    assert bloco["saude"]["total_no_mapa"] == 0
     assert bloco["avisos"] == []
+    assert "CNES" in bloco["fonte"]
+    assert "Inep" in bloco["fonte"]
 
 
-def test_equipamentos_nao_chama_fora_da_cobertura_de_zero_medido() -> None:
-    bloco = _bloco_equipamentos(
-        {
-            "cobertura_pct": 0,
-            "ensino": 0,
-            "saude": 0,
-            "ensino_imprecisas": 0,
-            "saude_imprecisas": 0,
-        }
-    )
-    assert bloco["disponivel"] is False
-    assert "não significa zero" in bloco["avisos"][0]
+def test_equipamentos_separa_manchete_e_mapa() -> None:
+    bloco = _bloco_equipamentos({"total": 3}, {"total": 2, "total_no_mapa": 5})
+    assert bloco["saude"]["total"] == 2
+    assert bloco["saude"]["total_no_mapa"] == 5
+    assert "farmácia" in bloco["saude"]["recorte"]
 
 
-def test_equipamentos_avisa_cobertura_parcial_e_coordenadas_imprecisas() -> None:
-    bloco = _bloco_equipamentos(
-        {
-            "cobertura_pct": 72.5,
-            "ensino": 3,
-            "saude": 2,
-            "ensino_imprecisas": 1,
-            "saude_imprecisas": 2,
-        }
-    )
-    assert bloco["disponivel"] is True
-    assert "72,50%" in bloco["avisos"][0]
-    assert "3 endereços" in bloco["avisos"][1]
+def test_equipamentos_no_estado_inicial_o_total_e_o_visivel() -> None:
+    """AT-005: sem classe extra ligada, a manchete coincide com o que o mapa mostra."""
+    bloco = _bloco_equipamentos({"total": 4}, {"total": 4, "total_no_mapa": 4})
+    assert bloco["saude"]["total"] == bloco["saude"]["total_no_mapa"]
 
 
 def test_guarda_de_area_aceita_o_teto_e_explica_a_recusa() -> None:
@@ -218,27 +197,35 @@ def test_raio_x_devolve_bloco_e_rateio_no_mesmo_retrato(gq: GeoQuery) -> None:
     assert resultado["contraste"]["setores"]
     assert resultado["escala"]["municipio"]["nm_mun"] == "São Paulo"
     assert resultado["equipamentos"]["disponivel"] is True
-    assert resultado["equipamentos"]["ensino"]["enderecos"] >= 0
+    assert resultado["equipamentos"]["ensino"]["total"] >= 0
+    assert resultado["equipamentos"]["saude"]["total"] >= 0
+    assert resultado["versao_calculo"] == "6"
 
 
 @_PRECISA_GEODATA
-def test_equipamentos_distingue_area_coberta_de_fora_do_recorte(gq: GeoQuery) -> None:
-    coberta = gq.equipamentos_por_geometria(_buffer(gq, 500))
-    fora = gq.equipamentos_por_geometria(
+def test_equipamentos_zero_real_fora_de_qualquer_ponto(gq: GeoQuery) -> None:
+    """AT-008: vazio urbano continua sendo zero, não 'sem cobertura'."""
+    vazio = gq.equipamentos_por_geometria(
         gq._rows(
             """
             select ST_AsBinary(
-                ST_Buffer(ST_SetSRID(ST_MakePoint(-47.8825, -15.7942), 4674)::geography, 500)
+                ST_Buffer(ST_SetSRID(ST_MakePoint(-46.0, -24.8), 4674)::geography, 80)
                     ::geometry
             ) as w
             """,
             [],
         )[0]["w"]
     )
-    assert coberta["disponivel"] is True
-    assert coberta["cobertura_pct"] == 100
-    assert fora["disponivel"] is False
-    assert fora["cobertura_pct"] == 0
+    assert vazio["disponivel"] is True
+    assert vazio["ensino"]["total"] == 0
+    assert vazio["saude"]["total"] == 0
+    assert vazio["cobertura"] == "nacional"
+
+
+@_PRECISA_GEODATA
+def test_equipamentos_separa_manchete_do_mapa_no_geodata(gq: GeoQuery) -> None:
+    bloco = gq.equipamentos_por_geometria(_buffer(gq, 800))
+    assert bloco["saude"]["total_no_mapa"] >= bloco["saude"]["total"]
 
 
 @_PRECISA_GEODATA

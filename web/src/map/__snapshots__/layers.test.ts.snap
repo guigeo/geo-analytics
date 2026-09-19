@@ -159,6 +159,76 @@ exports[`saída congelada > mantém as camadas 1`] = `
     "type": "symbol",
   },
   {
+    "id": "escolas",
+    "layout": {
+      "icon-allow-overlap": true,
+      "icon-anchor": "bottom",
+      "icon-ignore-placement": true,
+      "icon-image": "school",
+      "icon-size": [
+        "interpolate",
+        [
+          "linear",
+        ],
+        [
+          "zoom",
+        ],
+        4,
+        0.4,
+        12,
+        0.9,
+      ],
+      "visibility": "none",
+    },
+    "source": "escolas",
+    "source-layer": "escolas",
+    "type": "symbol",
+  },
+  {
+    "filter": [
+      "!",
+      [
+        "in",
+        [
+          "get",
+          "classe",
+        ],
+        [
+          "literal",
+          [
+            "farmacia",
+            "apoio_diagnostico",
+            "promocao",
+          ],
+        ],
+      ],
+    ],
+    "id": "saude",
+    "layout": {
+      "icon-allow-overlap": true,
+      "icon-anchor": "bottom",
+      "icon-ignore-placement": true,
+      "icon-image": "health-cross",
+      "icon-size": [
+        "interpolate",
+        [
+          "linear",
+        ],
+        [
+          "zoom",
+        ],
+        4,
+        0.4,
+        12,
+        0.9,
+      ],
+      "visibility": "none",
+    },
+    "source": "saude",
+    "source-layer": "saude",
+    "type": "symbol",
+  },
+  {
     "id": "rodovias",
     "layout": {
       "line-cap": "round",
@@ -508,6 +578,10 @@ exports[`saída congelada > mantém as fontes 1`] = `
     "type": "vector",
     "url": "pmtiles://http://localhost:8081/tiles/distrito.pmtiles",
   },
+  "escolas": {
+    "type": "vector",
+    "url": "pmtiles://http://localhost:8081/tiles/escolas.pmtiles",
+  },
   "ferrovias": {
     "type": "vector",
     "url": "pmtiles://http://localhost:8081/tiles/ferrovias.pmtiles",
@@ -527,6 +601,10 @@ exports[`saída congelada > mantém as fontes 1`] = `
   "rodovias": {
     "type": "vector",
     "url": "pmtiles://http://localhost:8081/tiles/rodovias.pmtiles",
+  },
+  "saude": {
+    "type": "vector",
+    "url": "pmtiles://http://localhost:8081/tiles/saude.pmtiles",
   },
   "setor": {
     "type": "vector",

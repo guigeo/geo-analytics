@@ -31,6 +31,13 @@ describe("os dois clientes", () => {
     expect(ids(geoAnalytics).sort()).toEqual(Object.keys(CATALOGO).sort());
   });
 
+  it("os dois clientes enxergam escolas e estabelecimentos de saúde", () => {
+    for (const c of [geoAnalytics, ebPrime]) {
+      expect(ids(c), `cliente ${c.id}`).toContain("escolas");
+      expect(ids(c), `cliente ${c.id}`).toContain("saude");
+    }
+  });
+
   it("tirar camada de um cliente não tira do outro", () => {
     // Decisão do cliente em 2026-08-30: as camadas do cliente 1 menos as
     // antenas de telefonia. É esta linha que prova que o recorte é por cliente,

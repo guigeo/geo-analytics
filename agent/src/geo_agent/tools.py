@@ -19,7 +19,17 @@ from .geocode import GeocodeIndisponivel
 from .geocode import pontos as geocode_pontos
 from pydantic import BaseModel, Field, ValidationError
 
-Camada = Literal["municipio", "setor", "bairro", "distrito", "zoneamento_sp", "h3_domicilios"]
+Camada = Literal[
+    "municipio",
+    "setor",
+    "bairro",
+    "distrito",
+    "zoneamento_sp",
+    "h3_domicilios",
+    "h3_equipamentos",
+    "escolas",
+    "saude",
+]
 
 UF_POR_SIGLA: dict[str, str] = {
     "AC": "Acre",
@@ -282,8 +292,9 @@ class LocalizarEnderecoArgs(BaseModel):
     """Resolve endereço, avenida ou ponto de referência em coordenada (lon, lat).
 
     Use ANTES de qualquer tool que peça ponto — zoneamento_no_ponto, h3_no_ponto,
-    setor_que_contem, bairro_que_contem — sempre que a pessoa disser um endereço e não
-    uma coordenada. NUNCA peça coordenada a quem pergunta: ela não tem como obtê-la.
+    setor_que_contem, bairro_que_contem, equipamentos_no_ponto — sempre que a pessoa
+    disser um endereço e não uma coordenada. NUNCA peça coordenada a quem pergunta:
+    ela não tem como obtê-la.
 
     Em avenida larga, prefira o endereço COM número: o eixo da via cai no canteiro
     central, que no zoneamento de São Paulo não é zona nenhuma.
@@ -291,6 +302,24 @@ class LocalizarEnderecoArgs(BaseModel):
 
     endereco: str = Field(min_length=3)
     municipio: str | None = None
+
+
+class EquipamentosNoPontoArgs(BaseModel):
+    """Escolas do Inep e estabelecimentos de saúde do CNES num raio ao redor de um ponto.
+
+    Use para perguntar quais escolas ou unidades de saúde existem numa área. Devolve
+    nome, rede/tipo e município — não contagem de endereços do CNEFE. Consultório
+    isolado não entra. Farmácia e apoio diagnóstico aparecem na lista do mapa, mas o
+    campo `total` de saúde conta só assistência.
+    """
+
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+    raio_m: int = Field(500, ge=50, le=5000)
+    dominios: list[Literal["ensino", "saude"]] = Field(
+        default_factory=lambda: ["ensino", "saude"],
+        description="Cadastros a consultar; use só os que respondem à pergunta",
+    )
 
 
 class InfoLocalArgs(BaseModel):
@@ -720,6 +749,22 @@ def _h3_no_ponto(ctx: Contexto, a: H3NoPontoArgs) -> ToolResult:
     )
 
 
+def _equipamentos_no_ponto(ctx: Contexto, a: EquipamentosNoPontoArgs) -> ToolResult:
+    dados = ctx.geodata.equipamentos_no_ponto(a.lon, a.lat, a.raio_m, list(a.dominios))
+    escolas = dados.get("ensino", {}).get("escolas") or []
+    estabelecimentos = dados.get("saude", {}).get("estabelecimentos") or []
+    if escolas:
+        camada, itens, chave = "escolas", escolas, "cod_escola"
+    else:
+        camada, itens, chave = "saude", estabelecimentos, "cod_cnes"
+    return ToolResult(
+        payload=dados,
+        camada=camada,
+        codigos=[str(item[chave]) for item in itens[:20]],
+        rows=[dados],
+    )
+
+
 # Acima disto, o distrito ocupa quase todo o municipio e responder por ele e responder
 # pelo municipio. Vale para 3.377 dos 10.698 distritos — 31,6% (medido em 2026-08-22),
 # entao o aviso e caso comum, nao excecao.
@@ -1084,6 +1129,7 @@ TOOL_REGISTRY: dict[str, tuple[type[BaseModel], Handler]] = {
     # pergunta diz endereco, e coordenada nao se pede a quem pergunta.
     "localizar_endereco": (LocalizarEnderecoArgs, _localizar_endereco),
     "h3_no_ponto": (H3NoPontoArgs, _h3_no_ponto),
+    "equipamentos_no_ponto": (EquipamentosNoPontoArgs, _equipamentos_no_ponto),
     "setores_proximos": (SetoresProximosArgs, _setores_proximos),
     "setores_no_ponto": (SetoresNoPontoArgs, _setores_no_ponto),
     # Nome deliberadamente distante de setores_no_ponto: o LLM escolhe tool por nome

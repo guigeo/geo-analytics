@@ -15,8 +15,8 @@ function raioX(ensino: number, saude: number): RaioX {
     classe_social: { pct_a: 12.5, pct_b: 28.4 },
     equipamentos: {
       disponivel: true,
-      ensino: { enderecos: ensino },
-      saude: { enderecos: saude },
+      ensino: { total: ensino, recorte: "escolas" },
+      saude: { total: saude, total_no_mapa: saude, recorte: "assistência" },
     },
   } as RaioX;
 }
@@ -35,8 +35,8 @@ describe("Comparador", () => {
     expect(screen.getByText("Duas áreas, mesma régua")).toBeInTheDocument();
     expect(screen.getByText("Área central")).toBeInTheDocument();
     expect(screen.getByText("Área de expansão")).toBeInTheDocument();
-    expect(screen.getByText("Endereços de ensino")).toBeInTheDocument();
-    expect(screen.getByText("Endereços de saúde")).toBeInTheDocument();
+    expect(screen.getByText("Escolas")).toBeInTheDocument();
+    expect(screen.getByText("Estabelecimentos de saúde")).toBeInTheDocument();
     expect(screen.getByText(/não cria um score/i)).toBeInTheDocument();
   });
 

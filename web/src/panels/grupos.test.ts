@@ -16,7 +16,13 @@ describe("agruparCamadas", () => {
     expect(grupos[1].camadas.map((c) => c.id)).toEqual(["h3_domicilios", "h3_equipamentos"]);
     expect(grupos[1].cobertura).toBe("37 municípios da concentração urbana de São Paulo");
     expect(grupos[3].camadas.map((c) => c.id)).toEqual(["zoneamento_sp"]);
-    expect(grupos[2].camadas.map((c) => c.id)).toEqual(["antenas", "rodovias", "ferrovias"]);
+    expect(grupos[2].camadas.map((c) => c.id)).toEqual([
+      "antenas",
+      "escolas",
+      "saude",
+      "rodovias",
+      "ferrovias",
+    ]);
   });
 
   it("grupo sem camada nenhuma não aparece", () => {

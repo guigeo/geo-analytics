@@ -103,6 +103,22 @@ export const EsquemaTemaNumerico = z
     path: ["maximo"],
   });
 
+export const EsquemaFiltroPorCategoria = z.object({
+  /** Atributo do tile pelo qual se filtra. */
+  campo: z.string().min(1),
+  rotulo: z.string().min(1),
+  classes: z
+    .array(
+      z.object({
+        valor: z.string().min(1),
+        rotulo: z.string().min(1),
+        /** Nasce ligada? As classes que o Raio-X conta nascem; as outras, não. */
+        inicialmenteLigada: z.boolean(),
+      }),
+    )
+    .min(2, "filtro com uma classe só não filtra nada"),
+});
+
 export const GEOMETRIAS = ["poligono", "linha", "ponto"] as const;
 export const ANCORAS_ICONE = ["centro", "base"] as const;
 
@@ -201,6 +217,11 @@ export const EsquemaCamada = z
     /** Pontos: deixar ícones sobrepostos em vez de escondê-los por colisão. */
     iconesPodemSobrepor: z.boolean().optional(),
     rotuloNoMapa: EsquemaRotuloNoMapa.optional(),
+    /**
+     * Liga e desliga subconjuntos da mesma camada sem recarregar o tile.
+     * O MapLibre aplica `setFilter`; o painel renderiza o `SeletorDeClasses`.
+     */
+    filtros: EsquemaFiltroPorCategoria.optional(),
     atributos: z
       .array(EsquemaAtributo)
       .min(1, "camada sem atributo não mostra nada ao ser clicada"),
@@ -443,6 +464,7 @@ export type Atributo = z.infer<typeof EsquemaAtributo>;
 export type RotuloNoMapa = z.infer<typeof EsquemaRotuloNoMapa>;
 export type PinturaPorCategoria = z.infer<typeof EsquemaPinturaPorCategoria>;
 export type TemaNumerico = z.infer<typeof EsquemaTemaNumerico>;
+export type FiltroPorCategoria = z.infer<typeof EsquemaFiltroPorCategoria>;
 export type DefinicaoCamada = z.infer<typeof EsquemaCamada>;
 export type Identidade = z.infer<typeof EsquemaIdentidade>;
 export type Simbolo = z.infer<typeof EsquemaSimbolo>;

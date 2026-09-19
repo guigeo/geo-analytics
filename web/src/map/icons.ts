@@ -2,6 +2,8 @@ import type maplibregl from "maplibre-gl";
 
 // Ids dos ícones registrados no mapa (referenciados por camadas em layers.ts).
 export const ANTENNA_ICON = "antenna-tower";
+export const SCHOOL_ICON = "school";
+export const HEALTH_ICON = "health-cross";
 
 const ICON_PX = 48;
 
@@ -31,8 +33,52 @@ const ANTENNA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="
   </g>
 </svg>`;
 
+const SCHOOL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#ffffff" stroke-width="4.5">
+      <path d="M14 22v-4a2 2 0 1 0-4 0v4"/>
+      <path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/>
+      <path d="M18 5v17"/>
+      <path d="m4 6 8-4 8 4"/>
+      <path d="M6 5v17"/>
+      <circle cx="12" cy="9" r="2"/>
+    </g>
+    <g stroke="#c2410c" stroke-width="2">
+      <path d="M14 22v-4a2 2 0 1 0-4 0v4"/>
+      <path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/>
+      <path d="M18 5v17"/>
+      <path d="m4 6 8-4 8 4"/>
+      <path d="M6 5v17"/>
+      <circle cx="12" cy="9" r="2"/>
+    </g>
+  </g>
+</svg>`;
+
+const HEALTH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#ffffff" stroke-width="4.5">
+      <path d="M12 6v4"/>
+      <path d="M14 14h-4"/>
+      <path d="M14 18h-4"/>
+      <path d="M14 8h-4"/>
+      <path d="M18 12h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h2"/>
+      <path d="M18 22V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v18"/>
+    </g>
+    <g stroke="#0e7490" stroke-width="2">
+      <path d="M12 6v4"/>
+      <path d="M14 14h-4"/>
+      <path d="M14 18h-4"/>
+      <path d="M14 8h-4"/>
+      <path d="M18 12h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h2"/>
+      <path d="M18 22V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v18"/>
+    </g>
+  </g>
+</svg>`;
+
 export const ICON_SVGS: Record<string, string> = {
   [ANTENNA_ICON]: ANTENNA_SVG,
+  [SCHOOL_ICON]: SCHOOL_SVG,
+  [HEALTH_ICON]: HEALTH_SVG,
 };
 
 // Rasteriza um SVG para ImageData via <canvas>. Mais portável que

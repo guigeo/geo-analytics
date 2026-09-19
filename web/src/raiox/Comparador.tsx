@@ -59,12 +59,12 @@ export function Comparador({
       segundo: percentual(segundo.classe_social.pct_b),
     },
     {
-      rotulo: "Endereços de ensino",
+      rotulo: "Escolas",
       primeiro: equipamento(primeiro, "ensino"),
       segundo: equipamento(segundo, "ensino"),
     },
     {
-      rotulo: "Endereços de saúde",
+      rotulo: "Estabelecimentos de saúde",
       primeiro: equipamento(primeiro, "saude"),
       segundo: equipamento(segundo, "saude"),
     },
@@ -107,5 +107,5 @@ export function Comparador({
 
 function equipamento(dados: RaioX, tipo: "ensino" | "saude"): string {
   if (!dados.equipamentos.disponivel) return "Fora da cobertura";
-  return inteiro(dados.equipamentos[tipo].enderecos);
+  return inteiro(dados.equipamentos[tipo].total);
 }

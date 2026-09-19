@@ -28,6 +28,20 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "equipamentos-oficiais-2026-09",
+    data: "2026-09-19",
+    titulo: "Escolas e unidades de saúde no mapa",
+    texto:
+      "O mapa passa a mostrar o cadastro oficial: escolas do Inep e estabelecimentos " +
+      "do CNES, com nome, rede e tipo. O Raio-X da área conta esses pontos, sem rateio; " +
+      "consultório isolado não entra, e farmácia fica no mapa fora da manchete de saúde. " +
+      "Pergunte ao assistente quais escolas ou hospitais existem no ponto — ele responde " +
+      "pelo nome, não por contagem de endereço.",
+    pergunta:
+      "Quais escolas e hospitais existem num raio de 400 metros da Avenida Paulista 1578, em São Paulo?",
+    chip: "Escolas e hospitais aqui",
+  },
+  {
     id: "equipamentos-raio-x-2026-09",
     data: "2026-09-13",
     titulo: "Ensino e saúde entram no Raio-X",

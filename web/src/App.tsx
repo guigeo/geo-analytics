@@ -8,6 +8,7 @@ import type { SearchHit } from "@/search";
 import { LayerPanel } from "@/panels/LayerPanel";
 import { ChatPanel, type PerguntaExterna } from "@/chat/ChatPanel";
 import { camadas } from "@/configuracao";
+import { classesOcultasIniciais } from "@/map/layers";
 import type { Destaques } from "@/map/highlight";
 import type { ContextoMapa } from "@/chat/api";
 import { useTheme } from "@/hooks/use-theme";
@@ -68,6 +69,8 @@ export function App() {
   // O tema de cada camada que tem mais de uma variável. Fica aqui, e não no painel,
   // porque o mapa precisa dele tanto quanto a legenda — mesmo caminho de `visible`.
   const [temaAtivo, setTemaAtivo] = useState<Record<string, string>>(temaInicial);
+  const [classesOcultas, setClassesOcultas] =
+    useState<Record<string, string[]>>(classesOcultasIniciais());
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
   const [destaques, setDestaques] = useState<Destaques | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
@@ -129,6 +132,14 @@ export function App() {
   const toggleLayer = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
   const escolherTema = (idDaCamada: string, idDoTema: string) =>
     setTemaAtivo((prev) => ({ ...prev, [idDaCamada]: idDoTema }));
+  const alternarClasse = (idDaCamada: string, valor: string) =>
+    setClassesOcultas((prev) => {
+      const lista = prev[idDaCamada] ?? [];
+      const proxima = lista.includes(valor)
+        ? lista.filter((item) => item !== valor)
+        : [...lista, valor];
+      return { ...prev, [idDaCamada]: proxima };
+    });
 
   const medicao = criarEstadoMedicao(modoMedicao, verticesMedicao);
   const desenho = criarEstadoDesenho(modoDesenho, verticesDesenho, raioDesenho);
@@ -281,6 +292,7 @@ export function App() {
                 <MapView
                   visible={visible}
                   temaAtivo={temaAtivo}
+                  classesOcultas={classesOcultas}
                   satellite={satellite}
                   satelliteOverlay={satelliteOverlay}
                   onSelect={setSelected}
@@ -324,6 +336,8 @@ export function App() {
                   onToggle={toggleLayer}
                   temaAtivo={temaAtivo}
                   onEscolherTema={escolherTema}
+                  classesOcultas={classesOcultas}
+                  onAlternarClasse={alternarClasse}
                   itens={itens}
                   ocultos={desenhosOcultos}
                   onAlternarItem={(id) =>
@@ -438,6 +452,8 @@ export function App() {
                     onToggle={toggleLayer}
                     temaAtivo={temaAtivo}
                     onEscolherTema={escolherTema}
+                    classesOcultas={classesOcultas}
+                    onAlternarClasse={alternarClasse}
                     itens={itens}
                     ocultos={desenhosOcultos}
                     onAlternarItem={(id) =>
@@ -470,6 +486,7 @@ export function App() {
               <MapView
                 visible={visible}
                 temaAtivo={temaAtivo}
+                classesOcultas={classesOcultas}
                 satellite={satellite}
                 satelliteOverlay={satelliteOverlay}
                 onSelect={setSelected}

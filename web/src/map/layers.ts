@@ -12,6 +12,7 @@
  */
 import type {
   DataDrivenPropertyValueSpecification,
+  FilterSpecification,
   LayerSpecification,
   SourceSpecification,
 } from "maplibre-gl";
@@ -78,6 +79,28 @@ export function temaDaCamada(
   return temas.find((t) => t.id === idDoTema) ?? temas[0];
 }
 
+export function filtroDeClasses(c: DefinicaoCamada, ocultas: string[]): FilterSpecification | null {
+  if (!c.filtros || ocultas.length === 0) return null;
+  return ["!", ["in", ["get", c.filtros.campo], ["literal", ocultas]]];
+}
+
+export function classesOcultasIniciais(
+  lista: DefinicaoCamada[] = camadas,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const c of lista) {
+    if (!c.filtros) continue;
+    const ocultas = c.filtros.classes.filter((cl) => !cl.inicialmenteLigada).map((cl) => cl.valor);
+    if (ocultas.length > 0) out[c.id] = ocultas;
+  }
+  return out;
+}
+
+function ocultasDaCamada(c: DefinicaoCamada): string[] {
+  if (!c.filtros) return [];
+  return c.filtros.classes.filter((cl) => !cl.inicialmenteLigada).map((cl) => cl.valor);
+}
+
 export function fontesDeDados(
   lista: DefinicaoCamada[] = camadas,
 ): Record<string, SourceSpecification> {
@@ -89,6 +112,7 @@ export function fontesDeDados(
 }
 
 function camadaBase(c: DefinicaoCamada, visibility: "visible" | "none"): LayerSpecification {
+  const filtro = filtroDeClasses(c, ocultasDaCamada(c));
   if (c.geometria === "ponto") {
     if (c.icone) {
       // Ponto com ícone (antena = torre).
@@ -98,6 +122,7 @@ function camadaBase(c: DefinicaoCamada, visibility: "visible" | "none"): LayerSp
         type: "symbol",
         source: c.id,
         "source-layer": c.camadaFonte,
+        ...(filtro ? { filter: filtro } : {}),
         layout: {
           visibility,
           "icon-image": c.icone,
@@ -114,6 +139,7 @@ function camadaBase(c: DefinicaoCamada, visibility: "visible" | "none"): LayerSp
       type: "circle",
       source: c.id,
       "source-layer": c.camadaFonte,
+      ...(filtro ? { filter: filtro } : {}),
       layout: { visibility },
       paint: {
         "circle-color": c.cor,

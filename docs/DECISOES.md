@@ -28,6 +28,7 @@ descrevia como pendente uma feature publicada no dia anterior.
 | 2026-09-02 | `DESENHO_NO_MAPA` arquivada — o app passa a **escrever** no `app_clientes` |
 | 2026-09-03 | V2 (UI nova + desenho) publicada nos **dois** clientes |
 | 2026-09-18 | `CNES_NO_GEODATA` e `INEP_NO_GEODATA` no `geodata` local — cadastros oficiais persistidos; mapa, Raio-X e VPS intocados |
+| 2026-09-19 | Réplicas CNES e Inep na VPS; `EQUIPAMENTOS_OFICIAIS_NO_MAPA` constrói camadas, Raio-X v6 e tool — tiles e ship esperam aceite visual |
 
 ---
 
@@ -365,3 +366,16 @@ repete. Validado contra o Postgres da VPS antes de subir, não só nos testes.
 vacuumado antes do log do sistema — quando a investigação começou, o do sistema ia até 06/09
 e o do agente só até 14/09. Alerta antigo pode não ter mais prova nenhuma, e por isso a
 retenção do journald entrou junto da correção.
+
+## 2026-09-19 — Cadastro oficial no mapa, sem misturar com o CNEFE
+
+O Raio-X de 13/09 contava endereços classificados do CNEFE. Com CNES e Inep persistidos
+e replicados, o cartão passou a contar a escola e o estabelecimento pelo nome — JOIN no
+de-para `infraestrutura.cnes_tipo_unidade`, nunca CASE, e sem `ELSE 'outros'`. Consultório
+isolado (tipo 22) sai do mapa. Farmácia e apoio diagnóstico pintam e ficam fora da
+manchete. `versao_calculo` foi para 6. A tool `equipamentos_no_ponto` é o par do cartão;
+o tema `equipamentos` do H3 continua sendo contagem de endereço, e o prompt separa as
+duas grandezas.
+
+Tiles `escolas.pmtiles` e `saude.pmtiles` e qualquer `ship-*` esperam o aceite visual.
+

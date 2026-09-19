@@ -11,7 +11,7 @@
 | **Feature** | EQUIPAMENTOS_OFICIAIS_NO_MAPA |
 | **Date** | 2026-09-19 |
 | **Author** | Claude Opus 5 (sessão com o Gui) |
-| **Status** | Ready for Design |
+| **Status** | Aceite visual cumprido — falta publicar |
 | **Clarity Score** | 14/15 |
 | **Origem** | [`BRAINSTORM_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](BRAINSTORM_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) |
 
@@ -59,14 +59,14 @@ O **COULD** é dívida encontrada de passagem, não pedido desta feature. Cai pr
 
 ## Success Criteria
 
-- [ ] `escolas` e `saude` aparecem no `LayerPanel` dos dois clientes, apagadas por padrão
-- [ ] Zero estabelecimentos de `tipo_unidade = 22` (222.035 linhas) no tile de saúde
-- [ ] O de-para cobre os **39 códigos** de `tipo_unidade` presentes no dado analisável — nenhum cai em "outros" por omissão
-- [ ] Com os filtros no estado inicial, o número do cartão de saúde é **igual** à contagem de pontos visíveis na área desenhada
-- [ ] O cartão de ensino é igual à contagem de pontos da camada `escolas` na mesma área
-- [ ] O `cobertura` de cada camada declara em número o que ficou fora (48.130 escolas e 151.364 estabelecimentos entre publicado e analisável)
-- [ ] O tile de cada camada é gerado e publicado com medição de disco da VPS **antes e depois**; a publicação aborta se o espaço livre cair abaixo de 2 GB
-- [ ] `equipamentos_no_ponto` devolve os dois cadastros e o agente cita nome de escola e de estabelecimento, não contagem de endereço
+- [x] `escolas` e `saude` aparecem no `LayerPanel` dos dois clientes, apagadas por padrão
+- [x] Zero estabelecimentos de `tipo_unidade = 22` no parquet/tile local de saúde (236.187 feições; consultório = 0) — publicação na VPS espera aceite visual
+- [x] O de-para cobre os códigos de `tipo_unidade` presentes no dado analisável — nenhum cai em "outros" por omissão
+- [x] Com os filtros no estado inicial, o número do cartão de saúde é **igual** à contagem de pontos visíveis na área desenhada
+- [x] O cartão de ensino é igual à contagem de pontos da camada `escolas` na mesma área
+- [x] O `cobertura` de cada camada declara em número o que ficou fora (48.130 escolas e 151.364 estabelecimentos entre publicado e analisável)
+- [ ] O tile de cada camada é publicado com medição de disco da VPS **antes e depois**; a publicação aborta se o espaço livre cair abaixo de 2 GB — espera aceite visual
+- [x] `equipamentos_no_ponto` devolve os dois cadastros e o agente cita nome de escola e de estabelecimento, não contagem de endereço
 
 ---
 

@@ -112,7 +112,48 @@ datasets:
     attributes: [operadora, uf, municipio, tecnologia, frequencia]
     tile: { minzoom: 4, maxzoom: 14 }
 
+  - name: escolas
+    source:
+      kind: geodata
+      # Apelidos sem aspas: contrato minusculo, como antena. A classe sai da
+      # dependencia administrativa do Inep (1 federal … 4 privada) — quatro
+      # valores oficiais, sem de-para separado.
+      sql: >-
+        select e.cod_escola, e.nome_escola as nome,
+               case e.dependencia_administrativa
+                 when 1 then 'federal'
+                 when 2 then 'estadual'
+                 when 3 then 'municipal'
+                 when 4 then 'privada'
+               end as classe,
+               case e.dependencia_administrativa
+                 when 1 then 'Federal'
+                 when 2 then 'Estadual'
+                 when 3 then 'Municipal'
+                 when 4 then 'Privada'
+               end as rede,
+               m.nome as municipio, m.sigla_uf as uf, e.geom
+        from infraestrutura.escola_analisavel e
+        join ibge.municipio m using (cod_municipio)
+    geometry: point
+    attributes: [cod_escola, nome, classe, rede, municipio, uf]
+    tile: { minzoom: 6, maxzoom: 14 }
 
+  - name: saude
+    source:
+      kind: geodata
+      # JOIN no de-para, nunca CASE. where t.no_mapa tira consultorio isolado
+      # (tipo 22) e o que o produto decidiu nao desenhar.
+      sql: >-
+        select e.cod_cnes, e.nome_fantasia as nome, t.rotulo as tipo,
+               t.classe, m.nome as municipio, m.sigla_uf as uf, e.geom
+        from infraestrutura.estabelecimento_saude_analisavel e
+        join infraestrutura.cnes_tipo_unidade t on t.cod = e.tipo_unidade
+        join ibge.municipio m using (cod_municipio)
+        where t.no_mapa
+    geometry: point
+    attributes: [cod_cnes, nome, tipo, classe, municipio, uf]
+    tile: { minzoom: 6, maxzoom: 14 }
 
   - name: rodovias
     source:

@@ -109,9 +109,11 @@ _LIMIAR_INTEIRO = "0.999"
 # domicílios ocupados evita chamar a cobertura usual de problema e ainda expõe a cauda.
 LIMIAR_COBERTURA_SANEAMENTO_PCT = 90.0
 
-# A área pode roçar uma borda municipal e a aritmética geográfica voltar 99,999...%.
-# Abaixo deste corte a cobertura parcial é material e precisa aparecer no contrato.
-LIMIAR_COBERTURA_COMPLETA_EQUIPAMENTOS_PCT = 99.99
+_RECORTE_SAUDE = (
+    "assistência (atenção básica, especialidade, hospital e urgência); "
+    "farmácia e apoio diagnóstico ficam no mapa, fora desta manchete"
+)
+_RECORTE_ENSINO = "escolas da educação básica, todas as redes"
 
 
 # Quatro grupos, e nao as onze faixas publicadas: o Raio-X e relatorio de seis blocos
@@ -203,40 +205,24 @@ def _alerta_saneamento(coberturas: dict[str, float | None]) -> dict[str, Any] | 
     }
 
 
-def _bloco_equipamentos(row: dict[str, Any]) -> dict[str, Any]:
-    """Traduz a medição espacial sem confundir zero com falta de cobertura."""
-    cobertura_pct = float(row.get("cobertura_pct") or 0)
-    ensino = int(row.get("ensino") or 0)
-    saude = int(row.get("saude") or 0)
-    ensino_imprecisas = int(row.get("ensino_imprecisas") or 0)
-    saude_imprecisas = int(row.get("saude_imprecisas") or 0)
-    disponivel = cobertura_pct > 0
-    avisos: list[str] = []
-
-    if not disponivel:
-        avisos.append(
-            "o CNEFE de ensino e saúde não cobre esta área; ausência de dado não significa zero"
-        )
-    elif cobertura_pct < LIMIAR_COBERTURA_COMPLETA_EQUIPAMENTOS_PCT:
-        cobertura_texto = f"{cobertura_pct:.2f}".replace(".", ",")
-        avisos.append(
-            f"{cobertura_texto}% da área está na cobertura; as contagens descrevem somente essa parte"
-        )
-
-    imprecisas = ensino_imprecisas + saude_imprecisas
-    if imprecisas:
-        avisos.append(f"{imprecisas} endereços usam coordenada estimada ou menos precisa na fonte")
-
+def _bloco_equipamentos(ensino: dict[str, Any], saude: dict[str, Any]) -> dict[str, Any]:
+    """Traduz a medição espacial. Cadastro nacional: zero é zero, não falta de cobertura."""
     return {
-        "disponivel": disponivel,
-        "cobertura_pct": round(cobertura_pct, 2),
-        "ensino": {"enderecos": ensino, "coordenadas_imprecisas": ensino_imprecisas},
-        "saude": {"enderecos": saude, "coordenadas_imprecisas": saude_imprecisas},
-        "fonte": "CNEFE 2022 — IBGE",
-        "periodo": "2022",
-        "metodo": "contagem de pontos dentro do desenho, sem rateio",
-        "cobertura": "37 municípios da concentração urbana de São Paulo",
-        "avisos": avisos,
+        "disponivel": True,
+        "ensino": {
+            "total": int(ensino.get("total") or 0),
+            "recorte": _RECORTE_ENSINO,
+        },
+        "saude": {
+            "total": int(saude.get("total") or 0),
+            "total_no_mapa": int(saude.get("total_no_mapa") or 0),
+            "recorte": _RECORTE_SAUDE,
+        },
+        "fonte": "Inep · Censo Escolar 2025 · CNES · DATASUS",
+        "periodo": "2025 (escolas) · 2026-09 (saúde)",
+        "metodo": "contagem de pontos oficiais dentro do desenho, sem rateio",
+        "cobertura": "nacional",
+        "avisos": [],
     }
 
 
@@ -1183,44 +1169,120 @@ class GeoQuery:
             [wkb],
         )
 
-    def equipamentos_por_geometria(self, wkb: bytes) -> dict[str, Any]:
-        """Conta endereços de ensino e saúde e mede quanto do desenho tem cobertura."""
-        row = self._rows(
+    def escolas_por_geometria(self, wkb: bytes) -> dict[str, Any]:
+        """Conta escolas do Inep dentro da geometria."""
+        return self._rows(
             """
-            with area as (
-                select ST_GeomFromWKB(%s, 4674) as g
-            ),
-            contagens as (
-                select count(*) filter (where e.cod_especie = 4)::integer as ensino,
-                       count(*) filter (where e.cod_especie = 5)::integer as saude,
-                       count(*) filter (
-                           where e.cod_especie = 4 and e.nv_geo_coord >= 3
-                       )::integer as ensino_imprecisas,
-                       count(*) filter (
-                           where e.cod_especie = 5 and e.nv_geo_coord >= 3
-                       )::integer as saude_imprecisas
-                  from area a
-                  left join indicadores.cnefe_equipamento e
-                    on ST_Intersects(e.geom, a.g)
-            ),
-            cobertura as (
-                select least(100.0, coalesce(
-                           100 * sum(ST_Area(ST_Intersection(m.geom, a.g)::geography))
-                               filter (where c.cod_municipio is not null)
-                           / nullif(max(ST_Area(a.g::geography)), 0),
-                           0
-                       )) as cobertura_pct
-                  from area a
-                  left join ibge.municipio m on ST_Intersects(m.geom, a.g)
-                  left join indicadores.cnefe_equipamento_cobertura c
-                    using (cod_municipio)
-            )
-            select contagens.*, cobertura.cobertura_pct
-              from contagens cross join cobertura
+            with area as (select ST_GeomFromWKB(%s, 4674) as g)
+            select count(*)::integer as total
+              from infraestrutura.escola_analisavel e, area a
+             where ST_Intersects(e.geom, a.g)
             """,
             [wkb],
         )[0]
-        return _bloco_equipamentos(row)
+
+    def saude_por_geometria(self, wkb: bytes) -> dict[str, Any]:
+        """Conta estabelecimentos CNES no mapa; total é o recorte da manchete."""
+        return self._rows(
+            """
+            with area as (select ST_GeomFromWKB(%s, 4674) as g)
+            select count(*) filter (where t.conta_no_raio_x)::integer as total,
+                   count(*)::integer as total_no_mapa
+              from infraestrutura.estabelecimento_saude_analisavel e
+              join infraestrutura.cnes_tipo_unidade t on t.cod = e.tipo_unidade
+             , area a
+             where t.no_mapa and ST_Intersects(e.geom, a.g)
+            """,
+            [wkb],
+        )[0]
+
+    def listar_escolas_por_geometria(self, wkb: bytes, limite: int = 40) -> list[dict[str, Any]]:
+        """Nome e rede das escolas do Inep na geometria, para a tool do agente."""
+        return self._rows(
+            """
+            with area as (select ST_GeomFromWKB(%s, 4674) as g)
+            select e.cod_escola, e.nome_escola as nome,
+                   case e.dependencia_administrativa
+                     when 1 then 'Federal'
+                     when 2 then 'Estadual'
+                     when 3 then 'Municipal'
+                     when 4 then 'Privada'
+                   end as rede,
+                   m.nome as municipio, m.sigla_uf as uf
+              from infraestrutura.escola_analisavel e
+              join ibge.municipio m using (cod_municipio)
+             , area a
+             where ST_Intersects(e.geom, a.g)
+             order by e.nome_escola
+             limit %s
+            """,
+            [wkb, int(limite)],
+        )
+
+    def listar_saude_por_geometria(self, wkb: bytes, limite: int = 40) -> list[dict[str, Any]]:
+        """Nome e tipo dos estabelecimentos no mapa, para a tool do agente."""
+        return self._rows(
+            """
+            with area as (select ST_GeomFromWKB(%s, 4674) as g)
+            select e.cod_cnes, e.nome_fantasia as nome, t.rotulo as tipo, t.classe,
+                   m.nome as municipio, m.sigla_uf as uf
+              from infraestrutura.estabelecimento_saude_analisavel e
+              join infraestrutura.cnes_tipo_unidade t on t.cod = e.tipo_unidade
+              join ibge.municipio m using (cod_municipio)
+             , area a
+             where t.no_mapa and ST_Intersects(e.geom, a.g)
+             order by e.nome_fantasia
+             limit %s
+            """,
+            [wkb, int(limite)],
+        )
+
+    def _wkb_do_buffer(self, lon: float, lat: float, raio_m: float) -> bytes:
+        return self._rows(
+            """
+            select ST_AsBinary(
+                ST_Buffer(ST_SetSRID(ST_MakePoint(%s, %s), 4674)::geography, %s)::geometry
+            ) as w
+            """,
+            [lon, lat, raio_m],
+        )[0]["w"]
+
+    def equipamentos_por_geometria(self, wkb: bytes) -> dict[str, Any]:
+        """Conta escolas Inep e estabelecimentos CNES de assistência na área."""
+        return _bloco_equipamentos(
+            self.escolas_por_geometria(wkb),
+            self.saude_por_geometria(wkb),
+        )
+
+    def equipamentos_no_ponto(
+        self,
+        lon: float,
+        lat: float,
+        raio_m: float,
+        dominios: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Lista os cadastros oficiais num raio ao redor do ponto."""
+        pedidos = set(dominios or ["ensino", "saude"])
+        wkb = self._wkb_do_buffer(lon, lat, raio_m)
+        out: dict[str, Any] = {"raio_m": raio_m}
+        if "ensino" in pedidos:
+            escolas = self.listar_escolas_por_geometria(wkb)
+            out["ensino"] = {
+                "total": self.escolas_por_geometria(wkb)["total"],
+                "escolas": escolas,
+                "fonte": "Inep · Censo Escolar 2025",
+            }
+        if "saude" in pedidos:
+            estabelecimentos = self.listar_saude_por_geometria(wkb)
+            contagem = self.saude_por_geometria(wkb)
+            out["saude"] = {
+                "total": contagem["total"],
+                "total_no_mapa": contagem["total_no_mapa"],
+                "estabelecimentos": estabelecimentos,
+                "fonte": "CNES · DATASUS",
+                "recorte": _RECORTE_SAUDE,
+            }
+        return out
 
     def raio_x_por_geometria(self, wkb: bytes) -> dict[str, Any]:
         """Monta o contrato determinístico do Raio-X a partir de uma área salva.
@@ -1515,7 +1577,7 @@ class GeoQuery:
             }
         )
         resultado = {
-            "versao_calculo": "5",
+            "versao_calculo": "6",
             "gerado_em": datetime.now(UTC).isoformat(),
             "escala": escala,
             "contraste": contraste,

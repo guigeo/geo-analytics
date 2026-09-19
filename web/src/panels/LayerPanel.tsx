@@ -7,7 +7,9 @@ import {
   CloudOff,
   Eye,
   EyeOff,
+  GraduationCap,
   Grid3x3,
+  HeartPulse,
   Landmark,
   Layers,
   PanelLeftClose,
@@ -31,11 +33,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { impedimentoDoRaioX, type ItemDoAcervo } from "@/desenho/camadas";
 import type { ErroDoAcervo } from "@/desenho/api";
 import { Button } from "@/components/ui/button";
-import { ANTENNA_ICON } from "@/map/icons";
+import { ANTENNA_ICON, HEALTH_ICON, SCHOOL_ICON } from "@/map/icons";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Secao, SecaoCabecalho, SecaoCorpo, EstadoVazio } from "@/components/PainelSecao";
 import { cn } from "@/lib/utils";
 import { agruparCamadas } from "./grupos";
+import { SeletorDeClasses } from "./SeletorDeClasses";
 
 interface Props {
   visible: Record<string, boolean>;
@@ -43,6 +46,9 @@ interface Props {
   /** Qual variável cada camada de vários temas está pintando. */
   temaAtivo: Record<string, string>;
   onEscolherTema: (idDaCamada: string, idDoTema: string) => void;
+  /** Classes desligadas por camada, no mesmo gesto do `visible`. */
+  classesOcultas: Record<string, string[]>;
+  onAlternarClasse: (idDaCamada: string, valor: string) => void;
   /**
    * Os desenhos do cliente, folhas do último combo. Vêm da mesma coleção que o mapa
    * consome — se viessem de uma lista própria, painel e mapa poderiam discordar.
@@ -65,6 +71,8 @@ interface Props {
 // Ícone da legenda por id de ícone do mapa (mantém painel e marcador em sintonia).
 const ICONE_DA_LEGENDA: Record<string, LucideIcon> = {
   [ANTENNA_ICON]: RadioTower,
+  [SCHOOL_ICON]: GraduationCap,
+  [HEALTH_ICON]: HeartPulse,
 };
 
 /**
@@ -110,6 +118,8 @@ export function LayerPanel({
   onToggle,
   temaAtivo,
   onEscolherTema,
+  classesOcultas,
+  onAlternarClasse,
   itens,
   ocultos,
   onAlternarItem,
@@ -186,6 +196,13 @@ export function LayerPanel({
                       camada={c}
                       ativo={temaDaCamada(c, temaAtivo[c.id])}
                       onEscolher={(idDoTema) => onEscolherTema(c.id, idDoTema)}
+                    />
+                  )}
+                  {c.filtros && (
+                    <SeletorDeClasses
+                      camada={c}
+                      ocultas={classesOcultas[c.id] ?? []}
+                      onAlternar={(valor) => onAlternarClasse(c.id, valor)}
                     />
                   )}
                   {visible[c.id] && temaDaCamada(c, temaAtivo[c.id]) && (

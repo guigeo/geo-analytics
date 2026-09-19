@@ -112,6 +112,8 @@ export const cliente: ConfiguracaoCliente = {
     CATALOGO.bairro,
     com(CATALOGO.setor, { cor: "#1f6f8b" }),
     CATALOGO.rodovias,
+    CATALOGO.escolas,
+    CATALOGO.saude,
     CATALOGO.ferrovias,
     CATALOGO.zoneamento_sp,
     CATALOGO.h3_domicilios,

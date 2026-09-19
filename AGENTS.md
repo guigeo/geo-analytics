@@ -586,22 +586,28 @@ fez o `setor_resumo` virar materializada, e está no `_resumo.sh` do `servidor-d
 desde antes. **Antes de juntar qualquer `<nivel>_<pacote>` numa consulta, lembre que ela não
 é materializada.**
 
-### CNES e Inep no geodata local (2026-09-18)
+### CNES e Inep no geodata (2026-09-18; réplica na VPS em 2026-09-19)
 
 As cargas `CNES_NO_GEODATA` e `INEP_NO_GEODATA` persistiram o cadastro oficial no
-PostGIS deste Mac. Mapa, agente, Raio-X e VPS **não foram tocados** — o consumo é
-feature seguinte. Artefatos em `.claude/sdd/archive/CNES_NO_GEODATA/` e
-`.claude/sdd/archive/INEP_NO_GEODATA/`.
+PostGIS. A réplica na VPS subiu em 2026-09-19. Artefatos em
+`.claude/sdd/archive/CNES_NO_GEODATA/` e `.claude/sdd/archive/INEP_NO_GEODATA/`.
 
 | Tabela | Publicadas | Ativas | Analisáveis |
 |---|---:|---:|---:|
 | `infraestrutura.estabelecimento_saude` | 636.342 | 497.614 | 484.978 |
 | `infraestrutura.escola` | 214.192 | 180.540 | 166.062 |
 
-Publicar a réplica, só depois do "pode subir": `./scripts/vps-publicar-cnes.sh` e
-`./scripts/vps-publicar-escolas.sh` no `servidor-dados-gis`. Conferir disco na VPS
-antes. Estas cargas **não substituem** o CNEFE: aquele conta endereços; estes
-identificam estabelecimento e escola.
+O consumo no mapa, no Raio-X e no agente é a `EQUIPAMENTOS_OFICIAIS_NO_MAPA`
+(2026-09-19): camadas `escolas` e `saude`, cartão do Raio-X com `versao_calculo` 6,
+tool `equipamentos_no_ponto`. O de-para de `tipo_unidade` mora em
+`servidor-dados-gis/metodologia/cnes/tipo_unidade.csv` e vira
+`infraestrutura.cnes_tipo_unidade` — JOIN, nunca CASE; código sem linha é erro, não
+`outros`. Carga `./cargas/_tipo_unidade.sh`; réplica
+`./scripts/vps-publicar-tipo-unidade.sh` (só depois do "pode subir"). Tiles e
+`ship-*` esperam o aceite visual.
+
+Estas cargas **não substituem** o CNEFE: aquele conta endereços; estes identificam
+estabelecimento e escola.
 
 ### Em aberto
 
@@ -611,9 +617,10 @@ identificam estabelecimento e escola.
   era pequeno e foi medido antes: os schemas de dado só dão `USAGE` a `geo_reader`, então os
   papéis `app_<cliente>` não enxergavam tabela nenhuma — sobrava o catálogo legível e o
   `TEMPORARY`, que num servidor apertado de disco é uma via para enchê-lo.
-- **CNES e Inep no geodata local, fora da VPS e do produto.** Cargas de 2026-09-18.
-  Sem tile, catálogo, tool ou troca do cartão de equipamentos do Raio-X. Publicar a
-  réplica é comando separado e exige aceite explícito.
+- ~~**CNES e Inep no geodata local, fora da VPS e do produto.**~~ Réplicas publicadas
+  em 2026-09-19. O consumo (`EQUIPAMENTOS_OFICIAIS_NO_MAPA`) está construído e
+  espera aceite visual antes de publicar os tiles `escolas.pmtiles` / `saude.pmtiles`
+  e qualquer `ship-*`.
 - **Espaço na VPS:** 4,2 GB livres de 38 GB (89% usado), medido em 2026-09-12 — eram 6,8 GB
   em 2026-09-07, e o número cai mais rápido do que a memória de quem o cita. Já com a
   réplica H3 e o tile de 12,8 MB publicados. É o que

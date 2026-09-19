@@ -12,7 +12,7 @@ import { criarEstadoMedicao, MEDICAO_SOURCE_ID, type Coordenada } from "./medica
 import { criarEstadoDesenho } from "@/desenho/estado";
 import { COLECAO_VAZIA, DESENHOS_SOURCE_ID, TRACADO_SOURCE_ID } from "@/desenho/fonte";
 import { camadas } from "@/configuracao";
-import { expressaoDeCorNumerica } from "./layers";
+import { expressaoDeCorNumerica, filtroDeClasses } from "./layers";
 
 const handlers = new Map<string, (e: unknown) => void>();
 const setData = vi.fn();
@@ -428,6 +428,38 @@ describe("MapView e o liga/desliga por desenho", () => {
       String(id).startsWith("desenhos-"),
     );
     expect(porVisibilidade).toHaveLength(0);
+  });
+});
+
+describe("MapView e o filtro de classe", () => {
+  it("desmarcar hospital chama setFilter na camada, sem nova fonte", () => {
+    const saude = camadas.find((c) => c.id === "saude")!;
+    const { rerender } = montar({ classesOcultas: { saude: [] } });
+    mapaDublado.setFilter.mockClear();
+    rerender(
+      <MapView
+        visible={{}}
+        temaAtivo={{}}
+        classesOcultas={{ saude: ["hospital"] }}
+        satellite={false}
+        satelliteOverlay={false}
+        onSelect={vi.fn()}
+        medicao={criarEstadoMedicao(null)}
+        onVerticeMedicao={vi.fn()}
+        onEncerrarMedicao={vi.fn()}
+        desenho={criarEstadoDesenho(null)}
+        onVerticeDesenho={vi.fn()}
+        onCancelarDesenho={vi.fn()}
+        onEncerrarDesenho={vi.fn()}
+        desenhos={COLECAO_VAZIA}
+        desenhosOcultos={[]}
+        selected={null}
+      />,
+    );
+    const daSaude = mapaDublado.setFilter.mock.calls.filter(([id]) => id === "saude");
+    expect(daSaude.length).toBeGreaterThan(0);
+    expect(daSaude.at(-1)?.[1]).toEqual(filtroDeClasses(saude, ["hospital"]));
+    expect(mapaDublado.addSource).not.toHaveBeenCalled();
   });
 });
 

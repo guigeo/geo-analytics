@@ -3,6 +3,12 @@
 > Para quem vai executar o `/build`. Escrito em 2026-09-19, depois do portão de aceite.
 > **Não repete o DESIGN** — lê-se junto com ele, não no lugar dele.
 
+**Build local concluído em 2026-09-19.** Relatório:
+[`BUILD_REPORT_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](BUILD_REPORT_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md).
+
+**Aceite visual do Gui em 2026-09-19.** Quem recebe este bastão **publica**, não reconstrói.
+Malha H3 de equipamentos continua CNEFE — isso é outra feature.
+
 ## Ordem de leitura
 
 1. [`DESIGN_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md`](DESIGN_EQUIPAMENTOS_OFICIAIS_NO_MAPA.md) — manifesto de 30 arquivos, 6 decisões, padrões de código

@@ -202,6 +202,23 @@ def test_antenas_deixou_de_ser_csv():
     assert "join ibge.municipio" in antenas.source.sql
 
 
+def test_escolas_e_saude_saem_das_views_analisaveis():
+    cfg = load_config()
+    escolas = cfg.dataset("escolas")
+    saude = cfg.dataset("saude")
+    assert escolas.geometry == "point"
+    assert saude.geometry == "point"
+    assert (escolas.tile.minzoom, escolas.tile.maxzoom) == (6, 14)
+    assert (saude.tile.minzoom, saude.tile.maxzoom) == (6, 14)
+    assert "escola_analisavel" in escolas.source.sql
+    assert '"' not in escolas.source.sql
+    assert '"' not in saude.source.sql
+    assert "cnes_tipo_unidade" in saude.source.sql
+    assert "where t.no_mapa" in saude.source.sql
+    assert saude.attributes == ["cod_cnes", "nome", "tipo", "classe", "municipio", "uf"]
+    assert "classe" in escolas.attributes
+
+
 def test_infraestrutura_renomeia_para_o_contrato_do_tile():
     """O banco normaliza os nomes do BC250; o tile publica os do IBGE original."""
     cfg = load_config()

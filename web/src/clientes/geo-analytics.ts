@@ -61,6 +61,8 @@ export const cliente: ConfiguracaoCliente = {
     CATALOGO.bairro,
     CATALOGO.setor,
     CATALOGO.antenas,
+    CATALOGO.escolas,
+    CATALOGO.saude,
     CATALOGO.rodovias,
     CATALOGO.ferrovias,
     CATALOGO.zoneamento_sp,

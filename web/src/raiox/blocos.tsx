@@ -400,7 +400,7 @@ export function BlocoDeEquipamentos({ dados }: { dados: BlocoEquipamentos }) {
   return (
     <Bloco
       titulo="Educação e saúde"
-      chamada="Endereços de estabelecimentos encontrados dentro do desenho."
+      chamada="Escolas do Inep e estabelecimentos de saúde do CNES encontrados dentro do desenho."
       proveniencia={dados}
     >
       {dados.disponivel ? (
@@ -411,21 +411,14 @@ export function BlocoDeEquipamentos({ dados }: { dados: BlocoEquipamentos }) {
                 <Icone className="size-4" aria-hidden="true" />
                 {rotulo}
               </div>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">
-                {inteiro(indicador.enderecos)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                endereços de estabelecimentos
-                {indicador.coordenadas_imprecisas > 0
-                  ? ` · ${inteiro(indicador.coordenadas_imprecisas)} com localização menos precisa`
-                  : ""}
-              </p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums">{inteiro(indicador.total)}</p>
+              <p className="text-xs text-muted-foreground">{indicador.recorte}</p>
             </div>
           ))}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          O CNEFE de ensino e saúde ainda não cobre esta área.
+          Não há escola nem estabelecimento de saúde nesta área. O cadastro é nacional: zero é zero.
         </p>
       )}
     </Bloco>

@@ -60,3 +60,20 @@ def test_area_sem_zoneamento_satisfaz_o_contrato(gq) -> None:
     assert contrato.regulacao.disponivel is False
     assert contrato.regulacao.aviso
     assert contrato.regulacao.fonte
+    assert contrato.equipamentos.disponivel is True
+    assert contrato.versao_calculo == "6"
+
+
+@_PRECISA_GEODATA
+def test_area_sem_equipamento_satisfaz_o_contrato(gq) -> None:
+    """AT-008: a fachada real, não um dublê, passa pelo Pydantic com zero verdadeiro.
+
+    O ponto precisa cair DENTRO de um setor — senão o Raio-X inteiro some, e o
+    teste não alcança o bloco de equipamentos. Medido em 2026-09-19: superfície de
+    um setor grande do extremo sul de São Paulo, sem escola nem CNES no mapa a 80 m.
+    """
+    contrato = RaioX.model_validate(gq.raio_x_por_geometria(_buffer(gq, -46.66259, -23.96245, 80)))
+    assert contrato.equipamentos.disponivel is True
+    assert contrato.equipamentos.ensino.total == 0
+    assert contrato.equipamentos.saude.total == 0
+    assert contrato.equipamentos.cobertura == "nacional"

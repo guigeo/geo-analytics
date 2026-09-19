@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { registerPMTiles } from "../lib/pmtiles";
 import type { BasemapTheme } from "./basemap";
-import { expressaoDeCorNumerica, IDS_CLICAVEIS, SUFIXOS_SUBCAMADA, temaDaCamada } from "./layers";
+import {
+  expressaoDeCorNumerica,
+  filtroDeClasses,
+  IDS_CLICAVEIS,
+  SUFIXOS_SUBCAMADA,
+  temaDaCamada,
+} from "./layers";
 import { montarEstilo } from "./estilo";
 import { camadas, configuracaoMapa } from "@/configuracao";
 import { EMPTY_SELECTION, SELECTION_SOURCE_ID } from "./selection";
@@ -105,6 +111,8 @@ interface Props {
   visible: Record<string, boolean>;
   /** Qual tema numérico cada camada está pintando. Ver `temasNumericos` no catálogo. */
   temaAtivo: Record<string, string>;
+  /** Classes desligadas por camada; o filtro no MapLibre segue esta lista. */
+  classesOcultas?: Record<string, string[]>;
   /** Satélite (Esri, raster) no lugar do basemap vetorial. */
   satellite: boolean;
   /** Com satélite ligado: mantém vias/limites/rótulos por cima (modo híbrido). */
@@ -152,6 +160,7 @@ interface Props {
 export function MapView({
   visible,
   temaAtivo,
+  classesOcultas = {},
   satellite,
   satelliteOverlay,
   onSelect,
@@ -204,6 +213,8 @@ export function MapView({
   const [mapa, setMapa] = useState<maplibregl.Map | null>(null);
   const desenhosOcultosRef = useRef(desenhosOcultos);
   desenhosOcultosRef.current = desenhosOcultos;
+  const classesOcultasRef = useRef(classesOcultas);
+  classesOcultasRef.current = classesOcultas;
   // Tema/satélite iniciais fixados na montagem; trocas posteriores via setStyle (efeito separado).
 
   const initialSatelliteRef = useRef(satellite);
@@ -384,6 +395,20 @@ export function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map) return;
+    assimQuePuder(map, () => {
+      let achou = false;
+      for (const c of camadas) {
+        if (!c.filtros || !map.getLayer(c.id)) continue;
+        map.setFilter(c.id, filtroDeClasses(c, classesOcultas[c.id] ?? []));
+        achou = true;
+      }
+      return achou;
+    });
+  }, [classesOcultas]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !focus) return;
     map.fitBounds(focus.bbox, { padding: 48, duration: 1200, maxZoom: focus.maxZoom ?? 12 });
   }, [focus]);
@@ -536,6 +561,10 @@ export function MapView({
       // desenhos que a pessoa tinha escondido.
       for (const id of IDS_CAMADAS_DESENHOS) {
         if (map.getLayer(id)) map.setFilter(id, filtroDoAcervo(id, desenhosOcultosRef.current));
+      }
+      for (const c of camadas) {
+        if (!c.filtros || !map.getLayer(c.id)) continue;
+        map.setFilter(c.id, filtroDeClasses(c, classesOcultasRef.current[c.id] ?? []));
       }
     });
   }, [satellite, satelliteOverlay]);

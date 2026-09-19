@@ -13,7 +13,7 @@
  * Camada nova aqui só se ela existir no host de tiles compartilhado. Camada que
  * é do cliente — a que ele sobe, desenha ou importa — não entra neste arquivo.
  */
-import { ANTENNA_ICON } from "@/map/icons";
+import { ANTENNA_ICON, HEALTH_ICON, SCHOOL_ICON } from "@/map/icons";
 import { PALETA_ZONEAMENTO } from "./paleta-zoneamento";
 import type { DefinicaoCamada } from "./esquema";
 
@@ -129,6 +129,65 @@ export const CATALOGO = {
       { chave: "operadora", rotulo: "Operadora" },
       { chave: "tecnologia", rotulo: "Tecnologia" },
       { chave: "frequencia", rotulo: "Frequência" },
+    ],
+  },
+  escolas: {
+    id: "escolas",
+    rotulo: "Escolas",
+    grupo: "infraestrutura",
+    camadaFonte: "escolas",
+    geometria: "ponto",
+    cor: "#c2410c",
+    icone: SCHOOL_ICON,
+    ancoraIcone: "base",
+    iconesPodemSobrepor: true,
+    fonte: "Inep · Censo Escolar 2025",
+    filtros: {
+      campo: "classe",
+      rotulo: "Rede",
+      classes: [
+        { valor: "federal", rotulo: "Federal", inicialmenteLigada: true },
+        { valor: "estadual", rotulo: "Estadual", inicialmenteLigada: true },
+        { valor: "municipal", rotulo: "Municipal", inicialmenteLigada: true },
+        { valor: "privada", rotulo: "Privada", inicialmenteLigada: true },
+      ],
+    },
+    atributos: [
+      { chave: "nome", rotulo: "Nome" },
+      { chave: "rede", rotulo: "Rede" },
+      { chave: "municipio", rotulo: "Município" },
+      { chave: "uf", rotulo: "UF" },
+    ],
+  },
+  saude: {
+    id: "saude",
+    rotulo: "Estabelecimentos de saúde",
+    grupo: "infraestrutura",
+    camadaFonte: "saude",
+    geometria: "ponto",
+    cor: "#0e7490",
+    icone: HEALTH_ICON,
+    ancoraIcone: "base",
+    iconesPodemSobrepor: true,
+    fonte: "CNES · DATASUS",
+    filtros: {
+      campo: "classe",
+      rotulo: "Tipo de estabelecimento",
+      classes: [
+        { valor: "atencao_basica", rotulo: "Atenção básica", inicialmenteLigada: true },
+        { valor: "especialidade", rotulo: "Especialidade", inicialmenteLigada: true },
+        { valor: "hospital", rotulo: "Hospital", inicialmenteLigada: true },
+        { valor: "urgencia", rotulo: "Urgência", inicialmenteLigada: true },
+        { valor: "farmacia", rotulo: "Farmácia", inicialmenteLigada: false },
+        { valor: "apoio_diagnostico", rotulo: "Apoio diagnóstico", inicialmenteLigada: false },
+        { valor: "promocao", rotulo: "Promoção de saúde", inicialmenteLigada: false },
+      ],
+    },
+    atributos: [
+      { chave: "nome", rotulo: "Nome" },
+      { chave: "tipo", rotulo: "Tipo" },
+      { chave: "classe", rotulo: "Classe" },
+      { chave: "municipio", rotulo: "Município" },
     ],
   },
   rodovias: {

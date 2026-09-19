@@ -85,9 +85,12 @@ def _resultado() -> dict:
         "equipamentos": {
             **comum,
             "disponivel": True,
-            "cobertura_pct": 100,
-            "ensino": {"enderecos": 2, "coordenadas_imprecisas": 0},
-            "saude": {"enderecos": 1, "coordenadas_imprecisas": 0},
+            "ensino": {"total": 2, "recorte": "escolas da educação básica, todas as redes"},
+            "saude": {
+                "total": 1,
+                "total_no_mapa": 1,
+                "recorte": "assistência",
+            },
         },
     }
 
@@ -177,5 +180,5 @@ def test_rota_entrega_contrato_e_aviso_de_classe(cliente: TestClient) -> None:
     corpo = resposta.json()
     assert corpo["sintese"] == "teste"
     assert corpo["saneamento"] is None
-    assert corpo["equipamentos"]["ensino"]["enderecos"] == 2
+    assert corpo["equipamentos"]["ensino"]["total"] == 2
     assert "ESTIMATIVA NOSSA" in corpo["classe_social"]["avisos"][0]

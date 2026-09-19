@@ -603,8 +603,16 @@ tool `equipamentos_no_ponto`. O de-para de `tipo_unidade` mora em
 `servidor-dados-gis/metodologia/cnes/tipo_unidade.csv` e vira
 `infraestrutura.cnes_tipo_unidade` — JOIN, nunca CASE; código sem linha é erro, não
 `outros`. Carga `./cargas/_tipo_unidade.sh`; réplica
-`./scripts/vps-publicar-tipo-unidade.sh` (só depois do "pode subir"). Tiles e
-`ship-*` esperam o aceite visual.
+`./scripts/vps-publicar-tipo-unidade.sh`. **Tudo publicado em 2026-09-19** nos dois
+clientes: de-para na réplica (46 tipos), `escolas.pmtiles` (35,0 MB) e `saude.pmtiles`
+(34,4 MB) no host, agentes reiniciados e frontends no ar.
+
+As sete classes, medidas na view analisável: especialidade 106.994 · atenção básica
+51.914 · apoio diagnóstico 32.819 · farmácia 29.739 · hospital 8.037 · promoção 4.654 ·
+urgência 2.030. **Manchete do cartão: as quatro de assistência**; farmácia, apoio e
+promoção aparecem no mapa e nascem desligadas, e é isso que faz cartão e pontos
+visíveis baterem no estado inicial. Consultório isolado (222.035, 46% do cadastro)
+não entra em superfície nenhuma.
 
 Estas cargas **não substituem** o CNEFE: aquele conta endereços; estes identificam
 estabelecimento e escola.
@@ -617,13 +625,16 @@ estabelecimento e escola.
   era pequeno e foi medido antes: os schemas de dado só dão `USAGE` a `geo_reader`, então os
   papéis `app_<cliente>` não enxergavam tabela nenhuma — sobrava o catálogo legível e o
   `TEMPORARY`, que num servidor apertado de disco é uma via para enchê-lo.
-- ~~**CNES e Inep no geodata local, fora da VPS e do produto.**~~ Réplicas publicadas
-  em 2026-09-19. O consumo (`EQUIPAMENTOS_OFICIAIS_NO_MAPA`) está construído e
-  espera aceite visual antes de publicar os tiles `escolas.pmtiles` / `saude.pmtiles`
-  e qualquer `ship-*`.
-- **Espaço na VPS:** 4,2 GB livres de 38 GB (89% usado), medido em 2026-09-12 — eram 6,8 GB
-  em 2026-09-07, e o número cai mais rápido do que a memória de quem o cita. Já com a
-  réplica H3 e o tile de 12,8 MB publicados. É o que
+- ~~**CNES e Inep no geodata local, fora da VPS e do produto.**~~ **No ar nos dois
+  clientes desde 2026-09-19**, réplicas e consumo. Pendência que ficou:
+  **o tile foi gerado sobre o snapshot de 2026-09-18** (`meta.fonte` diz
+  `snapshot=2026-09-18`) e o ZIP do DATASUS mudou em 19/09 05:53 UTC. A cadência da
+  fonte é mensal, então não é dado vencido — mas a próxima rodada recarrega o CNES
+  **antes** de gerar tile, e o aceite visual vai junto.
+- **Espaço na VPS:** 3,3 GB livres de 38 GB (92% usado), medido em 2026-09-19 depois de
+  publicar as réplicas e os dois tiles novos — eram 6,8 GB em 2026-09-07 e 4,2 GB em
+  2026-09-12, e o número cai mais rápido do que a memória de quem o cita. Já com a
+  réplica H3, o tile de 12,8 MB e os 69 MB de `escolas` + `saude` publicados. É o que
   barra o eixo de ruas nacional (OSM) e o que adiaria uma malha H3 nacional (~2 GB em
   res 8).
 - **Custo do argon2, medido na VPS em 2026-09-06:** 163 ms por verificação no padrão

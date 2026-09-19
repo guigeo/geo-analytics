@@ -45,7 +45,7 @@ o consultório de um dentista.
 
 | Prioridade | Objetivo |
 |---|---|
-| **MUST** | Duas camadas de ponto — `escolas` e `saude` — no painel dos dois clientes, apagadas por padrão, com `fonte` e `cobertura` declaradas |
+| **MUST** | Duas camadas de ponto — `escolas` e `saude` — no painel dos dois clientes, apagadas por padrão, com `fonte` declarada |
 | **MUST** | Recorte curado: consultório isolado não aparece em nenhuma superfície |
 | **MUST** | O de-para de `tipo_unidade` existe como dado versionado, com procedência do DATASUS |
 | **MUST** | O cartão "Educação e saúde" do Raio-X passa a contar escola Inep e estabelecimento CNES de assistência |
@@ -64,7 +64,7 @@ O **COULD** é dívida encontrada de passagem, não pedido desta feature. Cai pr
 - [x] O de-para cobre os códigos de `tipo_unidade` presentes no dado analisável — nenhum cai em "outros" por omissão
 - [x] Com os filtros no estado inicial, o número do cartão de saúde é **igual** à contagem de pontos visíveis na área desenhada
 - [x] O cartão de ensino é igual à contagem de pontos da camada `escolas` na mesma área
-- [x] O `cobertura` de cada camada declara em número o que ficou fora (48.130 escolas e 151.364 estabelecimentos entre publicado e analisável)
+- [x] ~~O `cobertura` de cada camada declara em número o que ficou fora~~ **Revogado em 2026-09-19, depois de publicado.** As notas subiram, o Gui as viu no painel e mandou tirar: a emenda de 2026-09-03 fala de camada que **não** é nacional, e estas são. O que fica de fora se lê no filtro de classe e no recorte nomeado do cartão — uma terceira nota debaixo do nome era ruído. Só `fonte` permanece
 - [ ] O tile de cada camada é publicado com medição de disco da VPS **antes e depois**; a publicação aborta se o espaço livre cair abaixo de 2 GB — espera aceite visual
 - [x] `equipamentos_no_ponto` devolve os dois cadastros e o agente cita nome de escola e de estabelecimento, não contagem de endereço
 
@@ -74,7 +74,7 @@ O **COULD** é dívida encontrada de passagem, não pedido desta feature. Cai pr
 
 | ID | Cenário | Dado | Quando | Então |
 |---|---|---|---|---|
-| AT-001 | Camada aparece e desenha | Aplicação carregada no cliente 1 | O usuário liga "Escolas" no painel | Pontos aparecem no mapa; o painel mostra "Inep · Censo Escolar 2025" e a cobertura declarada |
+| AT-001 | Camada aparece e desenha | Aplicação carregada no cliente 1 | O usuário liga "Escolas" no painel | Pontos aparecem no mapa; o painel mostra "Inep · Censo Escolar 2025" como procedência, e nada além disso (revisto em 2026-09-19) |
 | AT-002 | Camada no cliente 2 | Aplicação carregada no EB Prime | O usuário abre o painel | "Escolas" e "Estabelecimentos de saúde" estão listadas e apagadas |
 | AT-003 | Consultório isolado não existe | Tile de saúde publicado | Consulta-se o `.pmtiles` por `classe` | Nenhuma feature com classe "consultório isolado"; contagem total ≤ 262.943 |
 | AT-004 | Filtro de classe | Camada "Estabelecimentos de saúde" ligada | O usuário desmarca "Hospital" | Os pontos de hospital somem sem nova requisição de rede e sem recarregar o tile |
